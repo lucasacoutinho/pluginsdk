@@ -1,0 +1,80 @@
+{
+  "name": "pluginsdk",
+  "version": "0.1.0-alpha.0",
+  "description": "Build reproducible agent plugins and apply reviewed installation plans.",
+  "type": "module",
+  "license": "MIT",
+  "engines": {
+    "node": ">=24"
+  },
+  "files": [
+    "dist/contracts",
+    "dist/src",
+    "dist/schemas",
+    "contracts",
+    "src",
+    "schemas",
+    "README.md",
+    "LICENSE",
+    "docs",
+    "examples",
+    "test",
+    "scripts",
+    ".oxlintrc.json",
+    "tsconfig.json",
+    "tsconfig.build.json",
+    "vitest.config.ts",
+    "vitest.native.config.ts",
+    "spec/README.md",
+    "spec/lean-toolchain",
+    "spec/lakefile.lean",
+    "spec/lake-manifest.json",
+    "spec/Oracle.lean",
+    "spec/PluginSdk.lean",
+    "spec/PluginSdk",
+    "spec/scripts",
+    "spec/vectors"
+  ],
+  "bin": {
+    "pluginsdk": "dist/src/cli.js"
+  },
+  "exports": {
+    ".": "./dist/src/index.js",
+    "./Plugin": "./dist/contracts/Plugin.js",
+    "./Compiler": "./dist/contracts/Compiler.js",
+    "./Installer": "./dist/contracts/Installer.js",
+    "./package.json": "./package.json",
+    "./node": "./dist/src/node.js"
+  },
+  "scripts": {
+    "lint": "oxlint --deny-warnings contracts src test scripts examples",
+    "typecheck": "tsc --noEmit",
+    "diagnostics": "effect-tsgo diagnostics --strict --project tsconfig.json",
+    "proof": "bash spec/scripts/gate.sh",
+    "test": "vitest run",
+    "test:conformance": "vitest run test/conformance.test.ts",
+    "test:native": "vitest run --config vitest.native.config.ts && npm run build && node scripts/package-smoke.mjs --native",
+    "test:package": "npm run build && node scripts/package-smoke.mjs",
+    "build": "tsc --project tsconfig.build.json",
+    "check": "npm run proof && npm run typecheck && npm run diagnostics && npm run lint && npm test && npm run test:package",
+    "prepack": "npm run build",
+    "prepare": "effect-tsgo patch --typescript --no-oxlint"
+  },
+  "dependencies": {
+    "@effect/platform-node": "4.0.5",
+    "ajv": "8.17.1",
+    "effect": "4.0.5",
+    "fs-native-extensions": "1.5.1",
+    "jsonc-parser": "3.3.1",
+    "smol-toml": "1.9.1",
+    "yaml": "2.8.1"
+  },
+  "devDependencies": {
+    "@effect/tsgo": "0.54.1",
+    "@effect/vitest": "4.0.5",
+    "@types/node": "24.10.0",
+    "oxlint": "1.89.0",
+    "typescript": "7.0.2",
+    "vitest": "5.0.0"
+  }
+}

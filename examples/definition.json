@@ -1,0 +1,9 @@
+{
+  "id": "review-kit",
+  "version": "0.1.0",
+  "description": "Review code changes against the request and repository contracts.",
+  "skills": [
+    "skills/review"
+  ],
+  "mcp": {}
+}

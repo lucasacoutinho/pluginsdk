@@ -1,0 +1,4 @@
+Check the request and the intended behavior.
+Read the changed code and related contracts.
+Review error paths, boundary inputs, and relevant tests.
+Report findings with paths and evidence.

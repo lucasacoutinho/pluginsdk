@@ -1,0 +1,14 @@
+{
+  "jsPlugins": ["./scripts/lint-patterns.mjs"],
+  "plugins": ["typescript"],
+  "rules": {
+    "pluginsdk/use-match": "error",
+    "typescript/no-explicit-any": "error",
+    "typescript/no-non-null-assertion": "error"
+  },
+  "ignorePatterns": [".references/**", ".audit/**", ".artifacts/**", "dist/**", "node_modules/**", "spec/**"]
+  ,"overrides": [{
+    "files": ["contracts/Plugin.ts"],
+    "rules": { "eslint/no-control-regex": "off" }
+  }]
+}
