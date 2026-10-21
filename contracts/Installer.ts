@@ -56,7 +56,8 @@ export type Desired = typeof Desired.Type
 
 export const Intent = Schema.Union([
   Schema.Struct({ type: Schema.Literal("absent"), plugin: PluginId }),
-  Schema.Struct({ type: Schema.Literal("present"), bundle: Bundle })
+  Schema.Struct({ type: Schema.Literal("present"), bundle: Bundle }),
+  Schema.Struct({ type: Schema.Literal("repair"), plugin: PluginId, pending: PlanId })
 ]).pipe(Schema.toTaggedUnion("type"))
 export type Intent = typeof Intent.Type
 
@@ -125,11 +126,14 @@ export type RepairPlanBody = typeof RepairPlanBody.Type
 export const RepairPlan = Schema.Struct({ ...RepairPlanBody.fields, id: PlanId })
 export type RepairPlan = typeof RepairPlan.Type
 
+export const ReviewedPlan = Schema.Union([ReadyPlan, RepairPlan]).pipe(Schema.toTaggedUnion("type"))
+export type ReviewedPlan = typeof ReviewedPlan.Type
+
 export const Planning = Schema.Union([
-  ReadyPlan,
+  ReviewedPlan,
   Schema.Struct({ type: Schema.Literal("unchanged"), target: Target, state: Snapshot }),
   Schema.Struct({ type: Schema.Literal("blocked"), target: Target, state: Snapshot, reason: Conflict }),
-  Schema.Struct({ type: Schema.Literal("pending"), plan: ReadyPlan })
+  Schema.Struct({ type: Schema.Literal("pending"), plan: ReviewedPlan })
 ]).pipe(Schema.toTaggedUnion("type"))
 export type Planning = typeof Planning.Type
 
@@ -173,7 +177,7 @@ export class Installer extends Context.Service<Installer, {
     Planning,
     BundleRejected | DestinationUnsupported | HostUnavailable | StateUnavailable
   >
-  readonly apply: (plan: ReadyPlan) => Effect.Effect<
+  readonly apply: (plan: ReviewedPlan) => Effect.Effect<
     ApplyOutcome,
     DestinationUnsupported | HostUnavailable | StateUnavailable | PlanRejected
   >

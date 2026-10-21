@@ -43,6 +43,7 @@ const buildBundle = (source: SourceSnapshot, root: string, host: PilotScenario["
 const ready = (planning: PlanningType, context: string): Effect.Effect<ReadyPlanType, PilotFailure> => Match.value(planning).pipe(
   Match.discriminatorsExhaustive("type")({
     ready: (plan) => Effect.succeed(plan),
+    repair_ready: () => Effect.fail(new PilotFailure({ operation: context, cause: "unexpectedly planned repair" })),
     unchanged: () => Effect.fail(new PilotFailure({ operation: context, cause: "unexpectedly planned no change" })),
     blocked: ({ reason }) => Effect.fail(new PilotFailure({ operation: context, cause: `blocked: ${reason}` })),
     pending: () => Effect.fail(new PilotFailure({ operation: context, cause: "unexpectedly has a pending plan" }))

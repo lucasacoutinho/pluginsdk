@@ -4,11 +4,15 @@
 
 The next release must complete all six milestones below. The completed local alpha is the baseline, rather than acceptance for these new requirements. Each contract change follows property, Lean proof, oracle, TypeScript conformance and native acceptance.
 
+The organization scenario in [organization plugin management](organization-design.md) sets the product direction: centrally manage approved integrations across Claude, ChatGPT, Cursor and Grok Bot using existing application repositories, MCP services and deployment infrastructure. ChatGPT and Cursor need their own qualification; Codex support does not satisfy them. Plugin/MCP code management is a possible future extension. Preserve pinned release provenance so that later source ownership can change without replacing catalog identities or policies.
+
+After the current repair acceptance gate, design the organization catalog, distribution and authorization contracts before expanding the public interface. Keep backend RBAC enforcement separate from native installation preferences. The six milestones remain tracked below; the organization workflow adds acceptance requirements rather than marking any client complete.
+
 | Milestone | Required result | Current state |
 | --- | --- | --- |
 | Real-plugin pilot | Build all lstack skills and required supporting files; install, discover, update and remove in isolated fresh Claude and Codex sessions. | Complete for Claude user/project and Codex user: 34 skills, 151 skill files, six supporting files and nine executables. [Pilot record](pilot.md). Third-party MCP authentication deferred by user. |
 | Private alpha | MIT package in a private repository with successful remote CI and verified package-consumer acceptance. Public publication stays deferred while the project is private. | Private repository created; baseline CI passed on an ephemeral runner. Expansion needs its own exact-commit gate. |
-| Explicit repair | A reviewed recovery operation for quiescent partial installations, with ownership, replay and crash properties. | Eight proved repair properties, strict oracle and conforming TypeScript model. Native residual classification and runtime integration remain pending. |
+| Explicit repair | A reviewed recovery operation for quiescent partial installations, with ownership, replay and crash properties. | Complete for the qualified Linux profiles: eight proved properties, strict oracle, conforming TypeScript, durable runtime and 16 native repair checks, including Claude project scope. Proven absence and orphaned owned marketplaces are qualified; other residuals remain blocked. |
 | Plugin features | Local MCP, hooks and agents with preserved semantics, formal checks and native evidence. Prioritize requirements found in the pilot. | Host contracts under investigation. |
 | Compatibility | More evidenced CLI versions, Codex project scope, macOS and Windows. | Baseline is the pinned Linux profiles below; other environments require direct evidence. |
 | Grok Bot and Meta Muse | Working authenticated inspect/install/update/remove contracts and real-host acceptance. | Public management contracts under investigation; an unsupported result does not complete this milestone. |

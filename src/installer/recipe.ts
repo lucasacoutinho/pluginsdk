@@ -1,6 +1,6 @@
 import { join } from "node:path"
 import { Effect, Match, Schema } from "effect"
-import type { ReadyPlan } from "../../contracts/Installer.ts"
+import type { ReadyPlan, ReviewedPlan } from "../../contracts/Installer.ts"
 import { Installed } from "./records.ts"
 import { targetPaths } from "./target.ts"
 import { durableWrite, ensureDirectory, stageFile } from "./storage.ts"
@@ -28,7 +28,7 @@ export const catalogFor = (plan: ReadyPlan): Json => {
 
 const encodeInstalled = Schema.encodeSync(Installed)
 
-export const executeChange = Effect.fn("Installer.nativeChange")(function*(plan: ReadyPlan) {
+const executeOrdinaryChange = Effect.fn("Installer.nativeChange")(function*(plan: ReadyPlan) {
   const target = plan.target
   const paths = targetPaths(target)
   const destination = target.destination
@@ -79,3 +79,18 @@ export const executeChange = Effect.fn("Installer.nativeChange")(function*(plan:
     })
   }))
 })
+
+export const executeChange = (plan: ReviewedPlan) => Match.value(plan).pipe(Match.discriminatorsExhaustive("type")({
+  ready: (plan) => executeOrdinaryChange(plan),
+  repair_ready: (plan) => Match.value(plan.before.observed.residual).pipe(
+    Match.when("absent", () => Effect.void),
+    Match.when("marketplace", () => {
+      const destination = plan.target.destination
+      const market = targetPaths(plan.target).marketName
+      return runHost(destination, destination.host === "claude_code"
+        ? ["plugin", "marketplace", "remove", market, "--scope", destination.type, "--json"]
+        : ["plugin", "marketplace", "remove", market, "--json"], true).pipe(Effect.asVoid)
+    }),
+    Match.exhaustive
+  )
+}))

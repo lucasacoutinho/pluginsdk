@@ -2,6 +2,8 @@
 
 Use the selected two-module design in `docs/design.md` and the Effect conventions in `docs/effect.md`. Preserve `.references`.
 
+Use `docs/organization-design.md` for the organization direction: central catalog, releases, distribution and access policies over existing integration repositories and deployment infrastructure. Keep the interfaces compatible with possible future plugin/MCP code management. Preserve release provenance and keep backend tool authorization separate from client installation preferences.
+
 Use Effect `Match` with exhaustive handlers for domain variants. Do not introduce `switch` statements or catch-all handlers for a closed union. Derive types and equivalence from authoritative Effect schemas. Keep pure model functions total. Use scoped Effect layers for I/O and `Effect.fn` for traced operations.
 
 Follow LDD: property, Lean proof, oracle or vector, conforming TypeScript, host checks. A native installation claim needs evidence from an isolated real host. Worker output requires main-thread review and acceptance.

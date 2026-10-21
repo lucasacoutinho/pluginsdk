@@ -1,6 +1,6 @@
 import { Effect, FileSystem, Layer, Match, Schema } from "effect"
 import { ChildProcessSpawner } from "effect/process"
-import { HostUnavailable, Installer, PlanRejected, Target, type ApplyOutcome, type Desired, type Observation, type PlanBody, type PlanChange, type PlanRequest, type Planning, type ReadyPlan } from "../../contracts/Installer.ts"
+import { HostUnavailable, Installer, PlanRejected, Target, type ApplyOutcome, type Desired, type Observation, type PlanBody, type PlanChange, type PlanRequest, type Planning, type ReadyPlan, type ReviewedPlan } from "../../contracts/Installer.ts"
 import { planId } from "../internal/identity.ts"
 import { begin, decide, settle } from "../model/lifecycle.ts"
 import { checkOtherExecutions, executeOnce, executionQuiescent } from "./execution.ts"
@@ -9,6 +9,7 @@ import { changedBundle, loadState, modelChange, rejectInvalidBundle, rejectInval
 import { type Execution } from "./records.ts"
 import { installationLock } from "./storage.ts"
 import { resolveTarget, targetPaths } from "./target.ts"
+import { applyRepair, planRepair } from "./repair.ts"
 
 const sameTarget = Schema.toEquivalence(Target)
 
@@ -26,7 +27,8 @@ export const InstallerLive = Layer.effect(Installer, Effect.gen(function*() {
     if (!sameTarget(target, lockedTarget)) return yield* new HostUnavailable({ host: target.destination.host, cause: new Error("Physical destination changed while acquiring its lock") })
     yield* checkOtherExecutions(target)
     const record = yield* loadState(target)
-    if (record.type === "pending") return { type: "pending", plan: record.plan } satisfies Planning
+    if (request.intent.type === "repair") return yield* planRepair(target, request.intent.pending, record)
+    if (record.type !== "idle") return { type: "pending", plan: record.plan } satisfies Planning
     const observed = yield* observe(target)
     const desired: Desired = bundle === null ? { type: "absent" } : { type: "present", bundle: bundle.digest }
     const decision = decide({ journal: record.journal, observed, desired })
@@ -48,7 +50,7 @@ export const InstallerLive = Layer.effect(Installer, Effect.gen(function*() {
     }))
   }, Effect.provideService(FileSystem.FileSystem, fs), Effect.provideService(ChildProcessSpawner.ChildProcessSpawner, spawner), Effect.scoped)
 
-  const apply = Effect.fn("Installer.apply")(function*(input: ReadyPlan) {
+  const apply = Effect.fn("Installer.apply")(function*(input: ReviewedPlan) {
     const plan = yield* Effect.try({ try: () => snapshotPlan(input), catch: rejectInvalidPlan })
     const target = yield* resolveTarget(plan.target.destination, plan.target.plugin, changedBundle(plan)?.format)
     if (!sameTarget(target, plan.target)) return yield* new PlanRejected({ reason: "stale_plan" })
@@ -57,6 +59,8 @@ export const InstallerLive = Layer.effect(Installer, Effect.gen(function*() {
     if (!sameTarget(target, lockedTarget)) return yield* new PlanRejected({ reason: "stale_plan" })
     yield* checkOtherExecutions(target)
     const record = yield* loadState(target)
+    if (plan.type === "repair_ready") return yield* applyRepair(plan, record, lease.fd)
+    if (record.type === "repair_pending") return yield* new PlanRejected({ reason: "different_pending_plan" })
     const observed = record.type === "pending" && !(yield* executionQuiescent(target, record.execution))
       ? { type: "unknown" } satisfies Observation
       : yield* observe(target)

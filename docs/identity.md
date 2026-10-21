@@ -2,7 +2,7 @@
 
 These rules are implemented in [identity.ts](../src/internal/identity.ts) and [json.ts](../src/internal/json.ts). Compiler tests check independent SHA-256 and canonical JSON vectors.
 
-`BundleBody` and `PlanBody` define the exact preimages. Their derived `Bundle` and `ReadyPlan` schemas add `digest` and `id`, respectively. A hash never includes its own field.
+`BundleBody`, `PlanBody` and `RepairPlanBody` define the exact preimages. Their derived `Bundle`, `ReadyPlan` and `RepairPlan` schemas add `digest` or `id`. A hash never includes its own field.
 
 ## Canonical values
 
@@ -33,6 +33,8 @@ An imported bundle is checked in its committed order. Sorting its files or repla
 ## Plan ID
 
 The plan preimage is the encoded `PlanBody`: ready tag, schema version, resolved target, before-snapshot, and change. It includes the before-state's journal revision and the complete bundle when one is required.
+
+A cleanup uses the encoded `RepairPlanBody` with the same prefix: `repair_ready` tag, schema version, resolved target and repair basis. The basis commits to the interrupted original plan, current pending plan, residual kind and native fingerprint. It contains no ordinary `change` field. The distinct tag separates these two preimages while preserving existing ordinary plan IDs. [Storage checks](../test/repair-storage.test.ts) include independent canonical JSON and SHA-256 golden values for both forms.
 
 ```text
 PlanId = lowercase_hex(SHA256(

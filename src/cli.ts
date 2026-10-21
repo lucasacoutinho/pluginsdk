@@ -21,12 +21,14 @@ import {
   Installer,
   PlanRejected,
   Planning,
-  ReadyPlan,
+  ReviewedPlan,
   StateUnavailable,
   type ApplyOutcome as ApplyOutcomeType,
   type Host as HostType,
   type Planning as PlanningType,
   type ReadyPlan as ReadyPlanType,
+  type RepairPlan as RepairPlanType,
+  type ReviewedPlan as ReviewedPlanType,
   type Target
 } from "../contracts/Installer.ts"
 import { Directory, Plugin, PluginId } from "../contracts/Plugin.ts"
@@ -128,8 +130,8 @@ const readBundle = Effect.fn("pluginsdk.cli.readBundle")(function*(path: string)
 
 const readPlan = Effect.fn("pluginsdk.cli.readPlan")(function*(path: string) {
   const json = yield* readJson(path)
-  const plan = yield* Schema.decodeUnknownEffect(ReadyPlan, { onExcessProperty: "error" })(json).pipe(
-    Effect.mapError(() => new InputRejected({ path, detail: "Plan does not match the ReadyPlan schema" }))
+  const plan = yield* Schema.decodeUnknownEffect(ReviewedPlan, { onExcessProperty: "error" })(json).pipe(
+    Effect.mapError(() => new InputRejected({ path, detail: "Plan does not match the ReviewedPlan schema" }))
   )
   return yield* Effect.try({ try: () => snapshotPlan(plan), catch: () => new InputRejected({ path, detail: "Plan commitment or bundle is invalid" }) })
 })
@@ -143,7 +145,7 @@ const writeJson = Effect.fn("pluginsdk.cli.writeJson")(function*(path: string, v
 
 const encodedBundle = Schema.encodeSync(Bundle)
 const encodedPlanning = Schema.encodeSync(Planning)
-const encodedPlan = Schema.encodeSync(ReadyPlan)
+const encodedPlan = Schema.encodeSync(ReviewedPlan)
 const encodedApply = Schema.encodeSync(ApplyOutcome)
 
 const makeDestination = Effect.fn("pluginsdk.cli.makeDestination")(function*(
@@ -213,6 +215,31 @@ const readyPlanText = (status: string, plan: ReadyPlanType): string => {
   ].join("\n")
 }
 
+const repairPlanText = (status: string, plan: RepairPlanType): string => {
+  const action = Match.value(plan.before.observed.residual).pipe(
+    Match.when("absent", () => "none"),
+    Match.when("marketplace", () => "remove marketplace"),
+    Match.exhaustive
+  )
+  return [
+    `status: ${status}`,
+    "intent: repair",
+    ...targetText(plan.target),
+    `plan ID: ${plan.id}`,
+    `interrupted plan ID: ${plan.before.interrupted}`,
+    `current pending plan ID: ${plan.before.pending}`,
+    `observed residual: ${plan.before.observed.residual}`,
+    `observed fingerprint: ${plan.before.observed.fingerprint}`,
+    `intended action: ${action}`
+  ].join("\n")
+}
+
+const reviewedPlanText = (status: string, plan: ReviewedPlanType): string =>
+  Match.value(plan).pipe(Match.discriminatorsExhaustive("type")({
+    ready: (value) => readyPlanText(status, value),
+    repair_ready: (value) => repairPlanText(status, value)
+  }))
+
 const targetStateText = (status: string, target: Target, intent: string): string => [
   `status: ${status}`,
   `intent: ${intent}`,
@@ -224,6 +251,7 @@ const targetStateText = (status: string, target: Target, intent: string): string
 const planningText = (planning: PlanningType): { readonly text: string; readonly recovery: boolean } =>
   Match.value(planning).pipe(Match.discriminatorsExhaustive("type")({
     ready: (plan) => ({ text: readyPlanText("ready", plan), recovery: false }),
+    repair_ready: (plan) => ({ text: repairPlanText("repair_ready", plan), recovery: false }),
     unchanged: (result) => ({ text: targetStateText("unchanged", result.target, "already satisfied"), recovery: false }),
     blocked: (result) => ({
       text: [
@@ -235,8 +263,9 @@ const planningText = (planning: PlanningType): { readonly text: string; readonly
     }),
     pending: (result) => ({
       text: [
-        readyPlanText("pending", result.plan),
-        "recovery: inspect host state and the pending plan before retrying; do not create a new plan"
+        reviewedPlanText("pending", result.plan),
+        "recovery: applying the pending plan only inspects host state",
+        "recovery: inspect host state, then pass the saved plan to \"pluginsdk repair <reviewed-plan.json> --out cleanup.json\" for a fresh cleanup review"
       ].join("\n"),
       recovery: true
     })
@@ -245,7 +274,7 @@ const planningText = (planning: PlanningType): { readonly text: string; readonly
 const applyText = (outcome: ApplyOutcomeType): { readonly text: string; readonly failure: boolean } =>
   Match.value(outcome).pipe(Match.discriminatorsExhaustive("type")({
     uncertain: () => ({
-      text: "status: uncertain\nrecovery: inspect the host state before retrying the original ready plan",
+      text: "status: uncertain\nrecovery: inspect the host state before retrying the reviewed plan",
       failure: true
     }),
     completed: (value) => Match.value(value.result).pipe(Match.discriminatorsExhaustive("type")({
@@ -346,10 +375,31 @@ const removeCommand = Command.make(
   })
 ).pipe(Command.withDescription("Plan removal of a plugin"))
 
+const repairCommand = Command.make(
+  "repair",
+  {
+    plan: Argument.String("reviewed-plan.json"),
+    out: Flag.String("out").pipe(Flag.withDescription("Cleanup planning JSON output path")),
+    json: jsonFlag()
+  },
+  Effect.fn("pluginsdk.cli.repair")(function*(input) {
+    const plan = yield* readPlan(input.plan).pipe(Effect.mapError(toCliFailure))
+    const planning = yield* Installer.use((installer) => installer.plan({
+      destination: plan.target.destination,
+      intent: { type: "repair", plugin: plan.target.plugin, pending: plan.id }
+    })).pipe(Effect.mapError(toCliFailure))
+    const encoded = encodedPlanning(planning)
+    yield* writeJson(input.out, encoded).pipe(Effect.mapError(toCliFailure))
+    const summary = planningText(planning)
+    yield* Console.log(input.json ? canonicalJson(encoded) : summary.text)
+    if (summary.recovery) yield* Effect.sync(() => { process.exitCode = 1 })
+  })
+).pipe(Command.withDescription("Review cleanup for an interrupted plugin operation"))
+
 const applyCommand = Command.make(
   "apply",
   {
-    plan: Argument.String("ready-plan.json"),
+    plan: Argument.String("reviewed-plan.json"),
     json: jsonFlag()
   },
   Effect.fn("pluginsdk.cli.apply")(function*(input) {
@@ -365,19 +415,19 @@ const applyCommand = Command.make(
     yield* Console.log(summary.text)
     if (summary.failure) yield* Effect.sync(() => { process.exitCode = 1 })
   })
-).pipe(Command.withDescription("Apply a reviewed ready plan"))
+).pipe(Command.withDescription("Apply a reviewed plan"))
 
 const showCommand = Command.make(
   "show",
   {
-    plan: Argument.String("ready-plan.json"),
+    plan: Argument.String("reviewed-plan.json"),
     json: jsonFlag()
   },
   Effect.fn("pluginsdk.cli.show")(function*(input) {
     const plan = yield* readPlan(input.plan).pipe(Effect.mapError(toCliFailure))
-    yield* Console.log(input.json ? canonicalJson(encodedPlan(plan)) : readyPlanText("ready", plan))
+    yield* Console.log(input.json ? canonicalJson(encodedPlan(plan)) : reviewedPlanText(plan.type, plan))
   })
-).pipe(Command.withDescription("Show a ready plan without printing package contents"))
+).pipe(Command.withDescription("Show a reviewed plan without printing package contents"))
 
 const versionSchema = Schema.Struct({ version: Schema.NonEmptyString })
 const packageMetadata: unknown = createRequire(import.meta.url)("pluginsdk/package.json")
@@ -385,7 +435,7 @@ const version = Schema.decodeUnknownSync(versionSchema)(packageMetadata).version
 
 const rootCommand = Command.make("pluginsdk").pipe(
   Command.withDescription("Build reproducible agent plugins and apply reviewed plans"),
-  Command.withSubcommands([buildCommand, planCommand, removeCommand, applyCommand, showCommand]),
+  Command.withSubcommands([buildCommand, planCommand, removeCommand, repairCommand, applyCommand, showCommand]),
   Command.run({ version }),
   Effect.provide(Layer.merge(PluginSdkLive, NodeServices.layer)),
   Effect.catchTag("CliFailure", (failure) => Effect.gen(function*() {

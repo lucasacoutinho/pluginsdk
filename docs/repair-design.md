@@ -31,9 +31,11 @@ The selected first repair contract handles proven absence or an orphaned SDK mar
 
 ## Shape
 
-`RepairSnapshot` has a fingerprint and a residual of `absent` or `marketplace`. `RepairBasis` binds the interrupted original plan, the currently pending plan and that snapshot. `RepairPlan` uses the `repair_ready` tag, includes its resolved target and basis, and commits those fields into a new ID. `ReadyPlan` remains unchanged; `ReviewedPlan` will accept either kind. `Installer.plan` and `Installer.apply` remain the public operations.
+`RepairSnapshot` has a fingerprint and a residual of `absent` or `marketplace`. `RepairBasis` binds the interrupted original plan, the currently pending plan and that snapshot. `RepairPlan` uses the `repair_ready` tag, includes its resolved target and basis, and commits those fields into a new ID. `ReadyPlan` remains unchanged; `ReviewedPlan` accepts either kind. `Installer.plan` and `Installer.apply` remain the public operations.
 
 The internal repair state is an original pending operation, a pending cleanup with its full basis, or a completed cleanup. Proposal reads that state and a qualified inspection. Begin compares the fresh proposal to the reviewed basis. An original pending ID and the current cleanup ID cannot authorize another start. Retrying the current cleanup only resumes inspection. A newly reviewed repair after a failed cleanup binds the current cleanup ID, so it is a distinct attempt.
+
+The durable `repair_pending` record retains the complete interrupted `ReadyPlan`, the current `RepairPlan` and its execution token. Earlier cleanup plans remain in the plan store. Loading this record validates the retained root, current plan and one immediate predecessor against the proved begin operation. It does not walk a recursive journal history. A missing or changed retained plan makes state unavailable.
 
 Before returning a recoverable marketplace snapshot, native inspection must prove all of the following under the existing physical-home lock:
 
@@ -44,7 +46,11 @@ Before returning a recoverable marketplace snapshot, native inspection must prov
 
 An absent snapshot requires the same quiescence and a complete ordinary absence observation. Unknown, unowned or changed facts block a new repair. The fingerprint commits to the native facts used for that decision. Apply rechecks those facts after acquiring the lock.
 
-The cleanup worker receives the new reviewed repair plan through the existing durable one-shot handoff. `marketplace` authorizes exactly one qualified marketplace-remove command; `absent` authorizes no native command. Settlement completes only after a quiescent fresh absence observation. Remaining or unknown state retains the cleanup as pending. Local retained plans and payloads remain available for inspection and a subsequent fresh installation.
+An interrupted removal still uses the earlier installation's catalog. Inspection resolves that installation through the removal plan's before-receipt, then validates its retained plan, target and bundle identity. The removal plan's own ID never names a staged payload.
+
+A running native worker can retain the installation lock, so repair planning waits for that lock. Once acquired, the process-group check still covers descendants left alive after the worker exits.
+
+Marketplace cleanup receives the reviewed repair plan through the existing durable one-shot handoff and authorizes exactly one qualified marketplace-remove command. Proven absence authorizes no native command or worker. Both paths persist pending state before settlement. Settlement completes only after a quiescent fresh absence observation. Remaining or unknown state retains the cleanup as pending. Local retained plans and payloads remain available for inspection and a subsequent fresh installation.
 
 ## LDD obligations
 
@@ -65,4 +71,4 @@ These pure properties assume truthful qualified inspection and content-derived p
 
 Cleanup requires another reviewed installation plan to recover the desired plugin. It keeps recovery from acquiring an implicit retry policy. Foreign plugins, unexplained catalog edits and active native processes continue to block repair. This does not provide a universal cleanup switch.
 
-The next step is the Lean repair model and oracle, followed by conforming TypeScript and the native orphaned-marketplace classifier. No runtime repair claim follows from this interface sketch alone.
+R1 through R8 have checked Lean proofs, strict oracle vectors and conforming TypeScript. The runtime classifier and durable execution have 16 repair tests within the 39-test native gate. Those tests cover Claude user/project scope and Codex user scope, stale catalogs, absence without a native command, interrupted removal, cleanup replay, process-kill checkpoints, live descendants and foreign consumers, including a Claude project-scope consumer of a user marketplace. The [acceptance record](acceptance.md) separates that I/O evidence from the pure proofs.

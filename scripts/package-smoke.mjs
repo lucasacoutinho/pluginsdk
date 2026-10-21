@@ -57,13 +57,18 @@ assert.equal(built.plugin, "consumer-fixture")
   await writeFile(join(consumer, "consumer.ts"), `
 import { Effect, Schema } from "effect"
 import { Compiler, BuildRequest } from "pluginsdk/Compiler"
-import { Installer, type Planning, type ReadyPlan } from "pluginsdk/Installer"
+import { Installer, type Planning, type ReadyPlan, type ReviewedPlan } from "pluginsdk/Installer"
 import { PluginSdkLive } from "pluginsdk/node"
 const request = Schema.decodeSync(BuildRequest)({ root: ".", format: "agent_plugins_v1", plugin: { id: "consumer-fixture", version: "1", description: "Types", skills: [], mcp: {} } })
 export const build = Compiler.use((service) => service.build(request)).pipe(Effect.provide(PluginSdkLive))
-export const apply = (reviewed: ReadyPlan) => Installer.use((service) => service.apply(reviewed)).pipe(Effect.provide(PluginSdkLive))
+export const apply = (reviewed: ReviewedPlan) => Installer.use((service) => service.apply(reviewed)).pipe(Effect.provide(PluginSdkLive))
+export const applyReady = (reviewed: ReadyPlan) => apply(reviewed)
+export const repair = (pending: ReviewedPlan) => Installer.use((service) => service.plan({
+  destination: pending.target.destination,
+  intent: { type: "repair", plugin: pending.target.plugin, pending: pending.id }
+})).pipe(Effect.provide(PluginSdkLive))
 export const invalid = (planning: Planning) => Installer.use((service) => {
-  // @ts-expect-error Only a reviewed ReadyPlan may be applied.
+  // @ts-expect-error Only a reviewed plan may be applied.
   return service.apply(planning)
 })
 `)

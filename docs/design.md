@@ -2,6 +2,8 @@
 
 pluginsdk lets an author describe a plugin once, build a package, inspect a proposed installation change, and apply that change. The caller learns the plugin's contents and the destination. Native manifests, registration commands, ownership records, and recovery stay inside the modules that own them.
 
+The [organization design](organization-design.md) extends this foundation toward a central catalog and reviewed distribution across existing application repositories. It separates plugin availability from backend tool authorization and preserves release provenance for future plugin/MCP code management. Organization adapters and schemas are a planned design slice; the interfaces below describe the current executable package and local installation modules.
+
 The interfaces and schemas are specified in Effect and [Lean](../spec/README.md). The models have 41 checked properties. They cover lifecycle P1-P14, rendering B1-B8, bundle checks V1-V4, asset assembly A1-A7, and repair review R1-R8. The TypeScript models conform to their oracle. Node layers supply source capture and qualified native CLI execution. [Runtime obligations](runtime.md) and [acceptance](acceptance.md) describe the I/O evidence and its limits.
 
 ## Caller shape
@@ -30,11 +32,11 @@ The intended caller previews a package installation through Effect:
 ```ts
 import { Effect } from "effect"
 import { Compiler, type BuildRequest } from "../contracts/Compiler.ts"
-import { Installer, type Destination, type ReadyPlan } from "../contracts/Installer.ts"
+import { Installer, type Destination, type ReviewedPlan } from "../contracts/Installer.ts"
 
 declare const request: BuildRequest
 declare const destination: Destination
-declare const reviewed: ReadyPlan
+declare const reviewed: ReviewedPlan
 
 const preview = Effect.gen(function*() {
 	const compiler = yield* Compiler
@@ -49,7 +51,7 @@ const preview = Effect.gen(function*() {
 const apply = Installer.use((installer) => installer.apply(reviewed))
 ```
 
-`Planning` distinguishes `ready`, `unchanged`, `blocked`, and an earlier `pending` operation. Only `ReadyPlan` is accepted by `apply`. Removing a plugin uses an `absent` intent with its `PluginId`.
+`Planning` distinguishes `ready`, `repair_ready`, `unchanged`, `blocked`, and an earlier `pending` operation. `apply` accepts `ReviewedPlan`, the union of ordinary `ReadyPlan` and cleanup `RepairPlan`. Removing a plugin uses an `absent` intent with its `PluginId`. A `repair` intent additionally identifies the current pending plan for a fresh cleanup review.
 
 The authoring value is plain schema-defined data. `PluginDefinition` is derived from `Plugin.Encoded`, so strings remain ergonomic in configuration. The input seam decodes that value with `Plugin` before it reaches the compiler. Internal `Plugin` values carry the validated brands and URL values.
 
@@ -79,7 +81,7 @@ Claude Code and Codex justify internal host-specific commands and inspection bec
 | [Lifecycle](../contracts/Lifecycle.ts) | Pure installation decisions and the NDJSON oracle contract | No filesystem, subprocesses, clock, random IDs, or host discovery |
 | [CompilerModel](../contracts/CompilerModel.ts) | Pure rendering, bundle checks, and their oracle contracts | Source I/O, raw bytes, YAML parsing, JSON encoding, and hashing |
 
-`Lifecycle`, `CompilerModel`, `Assembly`, and `Repair` are internal model contracts. Product callers still use the two public services, `Installer` and `Compiler`. These contracts add no public operations. The repair model defines reviewed cleanup decisions only. Repair-specific native inspection and execution remain unimplemented.
+`Lifecycle`, `CompilerModel`, `Assembly`, and `Repair` are internal model contracts. Product callers still use the two public services, `Installer` and `Compiler`. These contracts add no public operations. The repair model defines reviewed cleanup decisions; `Installer` supplies qualified native inspection, durable retention and execution.
 
 ## Compiler interface
 
@@ -127,7 +129,7 @@ An observed desired state completes only when its operation identity and payload
 
 A complete observation also requires evidence that an earlier native command can no longer commit later. An orphaned process or an asynchronous registration with an unknown outcome yields `unknown`, even if current files look unchanged. That state blocks new changes.
 
-The separate [repair review contract](../contracts/Repair.ts) allows a fresh cleanup review only for quiescent proven absence or an orphaned owned marketplace with no installed plugins. Proven absence authorizes no native command. The marketplace residual authorizes only marketplace removal. Repair-specific native inspection, cleanup, and durable repair remain unimplemented.
+The separate [repair review contract](../contracts/Repair.ts) allows a fresh cleanup review only for quiescent proven absence or an orphaned owned marketplace with no installed plugins or configured consumers. Proven absence authorizes no native command. The marketplace residual authorizes only marketplace removal. The durable record retains the full original operation and current cleanup plan. [Explicit repair](repair-design.md) defines its ownership checks, bounded predecessor validation and crash behavior.
 
 Completed removals retain the last plan ID as a tombstone. Completed installations retain it in their receipt. Completed attempts that made no change retain it in `not_applied`. A retry acknowledges the latest completed operation while native state still matches its recorded outcome. `not_applied` means the requested change did not happen; callers must distinguish it from installed or removed completion.
 
@@ -163,5 +165,5 @@ The latest completed ID never starts a native change again. This is a bounded re
 - Sketch: alternative caller interfaces compared; Effect schemas, Lean model types, and formal property obligations written.
 - Agree: this design is the review artifact requested by the user.
 - Model: lifecycle, rendering, bundle-check, assembly, and repair-review functions have 41 checked properties. The Lean oracle and matching vectors exist.
-- Implement: conforming TypeScript models, byte compilation, and qualified native integrations exist. The current `npm run check` passed with 43 portable tests and zero Effect diagnostics. The strengthened lstack lifecycle pilot passed on Claude Code 2.1.304 in user and project scopes and Codex 0.163.0 in user scope. A separate native regression run passed 23 tests, and the installed-package lifecycle check passed. Runtime repair is not implemented.
+- Implement: conforming TypeScript models, byte compilation, qualified native integrations and explicit repair exist. The portable gate passes 50 tests with zero Effect diagnostics. Native acceptance covers 39 tests and the installed-package lifecycle check. The strengthened lstack lifecycle pilot passed on Claude Code 2.1.304 in user and project scopes and Codex 0.163.0 in user scope. [Acceptance](acceptance.md) records qualifications and remaining limits.
 - Scrap: revise a contract when a Lean counterexample or native evidence contradicts it.

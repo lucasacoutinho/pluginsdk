@@ -201,6 +201,7 @@ it("installer request and plan snapshots detach SharedArrayBuffer-backed bytes",
     const capturedRequest = snapshotRequest(request)
     const requestBundle = Match.value(capturedRequest.intent).pipe(Match.discriminatorsExhaustive("type")({
       absent: () => { throw new Error("Expected a present request intent") },
+      repair: () => { throw new Error("Expected a present request intent") },
       present: (intent) => intent.bundle
     }))
     const requestBytes = bundleFile(requestBundle, "plugin.json").content

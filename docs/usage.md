@@ -71,6 +71,37 @@ node dist/src/cli.js apply .pluginsdk/review-kit.plan.json
 
 The result distinguishes an installed plugin, a removal, `not_applied`, and an uncertain outcome. Stop and inspect host state when the CLI reports `uncertain`.
 
+## Repair an interrupted operation
+
+Use the saved plan from the interrupted operation to request a cleanup review:
+
+```sh
+node dist/src/cli.js repair .pluginsdk/review-kit.plan.json \
+	--out .pluginsdk/review-kit.repair.json
+```
+
+`repair` accepts the interrupted `ReadyPlan` or the current `RepairPlan`. It writes a new `Planning` value and never applies it. Review the cleanup plan, then apply it:
+
+```sh
+node dist/src/cli.js show .pluginsdk/review-kit.repair.json
+node dist/src/cli.js apply .pluginsdk/review-kit.repair.json
+```
+
+The review shows the new plan ID, interrupted plan ID, current pending plan ID, physical target, host version and profile, observed residual and fingerprint, and intended action. `none` means the review authorizes no native command. `remove marketplace` means it authorizes removal of the owned SDK marketplace.
+
+Repair proceeds only when the host process is quiescent and complete inventory proves that no plugin uses the SDK marketplace in any scope. The requested scope must also have no same-name plugin or configuration entry. Any remaining marketplace registration must still point to the SDK path and match its retained catalog. Unknown, unowned, changed, or active state blocks the review. Resolve the host state before requesting another cleanup review. Repair does not change host sign-in or provider authentication.
+
+After applying a cleanup plan, build or reuse the retained bundle and create a fresh installation plan:
+
+```sh
+node dist/src/cli.js plan .pluginsdk/review-kit.bundle.json \
+	--host claude_code \
+	--home "$CLAUDE_HOME" \
+	--out .pluginsdk/review-kit.fresh-plan.json
+node dist/src/cli.js show .pluginsdk/review-kit.fresh-plan.json
+node dist/src/cli.js apply .pluginsdk/review-kit.fresh-plan.json
+```
+
 ## Plan and apply removal
 
 Create a removal plan for the same plugin and destination:

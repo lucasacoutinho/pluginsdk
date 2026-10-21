@@ -32,3 +32,7 @@ Claude's local marketplace uses an in-place source. Codex copies that source int
 Native CLI configuration writes preserve unrelated entries. The SDK lock coordinates SDK writers; arbitrary external programs must still respect the native host's own serialization. A plan rechecks relevant registration and payload facts immediately before the handoff. The protocol provides no transaction spanning multiple hosts or arbitrary external writers.
 
 The crash harness must terminate the caller at each durable and native transition, then resume from another process. It must also demonstrate that a still-running execution process prevents a conflicting SDK writer from proceeding.
+
+## Reviewed repair
+
+The [repair protocol](repair-design.md) uses the same lock and one-shot execution handoff. A repair-pending record retains the full interrupted operation, current cleanup plan and execution token. Marketplace cleanup requires fresh quiescence, exact retained catalog provenance and no installed or configured consumers. Proven absence starts no native worker. A cleanup retry only inspects and settles; another cleanup attempt requires a new reviewed basis and plan ID. Settlement durably records removal only after qualified absence.

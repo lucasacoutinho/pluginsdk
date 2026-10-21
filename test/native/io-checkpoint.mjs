@@ -15,8 +15,9 @@ const checkpoint = async () => {
 fs.rename = async (from, to) => {
   if (basename(String(to)) !== "state.json") return rename(from, to)
   const value = JSON.parse(await fs.readFile(from, "utf8"))
-  const prepared = value.type === "pending" && value.execution.type === "prepared"
-  const running = value.type === "pending" && value.execution.type === "running"
+  const pending = value.type === "pending" || value.type === "repair_pending"
+  const prepared = pending && value.execution.type === "prepared"
+  const running = pending && value.execution.type === "running"
   const completed = value.type === "idle"
   if ((mode === "before_pending" && prepared) || (mode === "before_complete" && completed)) await checkpoint()
   await rename(from, to)

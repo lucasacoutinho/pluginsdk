@@ -16,7 +16,7 @@ The formal lifecycle contract is [Types.lean](../spec/PluginSdk/Lifecycle/Types.
 
 [Repair/Types.lean](../spec/PluginSdk/Repair/Types.lean) and [Properties.lean](../spec/PluginSdk/Repair/Properties.lean) define repair review states and R1 through R8. [Model.lean](../spec/PluginSdk/Repair/Model.lean) specifies proposals, fresh starts, retries, completed replay, and settlement. [Proofs.lean](../spec/PluginSdk/Repair/Proofs.lean) certifies those properties. [Wire.lean](../spec/PluginSdk/Repair/Wire.lean) handles `repair_propose`, `repair_begin`, and `repair_settle`.
 
-The [Effect contract](../contracts/Repair.ts) and [reviewed basis](../contracts/Installer.ts) define the wire data. The [TypeScript model](../src/model/repair.ts) and [conformance test](../test/repair.test.ts) match it. The repair model specifies reviewed cleanup only. It does not implement native repair.
+The [Effect contract](../contracts/Repair.ts) and [reviewed basis](../contracts/Installer.ts) define the wire data. The [TypeScript model](../src/model/repair.ts) and [conformance test](../test/repair.test.ts) match it. The repair model specifies reviewed cleanup only. [Runtime orchestration](../src/installer/repair.ts) and [qualified inspection](../src/installer/repair-inspect.ts) implement its I/O obligations, checked separately through native acceptance.
 
 ## Model interface
 

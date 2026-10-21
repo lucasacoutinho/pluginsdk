@@ -274,6 +274,7 @@ const assertPayload = Effect.fnUntraced(function*(location: NativeLocation, vari
 const planReason = (planning: Planning): string => Match.value(planning).pipe(
   Match.discriminatorsExhaustive("type")({
     ready: () => "ready",
+    repair_ready: () => "repair_ready",
     unchanged: () => "unchanged",
     blocked: ({ reason }) => reason,
     pending: () => "pending"
@@ -283,6 +284,7 @@ const planReason = (planning: Planning): string => Match.value(planning).pipe(
 const requireReady = (planning: Planning): ReadyPlan => Match.value(planning).pipe(
   Match.discriminatorsExhaustive("type")({
     ready: (plan) => plan,
+    repair_ready: () => { throw new Error("Expected an ordinary ready plan, received repair") },
     unchanged: () => { throw new Error("Expected a ready plan, received unchanged") },
     blocked: ({ reason }) => { throw new Error(`Expected a ready plan, received blocked: ${reason}`) },
     pending: () => { throw new Error("Expected a ready plan, received pending") }
@@ -303,6 +305,7 @@ const outcomeType = (outcome: ApplyOutcome): string => Match.value(outcome).pipe
 const targetKey = (planning: Planning): string => Match.value(planning).pipe(
   Match.discriminatorsExhaustive("type")({
     ready: (plan) => String(plan.target.key),
+    repair_ready: (plan) => String(plan.target.key),
     unchanged: ({ target }) => String(target.key),
     blocked: ({ target }) => String(target.key),
     pending: ({ plan }) => String(plan.target.key)
@@ -394,6 +397,7 @@ const lifecycle = (scenario: Scenario) => Effect.gen(function*() {
   expect(planReason(absent)).toBe("unchanged")
   expect(Match.value(absent).pipe(Match.discriminatorsExhaustive("type")({
     ready: () => "ready",
+    repair_ready: () => "repair_ready",
     unchanged: ({ state }) => state.observed.type,
     blocked: ({ state }) => state.observed.type,
     pending: () => "pending"

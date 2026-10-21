@@ -55,7 +55,7 @@ function idleReceipt(idle: Idle): Receipt | null {
   )
 }
 
-function snapshot(idle: Idle, observed: Observation): Snapshot {
+export function snapshot(idle: Idle, observed: Observation): Snapshot {
   return {
     revision: idleRevision(idle),
     receipt: idleReceipt(idle),

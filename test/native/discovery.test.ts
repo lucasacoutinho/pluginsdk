@@ -265,6 +265,7 @@ const requestEffect = (client: AppServerClient, method: string, params: unknown)
 const takeReadyPlan = (planning: Planning) => Match.value(planning).pipe(
 	Match.discriminatorsExhaustive("type")({
 		ready: (plan) => Effect.succeed(plan),
+		repair_ready: () => Effect.fail(new NativeProbeFailed({ operation: "plan native installation", cause: new Error("Fresh native destination unexpectedly planned repair") })),
 		unchanged: () => Effect.fail(new NativeProbeFailed({ operation: "plan native installation", cause: new Error("Fresh native destination unexpectedly reported unchanged") })),
 		blocked: (plan) => Effect.fail(new NativeProbeFailed({ operation: "plan native installation", cause: new Error(`Native destination is blocked: ${plan.reason}`) })),
 		pending: () => Effect.fail(new NativeProbeFailed({ operation: "plan native installation", cause: new Error("Fresh native destination unexpectedly has a pending plan") }))

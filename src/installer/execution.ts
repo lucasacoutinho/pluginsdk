@@ -2,7 +2,7 @@ import { fork } from "node:child_process"
 import { readFile, readdir } from "node:fs/promises"
 import { join } from "node:path"
 import { Effect, Match, Schema } from "effect"
-import { StateUnavailable, type ReadyPlan, type Target } from "../../contracts/Installer.ts"
+import { StateUnavailable, type ReviewedPlan, type Target } from "../../contracts/Installer.ts"
 import { ExecuteRequest, StoredState, type Execution } from "./records.ts"
 import { readRecord, stateIO } from "./storage.ts"
 import { targetPaths } from "./target.ts"
@@ -34,7 +34,7 @@ export const checkOtherExecutions = Effect.fnUntraced(function*(target: Target) 
   })
   for (const directory of directories) {
     const record = yield* readRecord(target.key, join(paths.store, "installations", directory, "state.json"), StoredState)
-    if (record?.type === "pending" && record.plan.target.key !== target.key && !(yield* executionQuiescent(record.plan.target, record.execution))) {
+    if (record !== null && record.type !== "idle" && record.plan.target.key !== target.key && !(yield* executionQuiescent(record.plan.target, record.execution))) {
       return yield* new StateUnavailable({ key: target.key, cause: new Error("Another native execution still holds shared host state") })
     }
   }
@@ -43,7 +43,7 @@ export const checkOtherExecutions = Effect.fnUntraced(function*(target: Target) 
 const encodeExecute = Schema.encodeSync(ExecuteRequest)
 
 export const executeOnce = Effect.fnUntraced(function*(
-  plan: ReadyPlan,
+  plan: ReviewedPlan,
   lease: number,
   retain: (execution: Execution) => Effect.Effect<void, StateUnavailable>
 ) {

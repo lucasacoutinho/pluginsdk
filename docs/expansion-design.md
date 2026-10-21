@@ -65,10 +65,10 @@ Explicit asset selection requires a short package definition. It prevents an unm
 
 The pilot remains read-only at its installed source. Updates modify an isolated source copy, and host checks use isolated homes. All 34 skills, support files, executable bits and cross-skill references must be accounted for. Existing missing provenance links in lstack's cached `NOTICE.md` remain source-package findings, rather than SDK-created files.
 
-Explicit repair needs a further contract before runtime changes. The alternatives are a broad force/forget escape hatch, which discards ownership evidence, and a new reviewed plan tied to a retained pending operation plus fresh quiescent native evidence. The latter is the candidate to develop; the current observation schema cannot yet authorize removal of partial artifacts. No repair method is implemented by this design step.
+The separate [repair contract](repair-design.md) selects a new reviewed cleanup plan tied to a retained pending operation and fresh quiescent native evidence. Its runtime handles proven absence and orphaned owned marketplaces. It retains ownership evidence instead of providing a force/forget escape hatch; other partial states remain blocked.
 
 Third-party MCP authentication is deferred at the user's request. The release uses MIT and a private repository. Cloud destinations still require evidenced plugin lifecycle contracts; a team setup script API does not establish plugin uninstall or native ownership.
 
 ## Acceptance and next step
 
-Assembly A1 through A7 are proved, connected to the strict oracle and ported with TypeScript conformance. V2 capture and native validation pass the [lstack lifecycle pilot](pilot.md). The next runtime step is the separately proved [repair contract](repair-design.md); it remains unimplemented at the native boundary.
+Assembly A1 through A7 are proved, connected to the strict oracle and ported with TypeScript conformance. V2 capture and native validation pass the [lstack lifecycle pilot](pilot.md). The separately proved [repair contract](repair-design.md) also has native acceptance. The [roadmap](roadmap.md) records the remaining expansion and organization contracts.
