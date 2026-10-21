@@ -8,3 +8,5 @@ import PluginSdk.Compiler.Assembly.Proofs
 import PluginSdk.Compiler.Assembly.Wire
 import PluginSdk.Repair.Proofs
 import PluginSdk.Repair.Wire
+import PluginSdk.Authorization.Proofs
+import PluginSdk.Authorization.Wire

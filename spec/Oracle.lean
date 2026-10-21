@@ -3,6 +3,7 @@ import PluginSdk.Compiler.Wire
 import PluginSdk.Compiler.Bundle.Wire
 import PluginSdk.Compiler.Assembly.Wire
 import PluginSdk.Repair.Wire
+import PluginSdk.Authorization.Wire
 
 private def evaluate (request : Lean.Json) : Except String Lean.Json := do
   match ← (← request.getObjVal? "type").getStr? with
@@ -10,6 +11,7 @@ private def evaluate (request : Lean.Json) : Except String Lean.Json := do
   | "check_bundle" => PluginSdk.Compiler.Bundle.Wire.evaluate request
   | "assemble" => PluginSdk.Compiler.Assembly.Wire.evaluate request
   | "repair_propose" | "repair_begin" | "repair_settle" => PluginSdk.Repair.Wire.evaluate request
+  | "authorize" => PluginSdk.Authorization.Wire.evaluate request
   | _ => PluginSdk.Lifecycle.Wire.evaluate request
 
 def main : IO UInt32 := do

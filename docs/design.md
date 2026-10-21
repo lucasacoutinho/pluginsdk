@@ -2,9 +2,9 @@
 
 pluginsdk lets an author describe a plugin once, build a package, inspect a proposed installation change, and apply that change. The caller learns the plugin's contents and the destination. Native manifests, registration commands, ownership records, and recovery stay inside the modules that own them.
 
-The [organization design](organization-design.md) extends this foundation toward a central catalog and reviewed distribution across existing application repositories. It separates plugin availability from backend tool authorization and preserves release provenance for future plugin/MCP code management. Organization adapters and schemas are a planned design slice; the interfaces below describe the current executable package and local installation modules.
+The [organization design](organization-design.md) extends this foundation toward a central catalog and reviewed distribution across existing application repositories. It separates plugin availability from backend tool authorization and preserves release provenance for future plugin/MCP code management. The internal [authorization contract](authorization-design.md) has proved pure behavior. Catalog contracts and organization I/O remain planned; the public interfaces below describe the current package and local installation modules.
 
-The interfaces and schemas are specified in Effect and [Lean](../spec/README.md). The models have 41 checked properties. They cover lifecycle P1-P14, rendering B1-B8, bundle checks V1-V4, asset assembly A1-A7, and repair review R1-R8. The TypeScript models conform to their oracle. Node layers supply source capture and qualified native CLI execution. [Runtime obligations](runtime.md) and [acceptance](acceptance.md) describe the I/O evidence and its limits.
+The interfaces and schemas are specified in Effect and [Lean](../spec/README.md). The models have 49 checked properties. They cover lifecycle P1-P14, rendering B1-B8, bundle checks V1-V4, asset assembly A1-A7, repair review R1-R8 and authorization U1-U8. The TypeScript models conform to their oracle. Node layers supply source capture and qualified native CLI execution. [Runtime obligations](runtime.md) and [acceptance](acceptance.md) describe the I/O evidence and its limits.
 
 ## Caller shape
 
@@ -81,7 +81,7 @@ Claude Code and Codex justify internal host-specific commands and inspection bec
 | [Lifecycle](../contracts/Lifecycle.ts) | Pure installation decisions and the NDJSON oracle contract | No filesystem, subprocesses, clock, random IDs, or host discovery |
 | [CompilerModel](../contracts/CompilerModel.ts) | Pure rendering, bundle checks, and their oracle contracts | Source I/O, raw bytes, YAML parsing, JSON encoding, and hashing |
 
-`Lifecycle`, `CompilerModel`, `Assembly`, and `Repair` are internal model contracts. Product callers still use the two public services, `Installer` and `Compiler`. These contracts add no public operations. The repair model defines reviewed cleanup decisions; `Installer` supplies qualified native inspection, durable retention and execution.
+`Lifecycle`, `CompilerModel`, `Assembly`, `Repair` and `Authorization` are internal model contracts. Product callers still use the two public services, `Installer` and `Compiler`. The repair model defines reviewed cleanup decisions; `Installer` supplies qualified native inspection, durable retention and execution. Authorization describes a decision over trusted service evidence; it adds no authentication or policy-deployment adapter.
 
 ## Compiler interface
 
@@ -164,6 +164,6 @@ The latest completed ID never starts a native change again. This is a bounded re
 - Ground: previous contents archived; live lcode LDD guidance and current Effect documentation inspected.
 - Sketch: alternative caller interfaces compared; Effect schemas, Lean model types, and formal property obligations written.
 - Agree: this design is the review artifact requested by the user.
-- Model: lifecycle, rendering, bundle-check, assembly, and repair-review functions have 41 checked properties. The Lean oracle and matching vectors exist.
+- Model: lifecycle, rendering, bundle-check, assembly, repair-review and authorization functions have 49 checked properties. The Lean oracle and matching vectors exist.
 - Implement: conforming TypeScript models, byte compilation, qualified native integrations and explicit repair exist. The portable gate passes 50 tests with zero Effect diagnostics. Native acceptance covers 39 tests and the installed-package lifecycle check. The strengthened lstack lifecycle pilot passed on Claude Code 2.1.304 in user and project scopes and Codex 0.163.0 in user scope. [Acceptance](acceptance.md) records qualifications and remaining limits.
 - Scrap: revise a contract when a Lean counterexample or native evidence contradicts it.

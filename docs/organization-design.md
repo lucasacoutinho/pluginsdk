@@ -8,7 +8,7 @@ The target clients are Claude Code, Claude Desktop and web, ChatGPT Business/Ent
 
 For this phase, PluginSDK manages the catalog, approved releases, distribution and access-policy definitions. Plugin and MCP source can remain in existing repositories. The company supplies deployment infrastructure and its identity provider. Plugin/MCP code management is a possible future extension: the current design must admit it without requiring repository migration, server provisioning or a new hosting platform.
 
-This is a design extension. Organization schemas, policy proofs and workspace adapters are not implemented. The current executable interfaces remain `Compiler.build` and `Installer.plan/apply`.
+The internal [authorization slice](authorization-design.md) has Effect schemas, eight checked Lean properties and a conforming pure TypeScript model. Catalog, distribution and workspace adapters remain planned. The public runtime interfaces remain `Compiler.build` and `Installer.plan/apply`; the pure model does not establish deployed RBAC.
 
 ## Manager workflow
 
@@ -94,7 +94,7 @@ The next organization slice starts with an existing app integration and a second
 - O7: Fresh revocation takes effect within the documented bound while the plugin remains installed.
 - O8: Completion and replay are recorded per destination; a partial rollout cannot report global success or replay completed native mutations.
 
-These are proposed properties, not additional checked proofs. Follow the existing sequence: Effect schemas and Lean types/properties, checked Lean model and proofs, strict oracle vectors, conforming TypeScript, then qualified I/O.
+These organization-wide properties remain proposed obligations. U1-U8 establish the pure authorization portion of O3-O7. O1, O2, O8 and the I/O obligations, including actual revocation latency, remain open. Follow the existing sequence: Effect schemas and Lean types/properties, checked Lean model and proofs, strict oracle vectors, conforming TypeScript, then qualified I/O.
 
 Acceptance uses two users: a reader and an administrator. Both see the same approved integration from every qualified client. Reading succeeds for both; an administrative tool succeeds only for the administrator. Calling that tool directly as the reader still fails. Revoke the administrator's role while leaving the plugin installed, repeat the call, and verify the declared freshness bound. Check record-level permissions, tenant isolation, release promotion, tool-contract drift and partial-rollout recovery separately.
 

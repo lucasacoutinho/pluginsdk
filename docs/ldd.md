@@ -1,8 +1,8 @@
 # Lean-driven design specification
 
-This follows lcode's LDD approach: state a property, prove a Lean 4 model, compile an oracle, and make TypeScript conform. The [Lean project](../spec/README.md) proves 41 properties.
+This follows lcode's LDD approach: state a property, prove a Lean 4 model, compile an oracle, and make TypeScript conform. The [Lean project](../spec/README.md) proves 49 properties.
 
-P1 through P14 cover lifecycle, B1 through B8 cover rendering, and V1 through V4 cover bundle checks. A1 through A7 cover assembly, and R1 through R8 cover repair review. The existing [TypeScript conformance suite](../test/conformance.test.ts) compares its models with 4,210 oracle requests. The separate assembly and repair suites add their own oracle comparisons. The repair suite checks 18 vectors and 40 generated requests.
+P1 through P14 cover lifecycle, B1 through B8 cover rendering, and V1 through V4 cover bundle checks. A1 through A7 cover assembly, R1 through R8 repair review and U1 through U8 authorization. The existing [TypeScript conformance suite](../test/conformance.test.ts) compares its models with 4,210 oracle requests. Assembly, repair and authorization use separate suites. Repair checks 18 vectors and 40 generated requests; authorization checks 49 authored vectors, 120 generated combinations and a three-call revocation sequence.
 
 The formal lifecycle contract is [Types.lean](../spec/PluginSdk/Lifecycle/Types.lean) and [Properties.lean](../spec/PluginSdk/Lifecycle/Properties.lean). The formal compiler contract is [Types.lean](../spec/PluginSdk/Compiler/Types.lean), [Format.lean](../spec/PluginSdk/Compiler/Format.lean), and [Properties.lean](../spec/PluginSdk/Compiler/Properties.lean). Effect schemas provide their TypeScript representations.
 
@@ -17,6 +17,8 @@ The formal lifecycle contract is [Types.lean](../spec/PluginSdk/Lifecycle/Types.
 [Repair/Types.lean](../spec/PluginSdk/Repair/Types.lean) and [Properties.lean](../spec/PluginSdk/Repair/Properties.lean) define repair review states and R1 through R8. [Model.lean](../spec/PluginSdk/Repair/Model.lean) specifies proposals, fresh starts, retries, completed replay, and settlement. [Proofs.lean](../spec/PluginSdk/Repair/Proofs.lean) certifies those properties. [Wire.lean](../spec/PluginSdk/Repair/Wire.lean) handles `repair_propose`, `repair_begin`, and `repair_settle`.
 
 The [Effect contract](../contracts/Repair.ts) and [reviewed basis](../contracts/Installer.ts) define the wire data. The [TypeScript model](../src/model/repair.ts) and [conformance test](../test/repair.test.ts) match it. The repair model specifies reviewed cleanup only. [Runtime orchestration](../src/installer/repair.ts) and [qualified inspection](../src/installer/repair-inspect.ts) implement its I/O obligations, checked separately through native acceptance.
+
+[Authorization/Types.lean](../spec/PluginSdk/Authorization/Types.lean), [Rules.lean](../spec/PluginSdk/Authorization/Rules.lean) and [Properties.lean](../spec/PluginSdk/Authorization/Properties.lean) define per-invocation evidence and U1-U8. [Model.lean](../spec/PluginSdk/Authorization/Model.lean) implements the guards; [Proofs.lean](../spec/PluginSdk/Authorization/Proofs.lean) proves the independent predicates. [Wire.lean](../spec/PluginSdk/Authorization/Wire.lean) handles `authorize`. The [Effect schemas](../contracts/Authorization.ts), [TypeScript model](../src/model/authorization.ts) and [tests](../test/authorization.test.ts) conform to that wire. Trusted-evidence production and enforcement remain I/O obligations in the [authorization design](authorization-design.md).
 
 ## Model interface
 
@@ -119,8 +121,16 @@ Property IDs are permanent. Each ID must appear in the Lean theorem name or docs
 | R6 | `completion_requires_qualified_absence` | Cleanup completes only after qualified absence. |
 | R7 | `other_settlement_preserves_pending_basis` | Every other settlement retains the pending cleanup and its full basis. |
 | R8 | `completed_replay_acknowledges_without_start` | A completed cleanup replay against qualified absence acknowledges completion without starting a change. |
+| U1 | `unavailable_never_allows` | Unverified identity or unavailable policy/membership never permits invocation. |
+| U2 | `identity_is_bound` | Allowing requires exact organization, issuer and subject binding. |
+| U3 | `current_evidence_required` | Allowing requires an unexpired token and policy/membership snapshots within their age bounds. |
+| U4 | `known_contract_required` | Allowing requires a declared tool and agreement with every matching contract restriction. |
+| U5 | `scopes_and_application_required` | Allowing requires all matching scopes and application access. |
+| U6 | `effective_role_grant_required` | Allowing requires an issuer-qualified group binding and an exact service/tool grant. |
+| U7 | `complete_authorization_succeeds` | Fully eligible evidence, an effective grant and application access produce success with the evidence revisions. |
+| U8 | `revoked_grant_is_denied` | Otherwise eligible evidence without an effective grant produces permission denial. |
 
-The revision decision in the [design](design.md#journal-revision-decision) refines P10: restoring the entire previous journal would violate P11 by forgetting a completed attempt. P10 retains its ID and preserves ownership while advancing completion metadata. All 41 properties now have checked proof certificates.
+The revision decision in the [design](design.md#journal-revision-decision) refines P10: restoring the entire previous journal would violate P11 by forgetting a completed attempt. P10 retains its ID and preserves ownership while advancing completion metadata. All 49 properties have checked proof certificates.
 
 The compiler proof pass made path containment an explicit segment grammar. `RequestedCollision` witnesses two distinct occurrences through a two-element sublist, retaining duplicate requests even when their strings match. Collision keys range over all strings in B3, so a diagnostic cannot evade the truthfulness obligation by lacking a path proof. `${` detection is executable over characters and proved equivalent to the corresponding string decomposition. These representation changes preserve the specified rendering rules.
 
@@ -130,9 +140,9 @@ The model interfaces and wires are implemented. B2 and B7 treat file digests as 
 
 `OracleRequest` and `OracleResponse` define version 1. One NDJSON request produces one response with the same `type`. Each request supplies the complete pure-function input. The oracle has no ambient mutable state.
 
-`Oracle.lean` dispatches `render`, `check_bundle`, `assemble`, `repair_propose`, `repair_begin`, and `repair_settle` to their module wires. The lifecycle wire handles `decide`, `begin`, and `settle`. All five models remain pure and receive their full inputs on each request.
+`Oracle.lean` dispatches `render`, `check_bundle`, `assemble`, `repair_propose`, `repair_begin`, `repair_settle` and `authorize` to their module wires. The lifecycle wire handles `decide`, `begin` and `settle`. All six models remain pure and receive their full inputs on each request.
 
-Wire discriminants use `type`; enum values use snake case. All current field names are single words. Absent values are explicit `null`, and arrays preserve their specified order. Error classes use Effect's `_tag` in TypeScript and are outside this wire.
+Wire discriminants use `type`; enum values use snake case and field names use camel case. Absent values are explicit `null`, and arrays preserve their specified order. Error classes use Effect's `_tag` in TypeScript and are outside this wire.
 
 A planning request can be:
 
@@ -158,23 +168,25 @@ The compiler's separate `OracleRequest` and `OracleResponse` use `type: "render"
 
 The [Assembly contract](../contracts/Assembly.ts) uses `type: "assemble"`. The six [assembly vectors](../spec/vectors/assembly.ndjson) cover canonical asset ordering, path collisions, reserved paths, and rejected inputs. The [Repair contract](../contracts/Repair.ts) uses `repair_propose`, `repair_begin`, and `repair_settle`. The 18 [repair vectors](../spec/vectors/repair.ndjson) cover cleanup review, retry, settlement, and completed replay. Repair vectors specify a pure protocol. They do not establish native inspection or mutation behavior.
 
+The [Authorization contract](../contracts/Authorization.ts) uses `type: "authorize"`. Its 49 [vectors](../spec/vectors/authorization.ndjson) contain independently authored expectations for two applications, reader/admin permissions, identity binding, freshness, contract restrictions, scopes and revocation. Millisecond values decode with JavaScript binary64 safe integer semantics. Wire checks also cover invalid structure and duplicate keys; the codec itself has no formal correctness proof.
+
 ## Development order
 
-1. State properties against explicit model interfaces. All 41 obligations are stated.
-2. Implement and prove the Lean models before porting behavior. All 41 properties pass.
-3. Compile the proved models to the oracle and generate vectors. Lifecycle, compiler, bundle, assembly, and repair vectors exist.
-4. Port TypeScript behavior and compare it with the running oracle. The existing suite covers lifecycle traces, rendering permutations, and bundle combinations. Assembly and repair use separate conformance tests.
+1. State properties against explicit model interfaces. All 49 obligations are stated.
+2. Implement and prove the Lean models before porting behavior. All 49 properties pass.
+3. Compile the proved models to the oracle and check vectors. Lifecycle, compiler, bundle, assembly, repair and authorization vectors exist.
+4. Port TypeScript behavior and compare it with the running oracle. The existing suite covers lifecycle traces, rendering permutations and bundle combinations. Assembly, repair and authorization use separate conformance tests.
 5. Add host I/O only after its required model properties and conformance checks pass.
 
-The project pins Lean 4.34.1 and needs no Mathlib dependency. `cd spec && lake build` checks the models, declarations, and proofs. `bash scripts/gate.sh`, run inside `spec`, requires concrete models and exact proof certificates for all 41 properties. It reports `41/41 property proofs checked`. Only Lean's standard `propext`, `Classical.choice`, and `Quot.sound` are allowed.
+The project pins Lean 4.34.1 and needs no Mathlib dependency. `cd spec && lake build` checks the models, declarations, and proofs. `bash scripts/gate.sh`, run inside `spec`, requires concrete models and exact proof certificates for all 49 properties. It reports `49/49 property proofs checked`. Only Lean's standard `propext`, `Classical.choice`, and `Quot.sound` are allowed.
 
-The oracle imports model definitions without importing the proof certificate modules. The gate builds it and checks 12 lifecycle frames, 15 render frames, 15 bundle frames, 6 assembly frames, and 18 repair frames. It rejects 17 malformed lifecycle, 39 malformed render, 36 malformed bundle, 38 malformed assembly, and 31 malformed repair requests.
+The oracle imports model definitions without importing the proof certificate modules. The gate builds it and checks 12 lifecycle frames, 15 render frames, 15 bundle frames, 6 assembly frames, 18 repair frames and 49 authorization vectors. It rejects 17 malformed lifecycle, 39 malformed render, 36 malformed bundle, 38 malformed assembly, 31 malformed repair and 277 malformed authorization requests.
 
 The gate also checks 100 reordered render inputs and 1,638 bundle combinations. Assembly adds 40 permutations and 819 path combinations. The gate compares those generated cases with independent expectations.
 
-To regenerate vectors after an agreed model change, run `check_replay.py`, `check_compiler.py`, `check_bundle.py`, or `check_assembly.py` with `--write` inside `spec/scripts`. Resolve any disagreement with a design example before regenerating vectors. Repair vectors contain authored expectations; `check_repair.py` checks them against the oracle without rewriting them.
+To regenerate vectors after an agreed model change, run `check_replay.py`, `check_compiler.py`, `check_bundle.py` or `check_assembly.py` with `--write` inside `spec/scripts`. Resolve any disagreement with a design example before regenerating vectors. Repair and authorization vectors contain authored expectations; their scripts check them against the oracle without rewriting them.
 
-Conformance compares decoded values on committed vectors and generated command sequences. The original `test/conformance.test.ts` run remains 4,210 oracle requests. The repair test separately compares 18 vectors and 40 generated requests.
+Conformance compares decoded values on committed vectors and generated command sequences. The original `test/conformance.test.ts` run remains 4,210 oracle requests. Repair separately compares 18 vectors and 40 generated requests; authorization compares 49 vectors, 120 generated combinations and a three-call revocation sequence.
 
 Start lifecycle sequences from a defined journal and feed returned journals into subsequent commands. Use a small shared pool of IDs, digests, and fingerprints so equality, reuse, stale observations, and conflicting plans occur often. Generate valid transitions and rejected attempts. Shrink a mismatch into a committed counterexample.
 
@@ -183,6 +195,8 @@ The suite uses `@effect/vitest` and Effect Schema arbitraries for normalized MCP
 ## Proof limits and native acceptance
 
 The model assumes that a complete observation is truthful and no earlier native command can commit after it. It also assumes that a plan commitment has been checked, pending state is durable before a native change, and conflicting writers are serialized. TypeScript must establish these assumptions through real I/O checks. A host that cannot establish them must remain unsupported for mutation.
+
+Authorization assumes the service supplies verified identity, trusted observations, its clock and bounds, and application permission for the actual invocation. Its freshness proof concerns those observations; it does not prove the authority's propagation delay or clock behavior. Production enforcement must reject untrusted fact injection and recheck each call. Catalog distribution alone cannot discharge those obligations.
 
 Native acceptance must cover canonical path aliases, source link escapes, unrelated host entries, physical ownership collisions, interrupted writes, and termination before and after each durable record or native call. It must exercise a real host in an isolated home. Fresh session discovery and MCP authentication are separate checks.
 

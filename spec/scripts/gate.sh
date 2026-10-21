@@ -13,4 +13,5 @@ python3 scripts/check_compiler.py
 python3 scripts/check_bundle.py
 python3 scripts/check_assembly.py
 python3 scripts/check_repair.py
+python3 scripts/check_authorization.py
 exit "$task_proof_rc"
