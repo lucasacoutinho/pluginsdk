@@ -4,13 +4,21 @@ on:
   push:
   pull_request:
   workflow_dispatch:
+    inputs:
+      runner:
+        description: Runner for this verification
+        type: choice
+        default: ubuntu-24.04
+        options:
+          - ubuntu-24.04
+          - pluginsdk-ephemeral
 
 permissions:
   contents: read
 
 jobs:
   check:
-    runs-on: ubuntu-latest
+    runs-on: ${{ inputs.runner || 'ubuntu-24.04' }}
     steps:
       - uses: actions/checkout@v7
 
