@@ -30,7 +30,7 @@ type Snapshot = Installer.Snapshot
 type PlanId = Installer.PlanId
 type BundleDigest = Compiler.BundleDigest
 type Fingerprint = Installer.Fingerprint
-type RenderFormat = Compiler.Format
+type RenderFormat = CompilerModel.RenderInput["format"]
 
 const oraclePath = fileURLToPath(new URL("../spec/.lake/build/bin/oracle", import.meta.url))
 
@@ -781,7 +781,7 @@ it("matches renderer permutations, path and header collisions, and UTF-8 orderin
 it.prop(
   "matches Schema-generated normalized renderer inputs with the Lean oracle",
   {
-    format: Compiler.Format,
+    format: CompilerModel.RenderInput.fields.format,
     pattern: Schema.Int,
     ordering: Schema.Int
   },

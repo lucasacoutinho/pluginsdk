@@ -1,0 +1,68 @@
+# Explicit repair
+
+## Problem
+
+A killed replacement can remove the old plugin and leave its SDK marketplace registered. Fresh inspection correctly reports an uncertain pending operation. Reapplying that operation must never repeat its native mutation. The isolated probe in `.audit/evidence/repair-partial.json` reproduces this state in Claude 2.1.304 and Codex 0.163.0: the installed-plugin inventory and plugin configuration are empty, while the dedicated local marketplace remains registered at the SDK's path.
+
+## Usage
+
+The caller requests a new reviewable cleanup plan:
+
+```ts
+const cleanup = yield* installer.plan({
+  destination,
+  intent: { type: "repair", plugin, pending: interruptedPlanId }
+})
+// Review the interrupted operation, residual state and cleanup plan ID.
+const outcome = yield* installer.apply(reviewedCleanup)
+```
+
+After verified cleanup, the caller can plan a fresh installation using the retained bundle. Repair restores a known absent state. It does not silently continue or roll back the interrupted replacement.
+
+## Candidates and synthesis
+
+| Candidate | Caller obligations and hidden knowledge | Decision |
+| --- | --- | --- |
+| Force or forget | Callers delete journals or override ownership and must reason about native processes and foreign state themselves. | Reject. |
+| Resume a recipe from its last recorded step | Exposes ordering and assumes a recorded subprocess result proves what the host committed. Repeated steps can acquire new effects. | Reject. |
+| Review a new cleanup plan from fresh qualified evidence | Installer owns process quiescence, residual ownership, a new plan commitment, native removal and replay. | Select. |
+
+The selected first repair contract handles proven absence or an orphaned SDK marketplace with no installed plugin. Other partial states remain blocked until their ownership and cleanup contracts are qualified. That restriction follows the observed counterexample and gives the caller a useful recovery operation without granting a general overwrite capability.
+
+## Shape
+
+`RepairSnapshot` has a fingerprint and a residual of `absent` or `marketplace`. `RepairBasis` binds the interrupted original plan, the currently pending plan and that snapshot. `RepairPlan` uses the `repair_ready` tag, includes its resolved target and basis, and commits those fields into a new ID. `ReadyPlan` remains unchanged; `ReviewedPlan` will accept either kind. `Installer.plan` and `Installer.apply` remain the public operations.
+
+The internal repair state is an original pending operation, a pending cleanup with its full basis, or a completed cleanup. Proposal reads that state and a qualified inspection. Begin compares the fresh proposal to the reviewed basis. An original pending ID and the current cleanup ID cannot authorize another start. Retrying the current cleanup only resumes inspection. A newly reviewed repair after a failed cleanup binds the current cleanup ID, so it is a distinct attempt.
+
+Before returning a recoverable marketplace snapshot, native inspection must prove all of the following under the existing physical-home lock:
+
+- The original native process group can no longer commit, and no other SDK execution holds shared native state.
+- Complete native inventory contains no plugin using the dedicated marketplace, in any scope. The requested scope has no same-name plugin or plugin configuration entry.
+- Exactly one matching marketplace is registered, its native source and settings point to the physical SDK marketplace, and its catalog equals the retained original plan's generated catalog.
+- The retained plan has a valid commitment and target binding. No caller-supplied filesystem path becomes a cleanup operand.
+
+An absent snapshot requires the same quiescence and a complete ordinary absence observation. Unknown, unowned or changed facts block a new repair. The fingerprint commits to the native facts used for that decision. Apply rechecks those facts after acquiring the lock.
+
+The cleanup worker receives the new reviewed repair plan through the existing durable one-shot handoff. `marketplace` authorizes exactly one qualified marketplace-remove command; `absent` authorizes no native command. Settlement completes only after a quiescent fresh absence observation. Remaining or unknown state retains the cleanup as pending. Local retained plans and payloads remain available for inspection and a subsequent fresh installation.
+
+## LDD obligations
+
+| Property | Required claim |
+| --- | --- |
+| R1 | A blocked inspection never authorizes a new native mutation. |
+| R2 | A start requires a fresh proposal exactly equal to the reviewed basis; a changed pending ID or fingerprint rejects it. |
+| R3 | A new start keeps the interrupted operation's identity and uses a distinct current plan ID. |
+| R4 | A start removes only an evidenced marketplace; proven absence requests no native command. |
+| R5 | Retrying the current pending cleanup returns inspection-only resume and never start. |
+| R6 | Settlement completes only with a qualified absence observation. |
+| R7 | Every other settlement preserves the complete pending cleanup and its basis. |
+| R8 | Replaying a completed cleanup against qualified absence acknowledges removal without mutation. |
+
+These pure properties assume truthful qualified inspection and content-derived plan IDs. Native tests must separately establish quiescence, ownership classification, exact cleanup commands, preserved unrelated settings, fresh installation after cleanup, stale-basis rejection and process-kill recovery. The original P1 through P14 remain unchanged for ordinary operations.
+
+## Tradeoffs and open work
+
+Cleanup requires another reviewed installation plan to recover the desired plugin. It keeps recovery from acquiring an implicit retry policy. Foreign plugins, unexplained catalog edits and active native processes continue to block repair. This does not provide a universal cleanup switch.
+
+The next step is the Lean repair model and oracle, followed by conforming TypeScript and the native orphaned-marketplace classifier. No runtime repair claim follows from this interface sketch alone.

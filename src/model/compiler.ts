@@ -1,5 +1,6 @@
 import { Match } from "effect"
 import { HeaderName, PackagePath } from "../../contracts/Plugin.ts"
+import { asciiFold, compareUtf8, pathCollisionKeys } from "../internal/paths.ts"
 import type { BundleCheckIssue, McpProblem } from "../../contracts/Compiler.ts"
 import type {
   BundleCheckInput,
@@ -45,21 +46,6 @@ const formatRules: Record<RenderInput["format"], FormatRules> = {
   }
 }
 
-const utf8Encoder = new TextEncoder()
-
-function compareUtf8(left: string, right: string): number {
-  const leftBytes = utf8Encoder.encode(left)[Symbol.iterator]()
-  const rightBytes = utf8Encoder.encode(right)[Symbol.iterator]()
-  while (true) {
-    const leftByte = leftBytes.next()
-    const rightByte = rightBytes.next()
-    if (leftByte.done) return rightByte.done ? 0 : -1
-    if (rightByte.done) return 1
-    if (leftByte.value < rightByte.value) return -1
-    if (leftByte.value > rightByte.value) return 1
-  }
-}
-
 function compareKey(left: readonly string[], right: readonly string[]): number {
   const leftSegments = left[Symbol.iterator]()
   const rightSegments = right[Symbol.iterator]()
@@ -100,33 +86,8 @@ function orderByKey<A>(values: readonly A[], keyOf: (value: A) => readonly strin
   return [...values].sort((left, right) => compareKey(keyOf(left), keyOf(right)))
 }
 
-function asciiFold(value: string): string {
-  return value.replace(/[A-Z]/g, (letter) => String.fromCharCode(letter.charCodeAt(0) + 32))
-}
-
-function collisionPath(left: PackagePath, right: PackagePath): PackagePath | null {
-  const leftKey = asciiFold(left)
-  const rightKey = asciiFold(right)
-  if (leftKey === rightKey || rightKey.startsWith(`${leftKey}/`)) {
-    return PackagePath.make(leftKey)
-  }
-  if (leftKey.startsWith(`${rightKey}/`)) return PackagePath.make(rightKey)
-  return null
-}
-
 function pathCollisionIssues(paths: readonly PackagePath[]): RenderIssue[] {
   return pathCollisionKeys(paths).map((path) => ({ type: "path_collision", path }))
-}
-
-function pathCollisionKeys(paths: readonly PackagePath[]): PackagePath[] {
-  const keys: PackagePath[] = []
-  for (const [index, left] of paths.entries()) {
-    for (const right of paths.slice(index + 1)) {
-      const path = collisionPath(left, right)
-      if (path !== null) keys.push(path)
-    }
-  }
-  return keys
 }
 
 function renderIssueKey(issue: RenderIssue): readonly string[] {

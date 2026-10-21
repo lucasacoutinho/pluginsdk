@@ -101,6 +101,30 @@ export type PlanBody = typeof PlanBody.Type
 export const ReadyPlan = Schema.Struct({ ...PlanBody.fields, id: PlanId })
 export type ReadyPlan = typeof ReadyPlan.Type
 
+export const RepairSnapshot = Schema.Struct({
+  fingerprint: Fingerprint,
+  residual: Schema.Literals(["absent", "marketplace"])
+})
+export type RepairSnapshot = typeof RepairSnapshot.Type
+
+export const RepairBasis = Schema.Struct({
+  interrupted: PlanId,
+  pending: PlanId,
+  observed: RepairSnapshot
+})
+export type RepairBasis = typeof RepairBasis.Type
+
+export const RepairPlanBody = Schema.Struct({
+  type: Schema.Literal("repair_ready"),
+  schema: Schema.Literal(1),
+  target: Target,
+  before: RepairBasis
+})
+export type RepairPlanBody = typeof RepairPlanBody.Type
+
+export const RepairPlan = Schema.Struct({ ...RepairPlanBody.fields, id: PlanId })
+export type RepairPlan = typeof RepairPlan.Type
+
 export const Planning = Schema.Union([
   ReadyPlan,
   Schema.Struct({ type: Schema.Literal("unchanged"), target: Target, state: Snapshot }),

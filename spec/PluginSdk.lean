@@ -4,3 +4,7 @@ import PluginSdk.Compiler.Proofs
 import PluginSdk.Compiler.Wire
 import PluginSdk.Compiler.Bundle.Proofs
 import PluginSdk.Compiler.Bundle.Wire
+import PluginSdk.Compiler.Assembly.Proofs
+import PluginSdk.Compiler.Assembly.Wire
+import PluginSdk.Repair.Proofs
+import PluginSdk.Repair.Wire

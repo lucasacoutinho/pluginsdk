@@ -4,6 +4,7 @@ import { Effect, FileSystem, Option } from "effect"
 import { DestinationUnsupported, HostUnavailable, InstallationKey, type Destination, type Target } from "../../contracts/Installer.ts"
 import { Directory, type PluginId } from "../../contracts/Plugin.ts"
 import { commitment } from "../internal/identity.ts"
+import { nativeLocations } from "../compiler/native.ts"
 import { profiles, runHost, supportedHost } from "./host.ts"
 import type { Format } from "../../contracts/Compiler.ts"
 import type { ChildProcessSpawner } from "effect/process/ChildProcessSpawner"
@@ -56,7 +57,7 @@ export const resolveTarget = Effect.fnUntraced(function*(destination: Destinatio
   if (process.platform !== "linux") return yield* new DestinationUnsupported({ destination, detail: "The initial native profiles qualify Linux only" })
   if (host === "codex" && destination.type === "project") return yield* new DestinationUnsupported({ destination, detail: "This Codex profile qualifies user-scope installation only" })
   const profile = profiles[host]
-  if (format !== undefined && format !== profile.format) return yield* new DestinationUnsupported({ destination, detail: `Host requires ${profile.format}` })
+  if (format !== undefined && nativeLocations(format).base !== profile.format) return yield* new DestinationUnsupported({ destination, detail: `Host requires a ${profile.format} compatible package` })
   const fs = yield* FileSystem.FileSystem
   const canonical = yield* Effect.gen(function*() {
     const home = Directory.make(yield* fs.realPath(destination.home))

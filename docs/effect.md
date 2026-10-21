@@ -54,6 +54,8 @@ Named spans cover `Compiler.build`, `Installer.plan`, `Installer.apply` and nati
 
 ## Checks
 
-`npm run check` runs Lean proofs and wire checks, the patched compiler, Effect diagnostics, Oxlint, behavioral tests and package-consumer acceptance. Conformance sends 4,210 requests to the actual Lean oracle. The package check installs the tarball with production dependencies in a fresh directory, builds through the installed CLI and SDK, and compiles a consumer against its exported declarations.
+`npm run check` runs Lean proofs and wire checks, the patched compiler, Effect diagnostics, Oxlint, behavioral tests, and package-consumer acceptance. The current run passed with 43 portable tests and zero Effect diagnostics. The existing `test/conformance.test.ts` suite sends 4,210 requests to the Lean oracle. The separate assembly and repair tests run their own oracle comparisons; the repair test checks 18 vectors and 40 generated requests. The package check installs the tarball with production dependencies in a fresh directory, builds through the installed CLI and SDK, and compiles a consumer against its exported declarations.
+
+The strengthened lstack lifecycle pilot passed on Claude Code 2.1.304 in user and project scopes and Codex 0.163.0 in user scope. A separate native regression run passed 23 tests, and the installed-package lifecycle check passed.
 
 `npm run test:native` separately exercises the qualified host binaries in isolated homes. [Acceptance](acceptance.md) distinguishes native discovery and loopback MCP checks from provider authentication and model use.

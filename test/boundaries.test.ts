@@ -126,6 +126,7 @@ it.effect("Compiler.build snapshots mutable request values before real filesyste
     yield* fs.makeDirectory(join(root, "skills", "alpha"), { recursive: true })
     const originalEntry = ["---", "name: alpha", "description: boundary test", "---", "# alpha", ""].join("\n")
     yield* fs.writeFileString(entryPath, originalEntry)
+    yield* fs.writeFileString(join(root, "LICENSE"), "Original license asset\n")
 
     const entered = yield* Deferred.make<void>()
     const resume = yield* Deferred.make<void>()
@@ -149,12 +150,13 @@ it.effect("Compiler.build snapshots mutable request values before real filesyste
 
     const request = yield* Schema.decodeEffect(BuildRequest)({
       root,
-      format: "claude_code_v1",
+      format: "claude_code_v2",
       plugin: {
         id: "demo",
         version: "1.0.0",
         description: "Original metadata",
         skills: ["skills/alpha"],
+        assets: ["LICENSE"],
         mcp: { docs: { url: "https://EXAMPLE.com:443/original", headers: {} } }
       }
     })
@@ -170,6 +172,7 @@ it.effect("Compiler.build snapshots mutable request values before real filesyste
       description: "Mutated metadata"
     })
     Object.assign(request.plugin, { skills: [PackagePath.make("skills/missing")] })
+    Object.assign(request.plugin, { assets: [PackagePath.make("missing-license")] })
     docs.url.hostname = "mutated.example"
     yield* Deferred.succeed(resume, undefined)
 
@@ -180,6 +183,7 @@ it.effect("Compiler.build snapshots mutable request values before real filesyste
     const capturedEntry = bundleFile(bundle, "skills/alpha/SKILL.md")
     const capturedText = new TextDecoder().decode(capturedEntry.content)
     expect(capturedText).toBe(originalEntry)
+    expect(new TextDecoder().decode(bundleFile(bundle, "LICENSE").content)).toBe("Original license asset\n")
 
     yield* fs.writeFileString(entryPath, "changed on disk\n")
     expect(new TextDecoder().decode(capturedEntry.content)).toBe(capturedText)

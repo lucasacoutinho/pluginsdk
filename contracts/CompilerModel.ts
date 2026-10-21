@@ -34,7 +34,7 @@ export const Metadata = Schema.Struct({
 export type Metadata = typeof Metadata.Type
 
 export const RenderInput = Schema.Struct({
-  format: Format,
+  format: Format.pick(["agent_plugins_v1", "claude_code_v1"]),
   metadata: Metadata,
   skills: Schema.Array(Skill),
   mcp: Schema.Record(Schema.NonEmptyString, Schema.toEncoded(RemoteMcp))

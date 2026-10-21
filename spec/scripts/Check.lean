@@ -32,7 +32,24 @@ private def obligations : List (Name × Name × List Name) := [
     ``PluginSdk.Compiler.Bundle.V1_digest_checked,
     ``PluginSdk.Compiler.Bundle.V2_paths_canonical,
     ``PluginSdk.Compiler.Bundle.V3_diagnostics_exact,
-    ``PluginSdk.Compiler.Bundle.V4_valid_bundle_accepted])
+    ``PluginSdk.Compiler.Bundle.V4_valid_bundle_accepted]),
+  (``PluginSdk.Compiler.Assembly.Interface, `PluginSdk.Compiler.Assembly.model, [
+    ``PluginSdk.Compiler.Assembly.A1_deterministic_canonical,
+    ``PluginSdk.Compiler.Assembly.A2_preserves_requested_files_once,
+    ``PluginSdk.Compiler.Assembly.A3_no_invented_files,
+    ``PluginSdk.Compiler.Assembly.A4_contained_conflict_free,
+    ``PluginSdk.Compiler.Assembly.A5_diagnostics_complete,
+    ``PluginSdk.Compiler.Assembly.A6_permutation_invariant,
+    ``PluginSdk.Compiler.Assembly.A7_valid_input_accepted]),
+  (``PluginSdk.Repair.Interface, `PluginSdk.Repair.model, [
+    ``PluginSdk.Repair.R1_blocked_never_starts,
+    ``PluginSdk.Repair.R2_start_requires_fresh_review,
+    ``PluginSdk.Repair.R3_start_preserves_operation_identity,
+    ``PluginSdk.Repair.R4_cleanup_matches_residual,
+    ``PluginSdk.Repair.R5_current_cleanup_retry_only_resumes,
+    ``PluginSdk.Repair.R6_completion_requires_qualified_absence,
+    ``PluginSdk.Repair.R7_other_settlement_preserves_pending_basis,
+    ``PluginSdk.Repair.R8_completed_replay_acknowledges_without_start])
 ]
 
 private def standardAxioms : List Name := [``propext, ``Classical.choice, ``Quot.sound]

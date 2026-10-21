@@ -45,6 +45,8 @@ The portable schema identifiers are `https://agent-plugins.org/schemas/1.0.0/plu
 
 Every skill entry maps to `skills/<name>/SKILL.md`; its assets map below `skills/<name>/`. Server names are preserved exactly, including hyphens. A format's MCP file is omitted when no servers were requested. The manifest always exists.
 
+`agent_plugins_v2` and `claude_code_v2` retain those native layouts and add explicit package-relative supporting assets. They also preserve skill metadata as a JSON object, including the nested extension exercised by lstack; v1 retains its original string-map requirement. The [assembly design](expansion-design.md) specifies contained capture, reserved native namespaces, complete collision diagnostics and properties A1 through A7. The [real-plugin pilot](pilot.md) establishes native discovery and lifecycle for that extension.
+
 ## Header meaning and compatibility
 
 A header string means literal public configuration. An explicit environment reference can be authored as:

@@ -63,6 +63,7 @@ export const Plugin = Schema.Struct({
   version: Schema.NonEmptyString,
   description: Schema.NonEmptyString,
   skills: Schema.Array(PackagePath),
+  assets: Schema.optionalKey(Schema.Array(PackagePath)),
   mcp: Schema.Record(Schema.NonEmptyString, RemoteMcp)
 })
 export type Plugin = typeof Plugin.Type

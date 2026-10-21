@@ -1,11 +1,12 @@
 import { Effect, FileSystem, Layer, Match, Schema } from "effect"
 import { BuildRejected, BuildRequest, Compiler, SourceUnavailable, type BuildIssue, type Bundle, type PackageFile } from "../../contracts/Compiler.ts"
 import { Plugin } from "../../contracts/Plugin.ts"
-import { bundleDigest } from "../internal/identity.ts"
+import { bundleDigest, fileDigest } from "../internal/identity.ts"
 import { jsonBytes } from "../internal/json.ts"
 import { render } from "../model/compiler.ts"
+import { assemble } from "../model/assembly.ts"
 import { capture } from "./capture.ts"
-import { isNativeVersion, validateBundle } from "./native.ts"
+import { isNativeVersion, nativeLocations, validateBundle } from "./native.ts"
 
 const checkedMetadata = (request: BuildRequest): void => {
   const issues: BuildIssue[] = []
@@ -14,6 +15,9 @@ const checkedMetadata = (request: BuildRequest): void => {
     if (!value.isWellFormed()) issues.push({ type: "invalid_metadata", field, detail: "Metadata must contain valid Unicode" })
   }
   if (!isNativeVersion(request.plugin.version)) issues.push({ type: "invalid_metadata", field: "version", detail: "Version must be a single native cache path component" })
+  if (!nativeLocations(request.format).assets && (request.plugin.assets?.length ?? 0) > 0) {
+    issues.push({ type: "unsupported_feature", feature: "assets", format: request.format })
+  }
   const [head, ...tail] = issues
   if (head !== undefined) throw new BuildRejected({ issues: [head, ...tail] })
 }
@@ -38,7 +42,7 @@ export const CompilerLive = Layer.effect(Compiler, Effect.gen(function*() {
     )
     const encoded = yield* Schema.encodeEffect(Plugin)(request.plugin).pipe(Effect.orDie)
     const rendered = render({
-      format: request.format,
+      format: nativeLocations(request.format).base,
       metadata: { id: request.plugin.id, version: request.plugin.version, description: request.plugin.description },
       skills: captured.skills,
       mcp: encoded.mcp
@@ -55,7 +59,29 @@ export const CompilerLive = Layer.effect(Compiler, Effect.gen(function*() {
       })
     )
     const [head, ...tail] = rendered.files
-    const body = { schema: 1, plugin: request.plugin.id, format: request.format, files: [materialize(head), ...tail.map(materialize)] } satisfies Omit<Bundle, "digest">
+    let files: [PackageFile, ...PackageFile[]] = [materialize(head), ...tail.map(materialize)]
+    if (nativeLocations(request.format).assets) {
+      const identify = (file: PackageFile) => {
+        const digest = fileDigest(file.content)
+        captured.contents.set(digest, file.content)
+        return { path: file.path, digest, executable: file.executable }
+      }
+      const [first, ...rest] = files
+      const assembled = yield* Match.value(assemble({ base: [identify(first), ...rest.map(identify)], assets: captured.assets })).pipe(
+        Match.discriminatorsExhaustive("type")({
+          rejected: (result) => Effect.fail(new BuildRejected({ issues: result.issues })),
+          assembled: (result) => Effect.succeed(result.files)
+        })
+      )
+      const resolveCopy = (file: typeof assembled[number]): PackageFile => {
+        const content = captured.contents.get(file.digest)
+        if (content === undefined) throw new Error("Assembled content table is inconsistent")
+        return { path: file.path, content, executable: file.executable }
+      }
+      const [assembledHead, ...assembledTail] = assembled
+      files = [resolveCopy(assembledHead), ...assembledTail.map(resolveCopy)]
+    }
+    const body = { schema: 1, plugin: request.plugin.id, format: request.format, files } satisfies Omit<Bundle, "digest">
     const bundle: Bundle = { ...body, digest: bundleDigest(body) }
     yield* Effect.try({
       try: () => validateBundle(bundle),

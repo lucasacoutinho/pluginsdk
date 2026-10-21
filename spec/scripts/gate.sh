@@ -11,4 +11,6 @@ lake build oracle
 python3 scripts/check_replay.py
 python3 scripts/check_compiler.py
 python3 scripts/check_bundle.py
+python3 scripts/check_assembly.py
+python3 scripts/check_repair.py
 exit "$task_proof_rc"

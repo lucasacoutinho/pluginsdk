@@ -2,10 +2,12 @@ import { Ajv2020 } from "ajv/dist/2020.js"
 import { Schema } from "effect"
 import { BundleRejected, type Bundle, type Format } from "../../contracts/Compiler.ts"
 import { checkBundle } from "../model/compiler.ts"
+import { reservedAssetPath } from "../model/assembly.ts"
 import { bundleDigest } from "../internal/identity.ts"
 import { parseJsonBytes } from "../internal/json.ts"
 import { HeaderName, HeaderText, PluginId, RemoteMcp } from "../../contracts/Plugin.ts"
 import { SkillName } from "../../contracts/CompilerModel.ts"
+import type { RenderInput } from "../../contracts/CompilerModel.ts"
 import { skillName } from "./skill.ts"
 import pluginSchema from "../../schemas/plugin.schema.json" with { type: "json" }
 import mcpSchema from "../../schemas/mcp.schema.json" with { type: "json" }
@@ -27,9 +29,13 @@ const NativeServer = Schema.Struct({
 })
 const ClaudeMcp = Schema.Struct({ mcpServers: Schema.Record(Schema.NonEmptyString, NativeServer) })
 const PortableMcp = Schema.Struct({ $schema: Schema.Literal(mcpSchema.$id), ...ClaudeMcp.fields })
-const locations: Record<Format, { manifest: string; mcp: string; transport: string }> = {
-  agent_plugins_v1: { manifest: "plugin.json", mcp: "mcp.json", transport: "streamable-http" },
-  claude_code_v1: { manifest: ".claude-plugin/plugin.json", mcp: ".mcp.json", transport: "http" }
+const portable = { base: "agent_plugins_v1", manifest: "plugin.json", mcp: "mcp.json", transport: "streamable-http" } as const
+const claude = { base: "claude_code_v1", manifest: ".claude-plugin/plugin.json", mcp: ".mcp.json", transport: "http" } as const
+const locations: Record<Format, { base: RenderInput["format"]; manifest: string; mcp: string; transport: string; assets: boolean }> = {
+  agent_plugins_v1: { ...portable, assets: false },
+  claude_code_v1: { ...claude, assets: false },
+  agent_plugins_v2: { ...portable, assets: true },
+  claude_code_v2: { ...claude, assets: true }
 }
 
 export const nativeLocations = (format: Format) => locations[format]
@@ -41,19 +47,19 @@ const validateNative = (bundle: Bundle): void => {
   if (manifest === undefined) throw new Error("Native manifest is missing")
   if (manifest.executable) throw new Error("Native JSON documents cannot be executable")
   const value = parseJsonBytes(manifest.content)
-  const metadata = bundle.format === "agent_plugins_v1"
+  const metadata = paths.base === "agent_plugins_v1"
     ? Schema.decodeUnknownSync(PortableManifest)(value, { onExcessProperty: "error" })
     : Schema.decodeUnknownSync(ClaudeManifest)(value, { onExcessProperty: "error" })
   if (metadata.name !== bundle.plugin) throw new Error("Native manifest name differs from bundle plugin")
-  if (bundle.format === "agent_plugins_v1" && !portablePlugin(value)) throw new Error(ajv.errorsText(portablePlugin.errors))
+  if (paths.base === "agent_plugins_v1" && !portablePlugin(value)) throw new Error(ajv.errorsText(portablePlugin.errors))
   const mcp = files.get(paths.mcp)
   if (mcp !== undefined) {
     if (mcp.executable) throw new Error("Native JSON documents cannot be executable")
     const value = parseJsonBytes(mcp.content)
-    const document = bundle.format === "agent_plugins_v1"
+    const document = paths.base === "agent_plugins_v1"
       ? Schema.decodeUnknownSync(PortableMcp)(value, { onExcessProperty: "error" })
       : Schema.decodeUnknownSync(ClaudeMcp)(value, { onExcessProperty: "error" })
-    if (bundle.format === "agent_plugins_v1" && !portableMcp(value)) throw new Error(ajv.errorsText(portableMcp.errors))
+    if (paths.base === "agent_plugins_v1" && !portableMcp(value)) throw new Error(ajv.errorsText(portableMcp.errors))
     for (const server of Object.values(document.mcpServers)) {
       if (server.type !== paths.transport) throw new Error("Native MCP transport differs from format")
       const headers = Object.keys(server.headers).map((header) => header.toLowerCase())
@@ -64,14 +70,18 @@ const validateNative = (bundle: Bundle): void => {
   for (const file of bundle.files) {
     if (file.path === paths.manifest || file.path === paths.mcp) continue
     const [directory, name, ...rest] = file.path.split("/")
-    if (directory !== "skills" || name === undefined || rest.length === 0) throw new Error(`Unsupported native package file: ${file.path}`)
+    if (directory !== "skills") {
+      if (!paths.assets || reservedAssetPath(file.path)) throw new Error(`Unsupported native package file: ${file.path}`)
+      continue
+    }
+    if (name === undefined || rest.length === 0) throw new Error(`Invalid skill path: ${file.path}`)
     Schema.decodeSync(SkillName)(name)
     skills.add(name)
   }
   for (const name of skills) {
     const entry = files.get(`skills/${name}/SKILL.md`)
     if (entry === undefined) throw new Error(`Missing SKILL.md for ${name}`)
-    skillName(name, entry.content)
+    skillName(name, entry.content, bundle.format)
   }
 }
 

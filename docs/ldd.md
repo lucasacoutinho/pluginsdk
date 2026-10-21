@@ -1,6 +1,8 @@
 # Lean-driven design specification
 
-This follows lcode's LDD approach: state a property, prove a Lean 4 model, compile an oracle, and make TypeScript conform. The [Lean project](../spec/README.md) proves 26 properties: P1 through P14 for lifecycle, B1 through B8 for rendering, and V1 through V4 for bundle checks. [TypeScript conformance](../test/conformance.test.ts) compares the implementations with 4,210 actual oracle requests.
+This follows lcode's LDD approach: state a property, prove a Lean 4 model, compile an oracle, and make TypeScript conform. The [Lean project](../spec/README.md) proves 41 properties.
+
+P1 through P14 cover lifecycle, B1 through B8 cover rendering, and V1 through V4 cover bundle checks. A1 through A7 cover assembly, and R1 through R8 cover repair review. The existing [TypeScript conformance suite](../test/conformance.test.ts) compares its models with 4,210 oracle requests. The separate assembly and repair suites add their own oracle comparisons. The repair suite checks 18 vectors and 40 generated requests.
 
 The formal lifecycle contract is [Types.lean](../spec/PluginSdk/Lifecycle/Types.lean) and [Properties.lean](../spec/PluginSdk/Lifecycle/Properties.lean). The formal compiler contract is [Types.lean](../spec/PluginSdk/Compiler/Types.lean), [Format.lean](../spec/PluginSdk/Compiler/Format.lean), and [Properties.lean](../spec/PluginSdk/Compiler/Properties.lean). Effect schemas provide their TypeScript representations.
 
@@ -9,6 +11,12 @@ The formal lifecycle contract is [Types.lean](../spec/PluginSdk/Lifecycle/Types.
 [Compiler/Model.lean](../spec/PluginSdk/Compiler/Model.lean) renders captured source content into copy references and native JSON objects, or rejects it with canonical issues. [Compiler/Proofs.lean](../spec/PluginSdk/Compiler/Proofs.lean) supplies all eight compiler certificates. Supporting lemmas cover path construction, complete collision detection, JSON field meaning, headers, and enumeration independence.
 
 [Compiler/Bundle/Model.lean](../spec/PluginSdk/Compiler/Bundle/Model.lean) checks a bundle's claimed and supplied recomputed digest and its committed file paths. Its [proofs](../spec/PluginSdk/Compiler/Bundle/Proofs.lean) establish acceptance and exact diagnostics. The [bundle contract](bundle.md) defines the projection, private snapshots, and checks outside this model.
+
+[Compiler/Assembly/Types.lean](../spec/PluginSdk/Compiler/Assembly/Types.lean) and [Properties.lean](../spec/PluginSdk/Compiler/Assembly/Properties.lean) define the asset assembly contract and A1 through A7. [Model.lean](../spec/PluginSdk/Compiler/Assembly/Model.lean) implements canonical ordering and exact collision diagnostics. [Proofs.lean](../spec/PluginSdk/Compiler/Assembly/Proofs.lean) certifies those properties. [Wire.lean](../spec/PluginSdk/Compiler/Assembly/Wire.lean) handles `assemble` requests. The [Effect contract](../contracts/Assembly.ts), [TypeScript model](../src/model/assembly.ts), and [conformance test](../test/assembly.test.ts) use the same wire.
+
+[Repair/Types.lean](../spec/PluginSdk/Repair/Types.lean) and [Properties.lean](../spec/PluginSdk/Repair/Properties.lean) define repair review states and R1 through R8. [Model.lean](../spec/PluginSdk/Repair/Model.lean) specifies proposals, fresh starts, retries, completed replay, and settlement. [Proofs.lean](../spec/PluginSdk/Repair/Proofs.lean) certifies those properties. [Wire.lean](../spec/PluginSdk/Repair/Wire.lean) handles `repair_propose`, `repair_begin`, and `repair_settle`.
+
+The [Effect contract](../contracts/Repair.ts) and [reviewed basis](../contracts/Installer.ts) define the wire data. The [TypeScript model](../src/model/repair.ts) and [conformance test](../test/repair.test.ts) match it. The repair model specifies reviewed cleanup only. It does not implement native repair.
 
 ## Model interface
 
@@ -96,16 +104,33 @@ Property IDs are permanent. Each ID must appear in the Lean theorem name or docs
 | V2 | `paths_canonical` | Accepted bundle paths are strictly ordered by unsigned UTF-8 and have no aliases or file/descendant conflicts. |
 | V3 | `diagnostics_exact` | Every required bundle issue is reported, every reported issue is real, and issues have canonical order without duplicates. |
 | V4 | `valid_bundle_accepted` | Bundle input satisfying the digest and path rules is accepted. |
+| A1 | `deterministic_canonical` | Equal inputs have equal results; accepted files and rejected issues use canonical order. |
+| A2 | `preserves_requested_files_once` | Every requested base or added asset appears exactly once in an accepted result. |
+| A3 | `no_invented_files` | Every output asset came from the requested base or added assets. |
+| A4 | `contained_conflict_free` | Accepted output paths are contained and have no duplicate, alias, or file/descendant conflict. |
+| A5 | `diagnostics_complete` | The rejected result contains exactly the required collision and reserved-asset issues. |
+| A6 | `permutation_invariant` | Reordering base or added assets does not change the result. |
+| A7 | `valid_input_accepted` | Nonconflicting input with no reserved added asset is accepted. |
+| R1 | `blocked_never_starts` | A blocked inspection never starts cleanup. |
+| R2 | `start_requires_fresh_review` | A cleanup starts only when a fresh proposal exactly matches the reviewed basis and pending binding. |
+| R3 | `start_preserves_operation_identity` | A new cleanup keeps the interrupted operation ID and uses a distinct cleanup ID. |
+| R4 | `cleanup_matches_residual` | Proven absence requests no native command; an orphaned marketplace requests only marketplace removal. |
+| R5 | `current_cleanup_retry_only_resumes` | Retrying the exact current cleanup resumes inspection without starting another change. |
+| R6 | `completion_requires_qualified_absence` | Cleanup completes only after qualified absence. |
+| R7 | `other_settlement_preserves_pending_basis` | Every other settlement retains the pending cleanup and its full basis. |
+| R8 | `completed_replay_acknowledges_without_start` | A completed cleanup replay against qualified absence acknowledges completion without starting a change. |
 
-The revision decision in the [design](design.md#journal-revision-decision) refines P10: restoring the entire previous journal would violate P11 by forgetting a completed attempt. P10 retains its ID and preserves ownership while advancing completion metadata. All 26 properties now have checked proof certificates.
+The revision decision in the [design](design.md#journal-revision-decision) refines P10: restoring the entire previous journal would violate P11 by forgetting a completed attempt. P10 retains its ID and preserves ownership while advancing completion metadata. All 41 properties now have checked proof certificates.
 
 The compiler proof pass made path containment an explicit segment grammar. `RequestedCollision` witnesses two distinct occurrences through a two-element sublist, retaining duplicate requests even when their strings match. Collision keys range over all strings in B3, so a diagnostic cannot evade the truthfulness obligation by lacking a path proof. `${` detection is executable over characters and proved equivalent to the corresponding string decomposition. These representation changes preserve the specified rendering rules.
 
-The model interfaces and wires are designed. B2 and B7 treat file digests as identities for immutable captured content. Their interpretation as actual bytes depends on the content table and materialization checks described in the compiler contract. V1 compares digest identities supplied from a private snapshot; it does not calculate a hash or establish that the projection was computed accurately. Native filesystem aliases beyond the format's comparison rules require host checks.
+The model interfaces and wires are implemented. B2 and B7 treat file digests as identities for immutable captured content. Their interpretation as actual bytes depends on the content table and materialization checks described in the compiler contract. V1 compares digest identities supplied from a private snapshot; it does not calculate a hash or establish that the projection was computed accurately. Native filesystem aliases beyond the format's comparison rules require host checks.
 
 ## Oracle wire
 
 `OracleRequest` and `OracleResponse` define version 1. One NDJSON request produces one response with the same `type`. Each request supplies the complete pure-function input. The oracle has no ambient mutable state.
+
+`Oracle.lean` dispatches `render`, `check_bundle`, `assemble`, `repair_propose`, `repair_begin`, and `repair_settle` to their module wires. The lifecycle wire handles `decide`, `begin`, and `settle`. All five models remain pure and receive their full inputs on each request.
 
 Wire discriminants use `type`; enum values use snake case. All current field names are single words. Absent values are explicit `null`, and arrays preserve their specified order. Error classes use Effect's `_tag` in TypeScript and are outside this wire.
 
@@ -131,19 +156,27 @@ The compiler's separate `OracleRequest` and `OracleResponse` use `type: "render"
 
 `BundleOracleRequest` and `BundleOracleResponse` use `type: "check_bundle"`. The 15 frames in [bundle examples](examples/bundle.ndjson) cover digest mismatch, committed ordering, path aliases, non-adjacent ancestors, and exact diagnostics. They match the [bundle vectors](../spec/vectors/bundle.ndjson). Digests are symbolic inputs; their equality in a scenario does not claim equal real hash preimages.
 
+The [Assembly contract](../contracts/Assembly.ts) uses `type: "assemble"`. The six [assembly vectors](../spec/vectors/assembly.ndjson) cover canonical asset ordering, path collisions, reserved paths, and rejected inputs. The [Repair contract](../contracts/Repair.ts) uses `repair_propose`, `repair_begin`, and `repair_settle`. The 18 [repair vectors](../spec/vectors/repair.ndjson) cover cleanup review, retry, settlement, and completed replay. Repair vectors specify a pure protocol. They do not establish native inspection or mutation behavior.
+
 ## Development order
 
-1. State properties against an explicit model interface. All 26 obligations are stated.
-2. Implement and prove the Lean model before porting behavior. All 26 properties pass.
-3. Compile the proved model to the oracle and generate vectors. Lifecycle, compiler, and bundle vectors exist.
-4. Port TypeScript behavior and compare it with the running oracle. The conformance suite covers vectors, generated lifecycle traces, rendering permutations and bundle combinations.
+1. State properties against explicit model interfaces. All 41 obligations are stated.
+2. Implement and prove the Lean models before porting behavior. All 41 properties pass.
+3. Compile the proved models to the oracle and generate vectors. Lifecycle, compiler, bundle, assembly, and repair vectors exist.
+4. Port TypeScript behavior and compare it with the running oracle. The existing suite covers lifecycle traces, rendering permutations, and bundle combinations. Assembly and repair use separate conformance tests.
 5. Add host I/O only after its required model properties and conformance checks pass.
 
-The project pins Lean 4.34.1 and needs no Mathlib dependency. `cd spec && lake build` checks the models, declarations, and proofs. `bash scripts/gate.sh`, run inside `spec`, requires concrete models and exact proof certificates for all 26 properties. It passes and reports `26/26 property proofs checked`. Only Lean's standard `propext`, `Classical.choice`, and `Quot.sound` are allowed.
+The project pins Lean 4.34.1 and needs no Mathlib dependency. `cd spec && lake build` checks the models, declarations, and proofs. `bash scripts/gate.sh`, run inside `spec`, requires concrete models and exact proof certificates for all 41 properties. It reports `41/41 property proofs checked`. Only Lean's standard `propext`, `Classical.choice`, and `Quot.sound` are allowed.
 
-The oracle imports model definitions without importing the proof certificate modules. The gate builds it, checks 12 lifecycle, 15 compiler, and 15 bundle frames against the design examples and committed vectors. It rejects 17 malformed lifecycle, 39 malformed compiler, and 36 malformed bundle requests. It also exercises 100 reordered compiler inputs and 1,638 bundle combinations with independent expectations. To regenerate vectors after an agreed model change, run the corresponding `check_replay.py`, `check_compiler.py`, or `check_bundle.py` script with `--write` inside `spec/scripts`. A disagreement with a design example must be resolved before regeneration succeeds.
+The oracle imports model definitions without importing the proof certificate modules. The gate builds it and checks 12 lifecycle frames, 15 render frames, 15 bundle frames, 6 assembly frames, and 18 repair frames. It rejects 17 malformed lifecycle, 39 malformed render, 36 malformed bundle, 38 malformed assembly, and 31 malformed repair requests.
 
-Conformance compares decoded values on committed vectors and generated command sequences. Start sequences from a defined journal and feed returned journals into subsequent commands. Use a small shared pool of IDs, digests, and fingerprints so equality, reuse, stale observations, and conflicting plans occur often. Generate both valid transitions and rejected attempts. Shrink a mismatch into a committed counterexample.
+The gate also checks 100 reordered render inputs and 1,638 bundle combinations. Assembly adds 40 permutations and 819 path combinations. The gate compares those generated cases with independent expectations.
+
+To regenerate vectors after an agreed model change, run `check_replay.py`, `check_compiler.py`, `check_bundle.py`, or `check_assembly.py` with `--write` inside `spec/scripts`. Resolve any disagreement with a design example before regenerating vectors. Repair vectors contain authored expectations; `check_repair.py` checks them against the oracle without rewriting them.
+
+Conformance compares decoded values on committed vectors and generated command sequences. The original `test/conformance.test.ts` run remains 4,210 oracle requests. The repair test separately compares 18 vectors and 40 generated requests.
+
+Start lifecycle sequences from a defined journal and feed returned journals into subsequent commands. Use a small shared pool of IDs, digests, and fingerprints so equality, reuse, stale observations, and conflicting plans occur often. Generate valid transitions and rejected attempts. Shrink a mismatch into a committed counterexample.
 
 The suite uses `@effect/vitest` and Effect Schema arbitraries for normalized MCP cases. The required order is proof gate, oracle vectors, TypeScript typecheck and Effect diagnostics, conformance, then I/O checks. An open proof remains incomplete behavior even when TypeScript tests pass.
 

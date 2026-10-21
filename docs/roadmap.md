@@ -6,16 +6,16 @@ The next release must complete all six milestones below. The completed local alp
 
 | Milestone | Required result | Current state |
 | --- | --- | --- |
-| Real-plugin pilot | Build all lstack skills and required supporting files; install, discover, update and remove in isolated fresh Claude and Codex sessions. Qualify real MCP authentication separately. | lstack selected; source inventory in progress; installed copy remains read-only. |
-| Private alpha | MIT package in a private repository with successful remote CI and verified package-consumer acceptance. Public publication stays deferred while the project is private. | MIT and private visibility selected; local package and CI configuration exist; private repository and remote CI pending. |
-| Explicit repair | A reviewed recovery operation for quiescent partial installations, with ownership, replay and crash properties. | Existing uncertain outcomes remain pending; repair contract requires design and proof. |
+| Real-plugin pilot | Build all lstack skills and required supporting files; install, discover, update and remove in isolated fresh Claude and Codex sessions. | Complete for Claude user/project and Codex user: 34 skills, 151 skill files, six supporting files and nine executables. [Pilot record](pilot.md). Third-party MCP authentication deferred by user. |
+| Private alpha | MIT package in a private repository with successful remote CI and verified package-consumer acceptance. Public publication stays deferred while the project is private. | Private repository created; baseline CI passed on an ephemeral runner. Expansion needs its own exact-commit gate. |
+| Explicit repair | A reviewed recovery operation for quiescent partial installations, with ownership, replay and crash properties. | Eight proved repair properties, strict oracle and conforming TypeScript model. Native residual classification and runtime integration remain pending. |
 | Plugin features | Local MCP, hooks and agents with preserved semantics, formal checks and native evidence. Prioritize requirements found in the pilot. | Host contracts under investigation. |
 | Compatibility | More evidenced CLI versions, Codex project scope, macOS and Windows. | Baseline is the pinned Linux profiles below; other environments require direct evidence. |
 | Grok Bot and Meta Muse | Working authenticated inspect/install/update/remove contracts and real-host acceptance. | Public management contracts under investigation; an unsupported result does not complete this milestone. |
 
 Architecture checklist for this expansion:
 
-- [ ] Ground: trace source capture, native ownership and recovery; inventory lstack and current host contracts.
+- [x] Ground: traced source capture, native ownership and recovery; inventoried lstack and current host contracts.
 - [ ] Sketch: compare complete alternative contracts in the main thread and record the selected shape.
 - [x] Agree: the instruction to complete all milestones authorizes implementation without an additional design approval.
 - [ ] Implement: prove each selected property before implementing its TypeScript and native behavior.
@@ -35,7 +35,7 @@ The first release builds existing Agent Skills directories and remote HTTP MCP d
 | Alpha distribution | SDK and CLI package; reproducible package acceptance; author example and usage instructions; CI gates. | Local alpha and consumer acceptance complete; CI configured; registry publication is a release decision |
 | Expansion evidence | Official Grok Bot and Meta Muse investigation; explicit unsupported results where installation or observation remains unverified; future feature acceptance criteria. | Complete; official-source findings and typed unsupported results |
 
-The [acceptance record](acceptance.md) names the executable checks, native qualifications and release limits. The working package is `pluginsdk@0.1.0-alpha.0` under [MIT](../LICENSE); its repository, registry name/scope and publication remain pending.
+The [acceptance record](acceptance.md) names the executable checks, native qualifications and release limits. The working package is `pluginsdk@0.1.0-alpha.0` under [MIT](../LICENSE) in a private repository. Public registry publication is deferred.
 
 ## Acceptance story
 

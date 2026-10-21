@@ -1,6 +1,8 @@
 # Lean contract
 
-This is pluginsdk's formal model, following the [LDD loop](../docs/ldd.md) used by lcode. Lifecycle proves P1 through P14; rendering proves B1 through B8; bundle checks prove V1 through V4. One NDJSON oracle exposes the proved functions. The proof gate checks `26/26`; [TypeScript conformance](../test/conformance.test.ts) compares 4,210 actual oracle requests with the runtime models.
+This is pluginsdk's formal model, following the [LDD loop](../docs/ldd.md) used by lcode. Lifecycle proves P1 through P14, rendering B1 through B8, and bundle checks V1 through V4. Asset assembly adds A1 through A7. Repair review adds R1 through R8. The proof gate checks `41/41` properties.
+
+The existing [TypeScript conformance suite](../test/conformance.test.ts) compares 4,210 requests with the oracle. The separate repair suite compares 18 vectors and 40 generated requests.
 
 | File | Defines |
 | --- | --- |
@@ -26,11 +28,19 @@ This is pluginsdk's formal model, following the [LDD loop](../docs/ldd.md) used 
 | [Compiler/Bundle/Types.lean](PluginSdk/Compiler/Bundle/Types.lean), [Properties.lean](PluginSdk/Compiler/Bundle/Properties.lean) | Bundle-check projection, results, and obligations V1 through V4 |
 | [Compiler/Bundle/Model.lean](PluginSdk/Compiler/Bundle/Model.lean), [Proofs.lean](PluginSdk/Compiler/Bundle/Proofs.lean) | Digest comparison, canonical paths, and exact diagnostic certificates |
 | [Compiler/Bundle/Wire.lean](PluginSdk/Compiler/Bundle/Wire.lean) | Strict `check_bundle` decoding and result encoding |
+| [Compiler/Assembly/Types.lean](PluginSdk/Compiler/Assembly/Types.lean), [Properties.lean](PluginSdk/Compiler/Assembly/Properties.lean) | Asset assembly contract and obligations A1 through A7 |
+| [Compiler/Assembly/Model.lean](PluginSdk/Compiler/Assembly/Model.lean), [Proofs.lean](PluginSdk/Compiler/Assembly/Proofs.lean), [Wire.lean](PluginSdk/Compiler/Assembly/Wire.lean) | Canonical asset assembly, certificates for A1 through A7, and strict `assemble` wire |
+| [Assembly.ts](../contracts/Assembly.ts), [assembly.ts](../src/model/assembly.ts), [assembly.test.ts](../test/assembly.test.ts) | Effect contract, conforming TypeScript model, and oracle comparisons |
+| [Repair/Types.lean](PluginSdk/Repair/Types.lean), [Properties.lean](PluginSdk/Repair/Properties.lean) | Repair-review states and obligations R1 through R8 |
+| [Repair/Model.lean](PluginSdk/Repair/Model.lean), [Proofs.lean](PluginSdk/Repair/Proofs.lean), [Wire.lean](PluginSdk/Repair/Wire.lean) | Pure repair review, certificates for R1 through R8, and strict repair wires |
+| [Repair.ts](../contracts/Repair.ts), [Installer.ts](../contracts/Installer.ts), [repair.ts](../src/model/repair.ts), [repair.test.ts](../test/repair.test.ts) | Effect contracts, reviewed repair basis, conforming model, and oracle comparisons |
 | [WireJson.lean](PluginSdk/WireJson.lean) | Duplicate-key rejection and shared identity and contained-path decoders |
 | [Check.lean](scripts/Check.lean) | Required proof names, exact theorem types, and the axiom audit |
 | [check_replay.py](scripts/check_replay.py) | Replay examples, vector freshness, and malformed wire checks |
 | [check_compiler.py](scripts/check_compiler.py) | Compiler examples, vectors, malformed wire checks, and reordered inputs |
 | [check_bundle.py](scripts/check_bundle.py) | Bundle examples, vectors, malformed wire checks, and independent combination checks |
+| [check_assembly.py](scripts/check_assembly.py) | Assembly vectors, malformed wire checks, 40 permutations, and 819 path combinations |
+| [check_repair.py](scripts/check_repair.py) | Repair vectors and malformed wire checks |
 
 ## Design decision
 
@@ -55,20 +65,28 @@ lake build oracle
 python3 scripts/check_replay.py
 python3 scripts/check_compiler.py
 python3 scripts/check_bundle.py
+python3 scripts/check_assembly.py
+python3 scripts/check_repair.py
 bash scripts/gate.sh
 ```
 
-The project pins Lean 4.34.1 and has no external Lean dependencies. `lake build` checks the models, specification, and proofs. `lake exe oracle` reads one version 1 request per line and immediately writes one response per line. It accepts `render`, `check_bundle`, `decide`, `begin`, and `settle`. Each request carries its full input. A malformed request writes a diagnostic to stderr and exits 1 without an answer for that request.
+The project pins Lean 4.34.1 and has no external Lean dependencies. `lake build` checks the models, specification, and proofs. `lake exe oracle` reads one version 1 request per line and writes one response per line.
 
-The gate audits all 26 proofs, builds the oracle, and checks [12 lifecycle frames](vectors/lifecycle.ndjson), [15 compiler frames](vectors/compiler.ndjson), and [15 bundle frames](vectors/bundle.ndjson) against the models and design examples. It rejects 17 malformed lifecycle, 39 malformed compiler, and 36 malformed bundle requests, including duplicate and escaped duplicate keys, and checks equivalent numeric schema versions. It also checks 100 reordered compiler inputs and 1,638 bundle combinations against independent expectations. All checks pass.
+The compiler wires handle `render` and `assemble`. The bundle wire handles `check_bundle`. The repair wire handles `repair_propose`, `repair_begin`, and `repair_settle`. The lifecycle wire handles `decide`, `begin`, and `settle`. Each request carries its full input. A malformed request writes a diagnostic to stderr and exits 1 without a response.
 
-`PluginSdk.Lifecycle.model`, `PluginSdk.Compiler.model`, and `PluginSdk.Compiler.Bundle.model` have their declared `Interface` types. Each property requires a theorem with the same basename under its module's `Proofs` namespace. For example, `Lifecycle.Proofs.P1_unowned_never_starts` proves `Lifecycle.P1_unowned_never_starts Lifecycle.model`, without additional assumptions or parameters.
+The gate audits all 41 proofs and builds the oracle. It checks 12 lifecycle frames, 15 render frames, 15 bundle frames, 6 assembly frames, and 18 repair frames.
+
+It rejects 17 malformed lifecycle, 39 malformed render, 36 malformed bundle, 38 malformed assembly, and 31 malformed repair requests. These checks include duplicate keys, escaped duplicate keys, and numeric schema versions.
+
+The gate also checks 100 reordered render inputs and 1,638 bundle combinations. Assembly adds 40 permutations and 819 path combinations. The gate compares these generated cases with independent expectations.
+
+`PluginSdk.Lifecycle.model`, `PluginSdk.Compiler.model`, `PluginSdk.Compiler.Bundle.model`, `PluginSdk.Compiler.Assembly.model`, and `PluginSdk.Repair.model` have their declared `Interface` types. Each property requires a theorem with the same basename under its module's `Proofs` namespace. For example, `Lifecycle.Proofs.P1_unowned_never_starts` proves `Lifecycle.P1_unowned_never_starts Lifecycle.model`, without additional assumptions or parameters.
 
 The gate rejects missing certificates, mismatched theorem types, non-theorem certificates, `sorryAx`, and custom axioms. It audits dependencies of every loaded declaration under `PluginSdk`; only `propext`, `Classical.choice`, and `Quot.sound` are allowed. This follows Lean's [proof validation guidance](https://lean-lang.org/doc/reference/latest/ValidatingProofs/).
 
 Temporary checks passed 1,800 lifecycle oracle request/response pairs and all 15 compiler frames through the existing Effect 4.0.5 schemas with strict decoding and round trips. They exercised every lifecycle outcome variant. Seven generated portable documents passed the pinned Agent Plugins schemas. A 176-path corpus agreed between the Effect schema, relative-path grammar, and Lean decoder. The oracle also answered while stdin remained open. These checks establish wire compatibility; the complete JSON codec has no formal correctness proof.
 
-The TypeScript suite compares all committed example/vector frames, generated lifecycle traces, 1,920 rendering permutations, 48 Schema-generated normalized MCP cases and 1,638 bundle combinations. It strictly decodes oracle responses and checks the actual TypeScript model results. Boundary and native I/O checks remain separate from these formal properties.
+The existing TypeScript suite compares committed example/vector frames, generated lifecycle traces, 1,920 rendering permutations, 48 Schema-generated normalized MCP cases, and 1,638 bundle combinations. The assembly and repair suites run separately. The repair suite compares 18 committed vectors and 40 generated requests with the oracle. Each suite strictly decodes oracle responses and checks the TypeScript model result. Boundary and native I/O checks remain separate from these formal properties.
 
 ## Representation and proof limits
 

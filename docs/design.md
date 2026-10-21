@@ -2,7 +2,7 @@
 
 pluginsdk lets an author describe a plugin once, build a package, inspect a proposed installation change, and apply that change. The caller learns the plugin's contents and the destination. Native manifests, registration commands, ownership records, and recovery stay inside the modules that own them.
 
-The interfaces and schemas are specified in Effect and [Lean](../spec/README.md). The compiler, bundle checks and lifecycle models have 26 checked proofs. The TypeScript implementations conform to their oracle; Node layers supply source capture and qualified native CLI execution. [Runtime obligations](runtime.md) and [acceptance](acceptance.md) describe the I/O evidence and its limits.
+The interfaces and schemas are specified in Effect and [Lean](../spec/README.md). The models have 41 checked properties. They cover lifecycle P1-P14, rendering B1-B8, bundle checks V1-V4, asset assembly A1-A7, and repair review R1-R8. The TypeScript models conform to their oracle. Node layers supply source capture and qualified native CLI execution. [Runtime obligations](runtime.md) and [acceptance](acceptance.md) describe the I/O evidence and its limits.
 
 ## Caller shape
 
@@ -79,7 +79,7 @@ Claude Code and Codex justify internal host-specific commands and inspection bec
 | [Lifecycle](../contracts/Lifecycle.ts) | Pure installation decisions and the NDJSON oracle contract | No filesystem, subprocesses, clock, random IDs, or host discovery |
 | [CompilerModel](../contracts/CompilerModel.ts) | Pure rendering, bundle checks, and their oracle contracts | Source I/O, raw bytes, YAML parsing, JSON encoding, and hashing |
 
-`Lifecycle` and `CompilerModel` are internal model contracts. Product callers use `Installer` and `Compiler`. The package exports these services, authoring schemas and Node layers; their internal stages are not public operations.
+`Lifecycle`, `CompilerModel`, `Assembly`, and `Repair` are internal model contracts. Product callers still use the two public services, `Installer` and `Compiler`. These contracts add no public operations. The repair model defines reviewed cleanup decisions only. Repair-specific native inspection and execution remain unimplemented.
 
 ## Compiler interface
 
@@ -121,9 +121,13 @@ The pure protocol is specified in [LDD](ldd.md). Its execution order is part of 
 4. Inspect actual state and call `settle`.
 5. Persist the resulting journal before returning a completed result.
 
-A retry of a pending plan performs inspection and settlement. It never repeats the native change. `Planning.pending` returns the retained plan so the caller can resume it after a restart. A different plan cannot replace a pending operation.
+A retry of a pending plan performs inspection and settlement. It never repeats the native change. `Planning.pending` returns the retained plan so the caller can resume it after a restart. A different plan cannot replace a pending operation. The pure repair model also makes a retry of the current cleanup inspection-only. A new cleanup requires a distinct reviewed plan ID.
 
-An observed desired state completes only when its operation identity and payload match the pending plan. A proven unchanged before-state completes as `not_applied`: ownership stays the same and the journal retains the attempted plan, change, and before-state. Other observations retain `Pending` and return `uncertain`. A complete observation also requires evidence that an earlier native command can no longer commit later. An orphaned process or an asynchronous registration with an unknown outcome yields `unknown`, even if current files look unchanged. That state blocks new changes; conflict repair is a later designed operation, not an automatic overwrite.
+An observed desired state completes only when its operation identity and payload match the pending plan. A proven unchanged before-state completes as `not_applied`. Ownership stays the same, and the journal retains the attempted plan, change, and before-state. Other observations retain `Pending` and return `uncertain`.
+
+A complete observation also requires evidence that an earlier native command can no longer commit later. An orphaned process or an asynchronous registration with an unknown outcome yields `unknown`, even if current files look unchanged. That state blocks new changes.
+
+The separate [repair review contract](../contracts/Repair.ts) allows a fresh cleanup review only for quiescent proven absence or an orphaned owned marketplace with no installed plugins. Proven absence authorizes no native command. The marketplace residual authorizes only marketplace removal. Repair-specific native inspection, cleanup, and durable repair remain unimplemented.
 
 Completed removals retain the last plan ID as a tombstone. Completed installations retain it in their receipt. Completed attempts that made no change retain it in `not_applied`. A retry acknowledges the latest completed operation while native state still matches its recorded outcome. `not_applied` means the requested change did not happen; callers must distinguish it from installed or removed completion.
 
@@ -158,6 +162,6 @@ The latest completed ID never starts a native change again. This is a bounded re
 - Ground: previous contents archived; live lcode LDD guidance and current Effect documentation inspected.
 - Sketch: alternative caller interfaces compared; Effect schemas, Lean model types, and formal property obligations written.
 - Agree: this design is the review artifact requested by the user.
-- Model: compiler, bundle-check, and lifecycle functions, all 26 proofs, and the Lean oracle exist. Their vectors match the design examples.
-- Implement: conforming TypeScript models, byte compilation and qualified native integrations exist; the acceptance record names their checks.
+- Model: lifecycle, rendering, bundle-check, assembly, and repair-review functions have 41 checked properties. The Lean oracle and matching vectors exist.
+- Implement: conforming TypeScript models, byte compilation, and qualified native integrations exist. The current `npm run check` passed with 43 portable tests and zero Effect diagnostics. The strengthened lstack lifecycle pilot passed on Claude Code 2.1.304 in user and project scopes and Codex 0.163.0 in user scope. A separate native regression run passed 23 tests, and the installed-package lifecycle check passed. Runtime repair is not implemented.
 - Scrap: revise a contract when a Lean counterexample or native evidence contradicts it.

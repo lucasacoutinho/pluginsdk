@@ -2,6 +2,7 @@ import { basename } from "node:path"
 import { Schema } from "effect"
 import { parseDocument } from "yaml"
 import { SkillName } from "../../contracts/CompilerModel.ts"
+import type { Format } from "../../contracts/Compiler.ts"
 
 const Frontmatter = Schema.Struct({
   name: SkillName,
@@ -12,7 +13,18 @@ const Frontmatter = Schema.Struct({
   "allowed-tools": Schema.optionalKey(Schema.String)
 })
 
-export const skillName = (directory: string, bytes: Uint8Array): SkillName => {
+const ExtendedFrontmatter = Schema.Struct({
+  ...Frontmatter.fields,
+  metadata: Schema.optionalKey(Schema.JsonObject)
+})
+const frontmatterByFormat = {
+  agent_plugins_v1: Frontmatter,
+  claude_code_v1: Frontmatter,
+  agent_plugins_v2: ExtendedFrontmatter,
+  claude_code_v2: ExtendedFrontmatter
+} satisfies Record<Format, Schema.Constraint>
+
+export const skillName = (directory: string, bytes: Uint8Array, format: Format): SkillName => {
   const text = new TextDecoder("utf-8", { fatal: true }).decode(bytes)
   if (!text.isWellFormed()) throw new SyntaxError("Skill contains invalid Unicode")
   const frontmatter = /^---\r?\n([\s\S]*?)\r?\n---(?:\r?\n|$)/.exec(text)?.[1]
@@ -20,7 +32,7 @@ export const skillName = (directory: string, bytes: Uint8Array): SkillName => {
   const document = parseDocument(frontmatter, { uniqueKeys: true, strict: true })
   if (document.errors.length > 0) throw new SyntaxError(document.errors.map((error) => error.message).join("; "))
   const metadata: unknown = document.toJS({ maxAliasCount: 0 })
-  const decoded = Schema.decodeUnknownSync(Frontmatter)(metadata)
+  const decoded = Schema.decodeUnknownSync(frontmatterByFormat[format])(metadata)
   if (decoded.name !== basename(directory)) throw new SyntaxError("Skill name must match its directory name")
   return decoded.name
 }

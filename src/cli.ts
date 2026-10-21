@@ -8,6 +8,7 @@ import {
   Bundle,
   BundleRejected,
   Compiler,
+  Format,
   SourceUnavailable,
   type BuildIssue,
   type BundleIssue
@@ -62,7 +63,10 @@ const buildIssueText = (issue: BuildIssue): string => Match.value(issue).pipe(
   Match.discriminatorsExhaustive("type")({
     invalid_metadata: (value) => `invalid ${value.field} metadata`,
     invalid_skill: (value) => `invalid skill at ${value.path}`,
+    invalid_asset: (value) => `invalid asset at ${value.path}`,
     path_collision: (value) => `path collision at ${value.path}`,
+    reserved_asset: (value) => `asset uses a native component path at ${value.path}`,
+    unsupported_feature: (value) => `${value.format} cannot preserve ${value.feature}`,
     source_escape: (value) => `source path escapes at ${value.path}`,
     unsupported_mcp: (value) => `unsupported MCP configuration for ${value.server}: ${value.reason.type}`
   })
@@ -267,7 +271,7 @@ const buildCommand = Command.make(
   {
     definition: Argument.String("definition.json"),
     root: Flag.String("root").pipe(Flag.withDefault("."), Flag.withDescription("Source root directory")),
-    format: Flag.Literals("format", ["agent_plugins_v1", "claude_code_v1"]).pipe(
+    format: Flag.Literals("format", Format.literals).pipe(
       Flag.withDefault("agent_plugins_v1"),
       Flag.withDescription("Native package format")
     ),
