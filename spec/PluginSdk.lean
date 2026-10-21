@@ -10,3 +10,5 @@ import PluginSdk.Repair.Proofs
 import PluginSdk.Repair.Wire
 import PluginSdk.Authorization.Proofs
 import PluginSdk.Authorization.Wire
+import PluginSdk.Catalog.Proofs
+import PluginSdk.Catalog.Wire

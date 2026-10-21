@@ -58,7 +58,14 @@ private def obligations : List (Name × Name × List Name) := [
     ``PluginSdk.Authorization.U5_scopes_and_application_required,
     ``PluginSdk.Authorization.U6_effective_role_grant_required,
     ``PluginSdk.Authorization.U7_complete_authorization_succeeds,
-    ``PluginSdk.Authorization.U8_revoked_grant_is_denied])
+    ``PluginSdk.Authorization.U8_revoked_grant_is_denied]),
+  (``PluginSdk.Catalog.Interface, `PluginSdk.Catalog.model, [
+    ``PluginSdk.Catalog.C1_registration_adds_only_absent_key,
+    ``PluginSdk.Catalog.C2_conflicting_identity_rejected,
+    ``PluginSdk.Catalog.C3_consistent_replay_unchanged,
+    ``PluginSdk.Catalog.C4_existing_bindings_preserved,
+    ``PluginSdk.Catalog.C5_resolution_selects_exact_artifact,
+    ``PluginSdk.Catalog.C6_available_artifact_resolves])
 ]
 
 private def standardAxioms : List Name := [``propext, ``Classical.choice, ``Quot.sound]

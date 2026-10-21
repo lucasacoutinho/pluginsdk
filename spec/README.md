@@ -1,10 +1,12 @@
 # Lean contract
 
-This is pluginsdk's formal model, following the [LDD loop](../docs/ldd.md) used by lcode. Lifecycle proves P1 through P14, rendering B1 through B8, and bundle checks V1 through V4. Asset assembly adds A1 through A7, repair review R1 through R8 and invocation authorization U1 through U8. The proof gate checks `49/49` properties.
+This is pluginsdk's formal model, following the [LDD loop](../docs/ldd.md) used by lcode. Lifecycle proves P1 through P14, rendering B1 through B8, and bundle checks V1 through V4. Asset assembly adds A1 through A7, repair review R1 through R8, invocation authorization U1 through U8 and catalog admission and selection C1 through C6. The proof gate checks `55/55` properties.
 
 The existing [TypeScript conformance suite](../test/conformance.test.ts) compares 4,210 requests with the oracle. The separate repair suite compares 18 vectors and 40 generated requests.
 
 The [authorization suite](../test/authorization.test.ts) compares 49 authored vectors, 120 generated combinations and a three-call revocation sequence. Its model receives trusted service evidence; it does not verify tokens or enforce a backend call.
+
+The [catalog suite](../test/catalog.test.ts) compares 41 independent vectors and 144 generated requests, then checks release promotion, enumeration order and schema rejection. C1-C6 prove immutable admission and exact artifact selection through the pure model. Persistence, artifact verification and distribution remain I/O obligations.
 
 | File | Defines |
 | --- | --- |
@@ -39,6 +41,9 @@ The [authorization suite](../test/authorization.test.ts) compares 49 authored ve
 | [Authorization/Types.lean](PluginSdk/Authorization/Types.lean), [Rules.lean](PluginSdk/Authorization/Rules.lean), [Properties.lean](PluginSdk/Authorization/Properties.lean) | Trusted facts, independent eligibility predicates and obligations U1 through U8 |
 | [Authorization/Model.lean](PluginSdk/Authorization/Model.lean), [Proofs.lean](PluginSdk/Authorization/Proofs.lean), [Wire.lean](PluginSdk/Authorization/Wire.lean) | Pure authorization, certificates for U1 through U8 and strict `authorize` wire |
 | [Authorization.ts](../contracts/Authorization.ts), [authorization.ts](../src/model/authorization.ts), [authorization.test.ts](../test/authorization.test.ts) | Effect schemas, conforming model and authorization checks |
+| [Catalog/Types.lean](PluginSdk/Catalog/Types.lean), [Rules.lean](PluginSdk/Catalog/Rules.lean), [Properties.lean](PluginSdk/Catalog/Properties.lean) | Release ledger, exact artifact correspondence and obligations C1 through C6 |
+| [Catalog/Model.lean](PluginSdk/Catalog/Model.lean), [Proofs.lean](PluginSdk/Catalog/Proofs.lean), [Wire.lean](PluginSdk/Catalog/Wire.lean) | Immutable admission, resolution, proof certificates and strict catalog wire |
+| [Catalog.ts](../contracts/Catalog.ts), [catalog.ts](../src/model/catalog.ts), [catalog.test.ts](../test/catalog.test.ts) | Effect schemas, conforming catalog model and independent oracle checks |
 | [WireJson.lean](PluginSdk/WireJson.lean) | Duplicate-key rejection and shared identity and contained-path decoders |
 | [Check.lean](scripts/Check.lean) | Required proof names, exact theorem types, and the axiom audit |
 | [check_replay.py](scripts/check_replay.py) | Replay examples, vector freshness, and malformed wire checks |
@@ -47,6 +52,7 @@ The [authorization suite](../test/authorization.test.ts) compares 49 authored ve
 | [check_assembly.py](scripts/check_assembly.py) | Assembly vectors, malformed wire checks, 40 permutations, and 819 path combinations |
 | [check_repair.py](scripts/check_repair.py) | Repair vectors and malformed wire checks |
 | [check_authorization.py](scripts/check_authorization.py) | Authored authorization vectors, malformed evidence and JavaScript numeric semantics |
+| [check_catalog.py](scripts/check_catalog.py) | Independent catalog vectors and malformed release, target and provenance inputs |
 
 ## Design decision
 
@@ -79,15 +85,15 @@ bash scripts/gate.sh
 
 The project pins Lean 4.34.1 and has no external Lean dependencies. `lake build` checks the models, specification, and proofs. `lake exe oracle` reads one version 1 request per line and writes one response per line.
 
-The compiler wires handle `render` and `assemble`. The bundle wire handles `check_bundle`. The repair wire handles `repair_propose`, `repair_begin`, and `repair_settle`. Authorization handles `authorize`. The lifecycle wire handles `decide`, `begin`, and `settle`. Each request carries its full input. A malformed request writes a diagnostic to stderr and exits 1 without a response.
+The compiler wires handle `render` and `assemble`. The bundle wire handles `check_bundle`. The repair wire handles `repair_propose`, `repair_begin`, and `repair_settle`. Authorization handles `authorize`; catalog handles `catalog_register` and `catalog_resolve`. The lifecycle wire handles `decide`, `begin`, and `settle`. Each request carries its full input. A malformed request writes a diagnostic to stderr and exits 1 without a response.
 
-The gate audits all 49 proofs and builds the oracle. It checks 12 lifecycle frames, 15 render frames, 15 bundle frames, 6 assembly frames, 18 repair frames and 49 authorization vectors.
+The gate audits all 55 proofs and builds the oracle. It checks 12 lifecycle frames, 15 render frames, 15 bundle frames, 6 assembly frames, 18 repair frames, 49 authorization vectors and 41 catalog vectors.
 
-It rejects 17 malformed lifecycle, 39 malformed render, 36 malformed bundle, 38 malformed assembly, 31 malformed repair and 277 malformed authorization requests. These checks include duplicate keys, escaped duplicate keys and numeric schema versions. Authorization also checks safe integer milliseconds using JavaScript binary64 decoding.
+It rejects 17 malformed lifecycle, 39 malformed render, 36 malformed bundle, 38 malformed assembly, 31 malformed repair, 277 malformed authorization and 481 malformed catalog requests. These checks include duplicate keys, escaped duplicate keys and numeric schema versions. Authorization also checks safe integer milliseconds using JavaScript binary64 decoding.
 
 The gate also checks 100 reordered render inputs and 1,638 bundle combinations. Assembly adds 40 permutations and 819 path combinations. The gate compares these generated cases with independent expectations.
 
-`PluginSdk.Lifecycle.model`, `PluginSdk.Compiler.model`, `PluginSdk.Compiler.Bundle.model`, `PluginSdk.Compiler.Assembly.model`, `PluginSdk.Repair.model` and `PluginSdk.Authorization.model` have their declared `Interface` types. Each property requires a theorem with the same basename under its module's `Proofs` namespace. For example, `Lifecycle.Proofs.P1_unowned_never_starts` proves `Lifecycle.P1_unowned_never_starts Lifecycle.model`, without additional assumptions or parameters.
+`PluginSdk.Lifecycle.model`, `PluginSdk.Compiler.model`, `PluginSdk.Compiler.Bundle.model`, `PluginSdk.Compiler.Assembly.model`, `PluginSdk.Repair.model`, `PluginSdk.Authorization.model` and `PluginSdk.Catalog.model` have their declared `Interface` types. Each property requires a theorem with the same basename under its module's `Proofs` namespace. For example, `Lifecycle.Proofs.P1_unowned_never_starts` proves `Lifecycle.P1_unowned_never_starts Lifecycle.model`, without additional assumptions or parameters.
 
 The gate rejects missing certificates, mismatched theorem types, non-theorem certificates, `sorryAx`, and custom axioms. It audits dependencies of every loaded declaration under `PluginSdk`; only `propext`, `Classical.choice`, and `Quot.sound` are allowed. This follows Lean's [proof validation guidance](https://lean-lang.org/doc/reference/latest/ValidatingProofs/).
 

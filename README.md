@@ -2,16 +2,18 @@
 
 Typed plugin authoring, reproducible packages, and reviewed installation changes across agent apps.
 
+Run the [Claude Code and Codex example](examples/README.md): `npm run example:cross-client`. One definition produces both native packages. The command installs them in isolated homes, verifies native discovery and identical shared content, then verifies removal. The [SDK usage sample](examples/sdk.ts) shows the build and plan calls; native verification lives in `scripts/`.
+
 The [organization design](docs/organization-design.md) describes central release management, distribution and access policies for existing application integrations across Claude, ChatGPT, Cursor and Grok Bot. Existing repositories and deployment infrastructure remain the starting point; plugin/MCP code management is a possible future extension.
 
-The alpha builds existing Agent Skills, supporting files and remote HTTP MCP definitions for Claude Code and Codex. Its Effect implementation follows 49 Lean proofs and a running conformance oracle. The previous checkout remains in the workspace's `.references` archive, which is excluded from distribution.
+The alpha builds existing Agent Skills, supporting files and remote HTTP MCP definitions for Claude Code and Codex. Its Effect implementation follows 55 Lean proofs and a running conformance oracle. The previous checkout remains in the workspace's `.references` archive, which is excluded from distribution.
 
 Start with the [design](docs/design.md). The contracts define two Effect modules:
 
 - [Compiler](contracts/Compiler.ts): `build` turns a [Plugin](contracts/Plugin.ts) into a self-contained package.
 - [Installer](contracts/Installer.ts): `plan` describes an installation change, and `apply` executes a reviewed plan.
 
-[The Lean project](spec/README.md) proves lifecycle P1-P14, rendering B1-B8, bundle checks V1-V4, asset assembly A1-A7, repair R1-R8 and invocation authorization U1-U8. They run through one NDJSON oracle. The proof gate passes `49/49`; [explicit repair](docs/repair-design.md) has qualified native acceptance for proven absence and orphaned SDK marketplaces. The [authorization model](docs/authorization-design.md) is an internal foundation; token verification, policy deployment and backend enforcement remain integration work. The [LDD specification](docs/ldd.md) describes the development order.
+[The Lean project](spec/README.md) proves lifecycle P1-P14, rendering B1-B8, bundle checks V1-V4, asset assembly A1-A7, repair R1-R8, invocation authorization U1-U8 and release catalog C1-C6. They run through one NDJSON oracle. The proof gate passes `55/55`; [explicit repair](docs/repair-design.md) has qualified native acceptance for proven absence and orphaned SDK marketplaces. The [authorization](docs/authorization-design.md) and [catalog](docs/catalog-design.md) models are internal foundations; authentication, artifact verification, storage and organization distribution remain integration work. The [LDD specification](docs/ldd.md) describes the development order.
 
 [Lifecycle](contracts/Lifecycle.ts) and [CompilerModel](contracts/CompilerModel.ts) expose the pure models implemented with exhaustive Effect `Match`. The [conformance suite](test/conformance.test.ts) compares TypeScript with 4,210 decoded Lean oracle requests. [Effect conventions](docs/effect.md) cover the pinned toolchain, schemas, matching and optional devtools.
 

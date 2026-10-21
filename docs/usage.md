@@ -4,6 +4,37 @@ Build the included review skill, inspect the saved installation plan, then apply
 
 Run these commands from the repository root. The checkout includes [`examples/definition.json`](../examples/definition.json), the [review skill](../examples/skills/review/SKILL.md), and its [checklist](../examples/skills/review/references/checklist.txt).
 
+## Run both clients
+
+On Linux, with Node 24+, Claude Code 2.1.304 and Codex CLI 0.163.0 available:
+
+```sh
+npm ci
+npm run example:cross-client
+```
+
+The [example](../examples/README.md) uses one definition to build both native packages. It installs in isolated temporary homes, verifies fresh native skill discovery and identical shared bytes, checks replay, and removes the installations. Bundles and a report remain in `.pluginsdk/cross-client/`. It performs no model turns or provider authentication.
+
+## Install the example in each client
+
+After running the example, the bundles can be reviewed for installation in your regular configuration homes:
+
+```sh
+node dist/src/cli.js plan .pluginsdk/cross-client/claude_code.bundle.json \
+	--host claude_code --home "$HOME/.claude" \
+	--out .pluginsdk/cross-client/claude.plan.json
+node dist/src/cli.js show .pluginsdk/cross-client/claude.plan.json
+node dist/src/cli.js apply .pluginsdk/cross-client/claude.plan.json
+
+node dist/src/cli.js plan .pluginsdk/cross-client/codex.bundle.json \
+	--host codex --home "$HOME/.codex" \
+	--out .pluginsdk/cross-client/codex.plan.json
+node dist/src/cli.js show .pluginsdk/cross-client/codex.plan.json
+node dist/src/cli.js apply .pluginsdk/cross-client/codex.plan.json
+```
+
+Review each `show` result before its `apply`. The configuration directories must exist. A ready plan names the client, destination, native version, bundle digest and exact file paths. In fresh client sessions the installed plugin supplies the `review` skill with its shared checklist. Applying changes to your regular homes is separate from the isolated demonstration above.
+
 ## Build the bundle
 
 Install the locked dependencies and compile the CLI:

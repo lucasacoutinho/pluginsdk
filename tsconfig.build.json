@@ -1,5 +1,5 @@
 {
   "extends": "./tsconfig.json",
   "compilerOptions": { "rootDir": ".", "outDir": "dist" },
-  "include": ["contracts/**/*.ts", "src/**/*.ts", "scripts/pilot-lstack.ts", "scripts/pilot/**/*.ts"]
+  "include": ["contracts/**/*.ts", "src/**/*.ts", "scripts/pilot-lstack.ts", "scripts/pilot/**/*.ts", "scripts/verify-cross-client.ts", "examples/**/*.ts"]
 }
