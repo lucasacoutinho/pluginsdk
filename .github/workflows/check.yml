@@ -30,6 +30,7 @@ jobs:
       - run: npm ci
 
       - uses: leanprover/lean-action@v1
+        if: runner.environment == 'github-hosted'
         with:
           lake-package-directory: spec
           auto-config: false
