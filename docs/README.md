@@ -16,4 +16,4 @@ Start with [Get started](getting-started.md). The tutorial builds a release note
 | Check client and platform support | [Supported clients](compatibility.md) |
 | Resolve a failed review or installation | [Troubleshooting](troubleshooting.md) |
 
-The [examples](../examples/README.md) show the files a plugin author maintains. The [internals](internals/README.md) describe how PluginSDK is implemented and verified.
+The [examples repository](https://github.com/lucasacoutinho/pluginsdk-examples) shows the files a plugin author maintains, including public and private marketplaces. The [internals](internals/README.md) describe how PluginSDK is implemented and verified.

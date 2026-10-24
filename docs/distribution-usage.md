@@ -41,7 +41,7 @@ For a Claude Code or Codex project installation, use `"type": "project"` and add
 ## Review the release
 
 ```sh
-node dist/src/cli.js distribution plan .pluginsdk/releases/platform-tools-1.0.0.release.json \
+npx pluginsdk distribution plan .pluginsdk/releases/platform-tools-1.0.0.release.json \
 	--request .pluginsdk/destinations.json --catalog .pluginsdk/catalog \
 	--out .pluginsdk/distribution.plan.json
 ```
@@ -53,7 +53,7 @@ A `blocked` result explains the affected destinations and exits with status 1. N
 ## Apply the review
 
 ```sh
-node dist/src/cli.js distribution apply .pluginsdk/distribution.plan.json \
+npx pluginsdk distribution apply .pluginsdk/distribution.plan.json \
 	--state .pluginsdk/distribution-state
 ```
 

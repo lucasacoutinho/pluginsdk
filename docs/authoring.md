@@ -54,7 +54,7 @@ Files below that directory are included automatically. Put templates, runbooks a
 
 Use `assets` for files outside skill directories, such as an existing MCP server or hook program. All captured content must stay within the source root. Source paths cannot contain `..` segments.
 
-The [release notes example](../examples/release-notes/) shows a complete skill and template. The [platform tools example](../examples/platform-tools/) shares two workflows across clients.
+The [release notes example](https://github.com/lucasacoutinho/pluginsdk-examples/tree/main/release-notes) shows a complete skill and template. The [platform tools example](https://github.com/lucasacoutinho/pluginsdk-examples/tree/main/platform-tools) shares two workflows across clients. The [Schemaloom plugin](https://github.com/lucasacoutinho/pluginsdk-examples/tree/main/public-marketplace/schemaloom) bundles a stdio MCP server.
 
 ## Executable files
 
