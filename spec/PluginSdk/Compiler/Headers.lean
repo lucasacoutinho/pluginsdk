@@ -20,7 +20,7 @@ def valueProblems (format : Format) (header : String) : HeaderValue → List Mcp
   | .literal text =>
     if format = .claudeCodeV1 ∧ HasExpansion text then [.literalExpansion (asciiFold header)] else []
   | .environment _ literalPrefix =>
-    (if format = .agentPluginsV1 then [.environmentReference (asciiFold header)] else []) ++
+    (if format ≠ .claudeCodeV1 then [.environmentReference (asciiFold header)] else []) ++
     (if format = .claudeCodeV1 ∧ HasExpansion literalPrefix then [.literalExpansion (asciiFold header)] else [])
 
 def headerProblems (format : Format) (source : RemoteMcp) : List McpProblem :=
@@ -41,7 +41,7 @@ theorem valueProblems_meaning (format : Format) (header : String) (value : Heade
 
 theorem mem_valueProblems_environment (format : Format) (name header : String) (value : HeaderValue) :
     .environmentReference header ∈ valueProblems format name value ↔
-      format = .agentPluginsV1 ∧ ∃ environmentName literalPrefix,
+      format ≠ .claudeCodeV1 ∧ ∃ environmentName literalPrefix,
         value = .environment environmentName literalPrefix ∧ header = asciiFold name := by
   cases format <;> cases value <;> simp [valueProblems, and_comm]
   all_goals split <;> simp_all

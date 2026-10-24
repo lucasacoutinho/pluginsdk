@@ -8,8 +8,8 @@ import { Effect, Match, Schema } from "effect"
 import { expect } from "vitest"
 import { BuildRequest, Bundle, Compiler } from "../../contracts/Compiler.ts"
 import { ApplyOutcome, Planning, type ApplyOutcome as ApplyOutcomeValue, type Host as HostValue, type Planning as PlanningValue, type ReadyPlan, type Target } from "../../contracts/Installer.ts"
-import { StoredState, type Execution } from "../../src/installer/records.ts"
-import { targetPaths } from "../../src/installer/target.ts"
+import { StoredState, type Execution } from "../../src/installer/lifecycle/records.ts"
+import { targetPaths } from "../../src/installer/target/resolve.ts"
 import { PluginSdkLive } from "../../src/node.ts"
 
 export type QualifiedHost = Extract<HostValue, "claude_code" | "codex">
@@ -102,7 +102,8 @@ const launch = (args: ReadonlyArray<string>, env: NodeJS.ProcessEnv, instrument 
 const processGroup = (execution: Execution): number => Match.value(execution).pipe(
   Match.discriminatorsExhaustive("type")({
     prepared: () => { throw new Error("Expected the native worker to retain its process group") },
-    running: (value) => value.group
+    running: (value) => value.group,
+    windows_running: () => { throw new Error("Linux repair acceptance cannot inspect a Windows job witness") }
   })
 )
 

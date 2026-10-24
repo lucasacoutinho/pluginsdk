@@ -5,7 +5,7 @@ import { expect, it } from "@effect/vitest"
 import { Match, Schema } from "effect"
 import * as Catalog from "../contracts/Catalog.ts"
 import { Format } from "../contracts/Compiler.ts"
-import { register, resolve } from "../src/model/catalog.ts"
+import { register, resolve } from "../src/catalog/model.ts"
 
 const oraclePath = fileURLToPath(new URL("../spec/.lake/build/bin/oracle", import.meta.url))
 const vectorPath = fileURLToPath(new URL("../spec/vectors/catalog.ndjson", import.meta.url))

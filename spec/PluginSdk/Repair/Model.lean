@@ -20,6 +20,9 @@ def changeFor (state : Snapshot) : Change :=
   match state.residual with
   | .absent => .none
   | .marketplace => .removeMarketplace
+  | .companions => .removeCompanions
+  | .marketplaceAndCompanions => .removeMarketplaceAndCompanions
+  | .localPackage => .archiveLocal
 
 def rejectFresh (input : BeginInput) (expectedPending : PlanId) : BeginResult :=
   if input.before.pending ≠ expectedPending then

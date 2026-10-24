@@ -24,6 +24,16 @@ inductive PackageFormat where
   | claudeCodeV1
   | agentPluginsV2
   | claudeCodeV2
+  | agentPluginsV3
+  | claudeCodeV3
+  | claudeCodeV4
+  | codexPluginV1
+  | claudeCodeV5
+  | codexPluginV2
+  | claudeCodePortableV1
+  | codexPluginPortableV1
+  | claudeCodePortableV2
+  | codexPluginPortableV2
   deriving DecidableEq, Repr
 
 structure FormatDigests where
@@ -31,6 +41,16 @@ structure FormatDigests where
   claudeCodeV1 : Option String
   agentPluginsV2 : Option String
   claudeCodeV2 : Option String
+  agentPluginsV3 : Option String
+  claudeCodeV3 : Option String
+  claudeCodeV4 : Option String
+  codexPluginV1 : Option String
+  claudeCodeV5 : Option String
+  codexPluginV2 : Option String
+  claudeCodePortableV1 : Option String
+  codexPluginPortableV1 : Option String
+  claudeCodePortableV2 : Option String
+  codexPluginPortableV2 : Option String
   deriving DecidableEq, Repr
 
 inductive ReleaseContents where

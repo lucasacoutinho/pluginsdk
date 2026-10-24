@@ -5,6 +5,9 @@ namespace PluginSdk.Repair
 inductive Residual where
   | absent
   | marketplace
+  | companions
+  | marketplaceAndCompanions
+  | localPackage
   deriving DecidableEq, Repr
 
 structure Snapshot where
@@ -61,6 +64,9 @@ structure BeginInput where
 inductive Change where
   | none
   | removeMarketplace
+  | removeCompanions
+  | removeMarketplaceAndCompanions
+  | archiveLocal
   deriving DecidableEq, Repr
 
 inductive PlanRejection where

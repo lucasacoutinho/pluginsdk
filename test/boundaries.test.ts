@@ -8,7 +8,7 @@ import { Directory, PackagePath, PluginId } from "../contracts/Plugin.ts"
 import { bundleDigest, planId } from "../src/internal/identity.ts"
 import { CompilerLive } from "../src/compiler/index.ts"
 import { InstallerLive } from "../src/installer/index.ts"
-import { snapshotPlan, snapshotRequest } from "../src/installer/plan.ts"
+import { snapshotPlan, snapshotRequest } from "../src/installer/lifecycle/plans.ts"
 
 const CompilerTest = Layer.provideMerge(CompilerLive, NodeServices.layer)
 
@@ -162,6 +162,11 @@ it.effect("Compiler.build snapshots mutable request values before real filesyste
     })
     const docs = request.plugin.mcp["docs"]
     if (docs === undefined) throw new Error("Expected docs endpoint in test request")
+    const url = Match.value(docs).pipe(
+      Match.when({ url: Match.defined }, (source) => source.url),
+      Match.when({ type: "stdio" }, () => { throw new Error("Expected a remote endpoint in test request") }),
+      Match.exhaustive
+    )
 
     const fiber = yield* buildOutcome(request).pipe(Effect.provide(gatedCompiler), Effect.forkChild)
     yield* Deferred.await(entered)
@@ -173,7 +178,7 @@ it.effect("Compiler.build snapshots mutable request values before real filesyste
     })
     Object.assign(request.plugin, { skills: [PackagePath.make("skills/missing")] })
     Object.assign(request.plugin, { assets: [PackagePath.make("missing-license")] })
-    docs.url.hostname = "mutated.example"
+    url.hostname = "mutated.example"
     yield* Deferred.succeed(resume, undefined)
 
     const bundle = bundleFrom(yield* Fiber.join(fiber))

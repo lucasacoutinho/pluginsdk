@@ -1,28 +1,88 @@
-# pluginsdk
+# PluginSDK
 
-Typed plugin authoring, reproducible packages, and reviewed installation changes across agent apps.
+Build a plugin once for Claude Code and Codex. Keep its skills and MCP connections in one place, preview changes in your local clients, then publish the release to your team's marketplace.
 
-Run the [Claude Code and Codex example](examples/README.md): `npm run example:cross-client`. One definition produces both native packages. The command installs them in isolated homes, verifies native discovery and identical shared content, then verifies removal. The [SDK usage sample](examples/sdk.ts) shows the build and plan calls; native verification lives in `scripts/`.
+From a plugin directory:
 
-The [organization design](docs/organization-design.md) describes central release management, distribution and access policies for existing application integrations across Claude, ChatGPT, Cursor and Grok Bot. Existing repositories and deployment infrastructure remain the starting point; plugin/MCP code management is a possible future extension.
+```sh
+npx pluginsdk build
+npx pluginsdk preview
+npx pluginsdk publish
+```
 
-The alpha builds existing Agent Skills, supporting files and remote HTTP MCP definitions for Claude Code and Codex. Its Effect implementation follows 55 Lean proofs and a running conformance oracle. The previous checkout remains in the workspace's `.references` archive, which is excluded from distribution.
+`build` reads `definition.json`. `preview` installs a separate development copy in available local clients. `publish` sends the captured build to the [destination configured in that definition](docs/publishing.md).
 
-Start with the [design](docs/design.md). The contracts define two Effect modules:
+A platform team can maintain one plugin for its service catalog and deployment tools. Developers get the same incident and release workflows in either client. The existing applications keep their MCP servers and access policies.
 
-- [Compiler](contracts/Compiler.ts): `build` turns a [Plugin](contracts/Plugin.ts) into a self-contained package.
-- [Installer](contracts/Installer.ts): `plan` describes an installation change, and `apply` executes a reviewed plan.
+## Try it
 
-[The Lean project](spec/README.md) proves lifecycle P1-P14, rendering B1-B8, bundle checks V1-V4, asset assembly A1-A7, repair R1-R8, invocation authorization U1-U8 and release catalog C1-C6. They run through one NDJSON oracle. The proof gate passes `55/55`; [explicit repair](docs/repair-design.md) has qualified native acceptance for proven absence and orphaned SDK marketplaces. The [authorization](docs/authorization-design.md) and [catalog](docs/catalog-design.md) models are internal foundations; authentication, artifact verification, storage and organization distribution remain integration work. The [LDD specification](docs/ldd.md) describes the development order.
+From this checkout, with Node 24+ on Linux:
 
-[Lifecycle](contracts/Lifecycle.ts) and [CompilerModel](contracts/CompilerModel.ts) expose the pure models implemented with exhaustive Effect `Match`. The [conformance suite](test/conformance.test.ts) compares TypeScript with 4,210 decoded Lean oracle requests. [Effect conventions](docs/effect.md) cover the pinned toolchain, schemas, matching and optional devtools.
+```sh
+npm ci
+npm run build
+cd examples/release-notes
+npx pluginsdk build
+npx pluginsdk preview
+```
 
-The [compiler contract](docs/compiler.md) defines native layouts and header compatibility. The compiler captures bytes and executable bits, validates skills, rejects source escapes, and returns a content-addressed bundle. Portable headers are literal; Claude additionally supports explicit environment references.
+This builds and previews the [release notes plugin](examples/release-notes/) in both supported clients. The captured production packages are:
 
-[Identity encoding](docs/identity.md) defines bundle and plan preimages. Journal revisions retain completed attempts and distinguish replay from intentional replanning. The [replay examples](docs/examples/replay.ndjson) agree with the oracle's [generated vectors](spec/vectors/lifecycle.ndjson).
+```text
+.pluginsdk/build/claude_code.bundle.json
+.pluginsdk/build/codex.bundle.json
+```
 
-[Bundle acceptance](docs/bundle.md) defines imported-package checks and private byte snapshots. `Installer.plan` can report `BundleRejected`; callers do not coordinate another verification step.
+The plugin drafts release notes from the repository's Git history. You maintain its definition, skill and output template. PluginSDK generates the native packages.
 
-The initial native profiles qualify Linux, Claude Code 2.1.304 in user and project scope, and Codex CLI 0.163.0 in user scope. The [real lstack pilot](docs/pilot.md) passes installation, discovery, update and removal in all three environments, preserving all 34 skills and their supporting files. Grok Bot and Meta Muse return `DestinationUnsupported`; [host research](docs/host-research.md) records the missing management contracts.
+Follow [Get started](docs/getting-started.md) to use it in both clients and update the shared template.
 
-Follow the [usage guide](docs/usage.md) to build, review, apply and remove the example. `npm run check` runs Lean proofs, TypeScript, Effect diagnostics, lint, tests, and external package-consumer acceptance. `npm run test:native` adds isolated real-host lifecycle, discovery, MCP and crash-recovery checks. The [roadmap](docs/roadmap.md) records acceptance and release limits. The working package is `pluginsdk@0.1.0-alpha.0`, licensed under [MIT](LICENSE) and kept private; public registry publication is deferred.
+On Windows x64 with Node 24+, use Claude Code 2.1.304 or Codex CLI 0.163.0. Preview from the plugin directory:
+
+```sh
+npx pluginsdk preview --target claude_code
+npx pluginsdk preview --target codex
+```
+
+Windows supports skills, supporting files, remote HTTP MCP connections and bundled stdio MCP servers. Bundled servers require Node 24.18+ and user scope. `build` selects their portable packages automatically. See [Supported clients](docs/compatibility.md) for feature limits.
+
+## Connect your internal applications
+
+The [platform tools example](examples/platform-tools/) connects two existing MCP services and adds shared workflows:
+
+```json
+{
+	"id": "platform-tools",
+	"version": "1.0.0",
+	"description": "Investigate incidents and review release readiness.",
+	"skills": ["skills/triage-incident", "skills/release-readiness"],
+	"mcp": {
+		"services": { "url": "https://services.acme.internal/mcp", "headers": {} },
+		"deployments": { "url": "https://deployments.acme.internal/mcp", "headers": {} }
+	}
+}
+```
+
+Replace the URLs with your organization's endpoints. In the example directory, build both client packages:
+
+```sh
+cd examples/platform-tools
+npx pluginsdk build
+npx pluginsdk preview
+```
+
+The example also includes a Git `publish` destination. Replace its repository URL with your team's marketplace, then run `npx pluginsdk publish`. Update a workflow or endpoint once, increment the version, and build and publish again. Your services enforce each user's tool permissions.
+
+## Documentation
+
+- [Get started](docs/getting-started.md): build and use your first plugin.
+- [Define a plugin](docs/authoring.md): skills, MCP servers, hooks and agents.
+- [Publish a plugin](docs/publishing.md): configure the destination and release both packages.
+- [Install, update and remove](docs/usage.md): manage client installations.
+- [Manage plugins for a team](docs/teams.md): maintain integrations across applications.
+- [Supported clients](docs/compatibility.md): versions, platforms and feature limits.
+- [Examples](examples/README.md): runnable release notes and an internal operations plugin.
+
+PluginSDK is a private MIT-licensed alpha. These commands work from this checkout or an environment where the CLI is installed. Public npm distribution remains deferred. Installation support covers the [listed client versions and platforms](docs/compatibility.md). ChatGPT, Cursor, Grok Bot and Muse adapters are not available.
+
+Contributors can find architecture, Effect conventions, Lean specifications and validation records in [docs/internals](docs/internals/README.md).

@@ -7,7 +7,7 @@ import subprocess
 
 SPEC = Path(__file__).resolve().parents[1]
 ORACLE = SPEC / ".lake/build/bin/oracle"
-EXAMPLES = SPEC.parent / "docs/examples/replay.ndjson"
+EXAMPLES = SPEC.parent / "docs/internals/examples/replay.ndjson"
 VECTORS = SPEC / "vectors/lifecycle.ndjson"
 
 

@@ -75,7 +75,7 @@ export const Settlement = Schema.Union([
 ]).pipe(Schema.toTaggedUnion("type"))
 export type Settlement = typeof Settlement.Type
 
-export { decide, begin, settle } from "../src/model/lifecycle.ts"
+export { decide, begin, settle } from "../src/installer/lifecycle/model.ts"
 
 export const OracleRequest = Schema.Union([
   Schema.Struct({ schema: Schema.Literal(1), type: Schema.Literal("decide"), input: PlanningInput }),

@@ -31,9 +31,16 @@ def manifestFile : Format → PackagePath
       by simp; unfold SafeSegment; decide,
       by exact Or.inl (by decide)⟩
 
+  | .codexPluginV1 =>
+    ⟨".codex-plugin/plugin.json", ".codex-plugin", ["plugin.json"], rfl,
+      by unfold SafeSegment; decide,
+      by simp; unfold SafeSegment; decide,
+      by exact Or.inl (by decide)⟩
+
 def mcpFile : Format → PackagePath
   | .agentPluginsV1 => packageFile "mcp.json" (by unfold SafeSegment; decide) (by exact Or.inl (by decide))
   | .claudeCodeV1 => packageFile ".mcp.json" (by unfold SafeSegment; decide) (by exact Or.inl (by decide))
+  | .codexPluginV1 => packageFile ".mcp.json" (by unfold SafeSegment; decide) (by exact Or.inl (by decide))
 
 theorem manifestFile_value (format : Format) : (manifestFile format).value = manifestPath format := by
   cases format <;> rfl

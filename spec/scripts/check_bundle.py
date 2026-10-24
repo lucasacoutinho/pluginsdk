@@ -5,7 +5,7 @@ import json
 from check_replay import SPEC, execute, replay
 
 
-EXAMPLES = SPEC.parent / "docs/examples/bundle.ndjson"
+EXAMPLES = SPEC.parent / "docs/internals/examples/bundle.ndjson"
 VECTORS = SPEC / "vectors/bundle.ndjson"
 
 

@@ -19,7 +19,7 @@ import {
 import { bundleDigest, commitment, fileDigest, sha256 } from "../src/internal/identity.ts"
 import { canonicalJson, parseJson } from "../src/internal/json.ts"
 import { CompilerLive } from "../src/compiler/index.ts"
-import { validateBundle } from "../src/compiler/native.ts"
+import { validateBundle } from "../src/compiler/package/native.ts"
 
 const CompilerTest = Layer.provideMerge(CompilerLive, NodeServices.layer)
 

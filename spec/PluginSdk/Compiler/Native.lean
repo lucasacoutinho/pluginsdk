@@ -15,6 +15,7 @@ theorem manifest_native (input : RenderInput) : NativeManifest input (manifest i
     · apply object_field keys
       simp [manifestRows, schemaRows, format]
     · trivial
+    · trivial
   all_goals apply object_field keys; simp [manifestRows]
 
 theorem headerRows_keys (source : RemoteMcp) :
@@ -22,15 +23,27 @@ theorem headerRows_keys (source : RemoteMcp) :
   simp [headerRows, List.map_map, Function.comp_def]
 
 theorem serverRows_keys (format : Format) (source : RemoteMcp) :
-    ((serverRows format source).map Prod.fst).Nodup := by simp [serverRows]
+    ((serverRows format source).map Prod.fst).Nodup := by
+  cases format <;> simp [serverRows, headerKey]
 
 theorem server_native (format : Format) (source : RemoteMcp) :
     NativeServer format source (object (serverRows format source)).value := by
   refine ⟨?_, ?_, ?_, (object (headerRows source)).value, ?_, ?_⟩
-  · simpa [serverRows] using object_keys (serverRows format source)
-  · apply object_field (serverRows_keys ..); simp [serverRows]
-  · apply object_field (serverRows_keys ..); simp [serverRows]
-  · apply object_field (serverRows_keys ..); simp [serverRows]
+  · have shape := object_keys (serverRows format source)
+    cases format <;> simpa [serverRows, serverKeys, headerKey] using shape
+  · intro notCodex
+    cases format with
+    | agentPluginsV1 =>
+        apply object_field (serverRows_keys ..)
+        simp [serverRows]
+    | claudeCodeV1 =>
+        apply object_field (serverRows_keys ..)
+        simp [serverRows]
+    | codexPluginV1 => exact absurd rfl notCodex
+  · apply object_field (serverRows_keys ..)
+    cases format <;> simp [serverRows, headerKey]
+  · apply object_field (serverRows_keys ..)
+    cases format <;> simp [serverRows, headerKey]
   · rw [← headerRows_keys]
     exact object_keys _
 
@@ -51,6 +64,7 @@ theorem mcp_native (input : RenderInput) (normalized : Normalized input) (presen
     · apply object_field (mcpRows_keys _)
       simp [mcpRows, schemaRows, format]
     · trivial
+    · trivial
   · refine ⟨(object (input.mcp.map fun (name, source) =>
       (name, (object (serverRows input.format source)).value))).value, ?_, ?_, ?_⟩
     · apply object_field (mcpRows_keys _); simp [mcpRows]
@@ -64,7 +78,7 @@ theorem mcp_native (input : RenderInput) (normalized : Normalized input) (presen
 theorem mcp_header (input : RenderInput) (normalized : Normalized input)
     {server : String} {source : RemoteMcp} (sourceMember : (server, source) ∈ input.mcp)
     {header : String} {value : HeaderValue} (headerMember : (header, value) ∈ source.headers) :
-    HeaderAt (mcp input) server header (headerText value) := by
+    HeaderAt input.format (mcp input) server header (headerText value) := by
   refine ⟨(object (input.mcp.map fun (name, source) =>
       (name, (object (serverRows input.format source)).value))).value,
     (object (serverRows input.format source)).value, (object (headerRows source)).value, ?_, ?_, ?_, ?_⟩

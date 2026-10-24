@@ -1,6 +1,6 @@
 import { Schema } from "effect"
 import { BundleCheckIssue, BundleDigest, Format, PathCollision, UnsupportedMcp } from "./Compiler.ts"
-import { PackagePath, Plugin, RemoteMcp } from "./Plugin.ts"
+import { McpName, PackagePath, Plugin, RemoteMcp } from "./Plugin.ts"
 
 export const FileDigest = Schema.String.check(
   Schema.isPattern(/^[a-f0-9]{64}$/)
@@ -34,10 +34,10 @@ export const Metadata = Schema.Struct({
 export type Metadata = typeof Metadata.Type
 
 export const RenderInput = Schema.Struct({
-  format: Format.pick(["agent_plugins_v1", "claude_code_v1"]),
+  format: Format.pick(["agent_plugins_v1", "claude_code_v1", "codex_plugin_v1"]),
   metadata: Metadata,
   skills: Schema.Array(Skill),
-  mcp: Schema.Record(Schema.NonEmptyString, Schema.toEncoded(RemoteMcp))
+  mcp: Schema.Record(McpName, Schema.toEncoded(RemoteMcp))
 })
 export type RenderInput = typeof RenderInput.Type
 
@@ -56,7 +56,7 @@ export const RenderResult = Schema.Union([
 ]).pipe(Schema.toTaggedUnion("type"))
 export type RenderResult = typeof RenderResult.Type
 
-export { render } from "../src/model/compiler.ts"
+export { render } from "../src/compiler/package/model.ts"
 
 export const BundleCheckInput = Schema.Struct({
   digest: BundleDigest,
@@ -71,7 +71,7 @@ export const BundleCheckResult = Schema.Union([
 ]).pipe(Schema.toTaggedUnion("type"))
 export type BundleCheckResult = typeof BundleCheckResult.Type
 
-export { checkBundle } from "../src/model/compiler.ts"
+export { checkBundle } from "../src/compiler/package/model.ts"
 
 export const OracleRequest = Schema.Struct({
   schema: Schema.Literal(1),

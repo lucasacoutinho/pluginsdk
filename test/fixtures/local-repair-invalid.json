@@ -1,0 +1,50 @@
+[
+  {
+    "name": "unknown-combined-local-residual",
+    "raw": "{\"schema\":1,\"type\":\"repair_begin\",\"input\":{\"state\":{\"type\":\"operation_pending\",\"plan\":\"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\"},\"plan\":\"cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc\",\"before\":{\"interrupted\":\"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\",\"pending\":\"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\",\"observed\":{\"residual\":\"local\",\"fingerprint\":\"1111111111111111111111111111111111111111111111111111111111111111\"}},\"observed\":{\"type\":\"recoverable\",\"state\":{\"residual\":\"local_and_marketplace\",\"fingerprint\":\"1111111111111111111111111111111111111111111111111111111111111111\"}}}}"
+  },
+  {
+    "name": "object-residual",
+    "raw": "{\"schema\":1,\"type\":\"repair_begin\",\"input\":{\"state\":{\"type\":\"operation_pending\",\"plan\":\"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\"},\"plan\":\"cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc\",\"before\":{\"interrupted\":\"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\",\"pending\":\"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\",\"observed\":{\"residual\":\"local\",\"fingerprint\":\"1111111111111111111111111111111111111111111111111111111111111111\"}},\"observed\":{\"type\":\"recoverable\",\"state\":{\"residual\":{\"type\":\"local\"},\"fingerprint\":\"1111111111111111111111111111111111111111111111111111111111111111\"}}}}"
+  },
+  {
+    "name": "bad-fingerprint",
+    "raw": "{\"schema\":1,\"type\":\"repair_begin\",\"input\":{\"state\":{\"type\":\"operation_pending\",\"plan\":\"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\"},\"plan\":\"cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc\",\"before\":{\"interrupted\":\"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\",\"pending\":\"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\",\"observed\":{\"residual\":\"local\",\"fingerprint\":\"1111111111111111111111111111111111111111111111111111111111111111\"}},\"observed\":{\"type\":\"recoverable\",\"state\":{\"residual\":\"local\",\"fingerprint\":\"111111111111111111111111111111111111111111111111111111111111111\"}}}}"
+  },
+  {
+    "name": "snapshot-excess",
+    "raw": "{\"schema\":1,\"type\":\"repair_begin\",\"input\":{\"state\":{\"type\":\"operation_pending\",\"plan\":\"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\"},\"plan\":\"cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc\",\"before\":{\"interrupted\":\"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\",\"pending\":\"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\",\"observed\":{\"residual\":\"local\",\"fingerprint\":\"1111111111111111111111111111111111111111111111111111111111111111\"}},\"observed\":{\"type\":\"recoverable\",\"state\":{\"residual\":\"local\",\"fingerprint\":\"1111111111111111111111111111111111111111111111111111111111111111\",\"roles\":[\"live\"]}}}}"
+  },
+  {
+    "name": "bad-interrupted-id",
+    "raw": "{\"schema\":1,\"type\":\"repair_begin\",\"input\":{\"state\":{\"type\":\"operation_pending\",\"plan\":\"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\"},\"plan\":\"cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc\",\"before\":{\"interrupted\":\"AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA\",\"pending\":\"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\",\"observed\":{\"residual\":\"local\",\"fingerprint\":\"1111111111111111111111111111111111111111111111111111111111111111\"}},\"observed\":{\"type\":\"recoverable\",\"state\":{\"residual\":\"local\",\"fingerprint\":\"1111111111111111111111111111111111111111111111111111111111111111\"}}}}"
+  },
+  {
+    "name": "unknown-local-workflow-state",
+    "raw": "{\"schema\":1,\"type\":\"repair_begin\",\"input\":{\"state\":{\"type\":\"local_pending\",\"plan\":\"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\"},\"plan\":\"cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc\",\"before\":{\"interrupted\":\"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\",\"pending\":\"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\",\"observed\":{\"residual\":\"local\",\"fingerprint\":\"1111111111111111111111111111111111111111111111111111111111111111\"}},\"observed\":{\"type\":\"recoverable\",\"state\":{\"residual\":\"local\",\"fingerprint\":\"1111111111111111111111111111111111111111111111111111111111111111\"}}}}"
+  },
+  {
+    "name": "request-tag",
+    "raw": "{\"schema\":1,\"type\":\"repair_archive\",\"input\":{\"state\":{\"type\":\"operation_pending\",\"plan\":\"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\"},\"plan\":\"cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc\",\"before\":{\"interrupted\":\"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\",\"pending\":\"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\",\"observed\":{\"residual\":\"local\",\"fingerprint\":\"1111111111111111111111111111111111111111111111111111111111111111\"}},\"observed\":{\"type\":\"recoverable\",\"state\":{\"residual\":\"local\",\"fingerprint\":\"1111111111111111111111111111111111111111111111111111111111111111\"}}}}"
+  },
+  {
+    "name": "schema-version",
+    "raw": "{\"schema\":2,\"type\":\"repair_begin\",\"input\":{\"state\":{\"type\":\"operation_pending\",\"plan\":\"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\"},\"plan\":\"cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc\",\"before\":{\"interrupted\":\"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\",\"pending\":\"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\",\"observed\":{\"residual\":\"local\",\"fingerprint\":\"1111111111111111111111111111111111111111111111111111111111111111\"}},\"observed\":{\"type\":\"recoverable\",\"state\":{\"residual\":\"local\",\"fingerprint\":\"1111111111111111111111111111111111111111111111111111111111111111\"}}}}"
+  },
+  {
+    "name": "force-flag",
+    "raw": "{\"schema\":1,\"type\":\"repair_begin\",\"input\":{\"state\":{\"type\":\"operation_pending\",\"plan\":\"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\"},\"plan\":\"cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc\",\"before\":{\"interrupted\":\"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\",\"pending\":\"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\",\"observed\":{\"residual\":\"local\",\"fingerprint\":\"1111111111111111111111111111111111111111111111111111111111111111\"}},\"observed\":{\"type\":\"recoverable\",\"state\":{\"residual\":\"local\",\"fingerprint\":\"1111111111111111111111111111111111111111111111111111111111111111\"}}},\"force\":true}"
+  },
+  {
+    "name": "missing-pending-binding",
+    "raw": "{\"schema\":1,\"type\":\"repair_begin\",\"input\":{\"state\":{\"type\":\"operation_pending\",\"plan\":\"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\"},\"plan\":\"cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc\",\"before\":{\"interrupted\":\"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\",\"observed\":{\"residual\":\"local\",\"fingerprint\":\"1111111111111111111111111111111111111111111111111111111111111111\"}},\"observed\":{\"type\":\"recoverable\",\"state\":{\"residual\":\"local\",\"fingerprint\":\"1111111111111111111111111111111111111111111111111111111111111111\"}}}}"
+  },
+  {
+    "name": "input-excess",
+    "raw": "{\"schema\":1,\"type\":\"repair_begin\",\"input\":{\"state\":{\"type\":\"operation_pending\",\"plan\":\"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\"},\"plan\":\"cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc\",\"before\":{\"interrupted\":\"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\",\"pending\":\"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\",\"observed\":{\"residual\":\"local\",\"fingerprint\":\"1111111111111111111111111111111111111111111111111111111111111111\"}},\"observed\":{\"type\":\"recoverable\",\"state\":{\"residual\":\"local\",\"fingerprint\":\"1111111111111111111111111111111111111111111111111111111111111111\"}},\"execution\":{\"type\":\"prepared\"}}}"
+  },
+  {
+    "name": "duplicate-schema",
+    "raw": "{\"schema\":1,\"schema\":1,\"type\":\"repair_begin\",\"input\":{\"state\":{\"type\":\"operation_pending\",\"plan\":\"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\"},\"plan\":\"cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc\",\"before\":{\"interrupted\":\"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\",\"pending\":\"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\",\"observed\":{\"residual\":\"local\",\"fingerprint\":\"1111111111111111111111111111111111111111111111111111111111111111\"}},\"observed\":{\"type\":\"recoverable\",\"state\":{\"residual\":\"local\",\"fingerprint\":\"1111111111111111111111111111111111111111111111111111111111111111\"}}}}"
+  }
+]

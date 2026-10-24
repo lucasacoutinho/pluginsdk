@@ -5,7 +5,8 @@ import { expect, it } from "@effect/vitest"
 import { Match, Schema } from "effect"
 import * as Installer from "../contracts/Installer.ts"
 import * as Repair from "../contracts/Repair.ts"
-import { beginRepair, propose, settleRepair } from "../src/model/repair.ts"
+import { beginRepair, propose, settleRepair } from "../src/installer/recovery/model.ts"
+import { parseJson } from "../src/internal/json.ts"
 
 type OracleRequest = Repair.OracleRequest
 type OracleResponse = Repair.OracleResponse
@@ -27,9 +28,9 @@ function decodeStrict<S extends Schema.ConstraintDecoder<unknown>>(schema: S, in
   return Schema.decodeUnknownSync(schema, { onExcessProperty: "error" })(input)
 }
 
-function readVectors(): ReadonlyArray<VectorCase> {
+function readVectors(path = vectorPath): ReadonlyArray<VectorCase> {
   const cases: Array<VectorCase> = []
-  for (const line of readFileSync(vectorPath, "utf8").split(/\r?\n/)) {
+  for (const line of readFileSync(path, "utf8").split(/\r?\n/)) {
     if (line.length === 0) continue
     const row = decodeStrict(VectorRow, JSON.parse(line))
     cases.push({
@@ -112,14 +113,14 @@ const idD = decodeStrict(Installer.PlanId, "d".repeat(64))
 const fingerprintA = decodeStrict(Installer.Fingerprint, "1".repeat(64))
 const fingerprintB = decodeStrict(Installer.Fingerprint, "2".repeat(64))
 
-function snapshot(residual: "absent" | "marketplace", fingerprint = fingerprintA): Installer.RepairSnapshot {
+function snapshot(residual: Installer.RepairResidual, fingerprint = fingerprintA): Installer.RepairSnapshot {
   return decodeStrict(Installer.RepairSnapshot, { fingerprint, residual })
 }
 
 function basis(
   interrupted = idA,
   pending = idA,
-  residual: "absent" | "marketplace" = "marketplace",
+  residual: Installer.RepairResidual = "marketplace",
   fingerprint = fingerprintA
 ): Installer.RepairBasis {
   return decodeStrict(Installer.RepairBasis, {
@@ -184,9 +185,9 @@ function generatedCases(): ReadonlyArray<Case> {
     blocked("unknown"),
     blocked("unowned"),
     blocked("drift"),
-    recoverable(snapshot("absent")),
-    recoverable(snapshot("marketplace")),
-    recoverable(snapshot("marketplace", fingerprintB))
+    ...Installer.RepairResidual.literals.flatMap((residual) => [
+      recoverable(snapshot(residual)), recoverable(snapshot(residual, fingerprintB))
+    ])
   ] as const
   const proposalStates: ReadonlyArray<Repair.RepairState> = [
     operationPending(),
@@ -203,9 +204,9 @@ function generatedCases(): ReadonlyArray<Case> {
   }
 
   const startObservations = [
-    recoverable(snapshot("absent")),
-    recoverable(snapshot("marketplace")),
-    recoverable(snapshot("marketplace", fingerprintB)),
+    ...Installer.RepairResidual.literals.flatMap((residual) => [
+      recoverable(snapshot(residual)), recoverable(snapshot(residual, fingerprintB))
+    ]),
     blocked("unknown")
   ] as const
   for (const observed of startObservations) {
@@ -258,7 +259,7 @@ it("matches all 18 committed repair vectors against the strict Lean oracle", () 
 
 it("matches generated proposal, start, retry, replay, and settlement cases against Lean", () => {
   const cases = generatedCases()
-  expect(cases).toHaveLength(40)
+  expect(cases).toHaveLength(75)
   compareWithOracle(cases)
 })
 
@@ -317,4 +318,30 @@ it("rejects malformed wire values, excess properties, and non-hex brands", () =>
     type: "repair_begin",
     input: { plan: idC }
   })).toThrow()
+})
+
+it("matches 24 reviewed local-repair start, stale-basis, retry and settlement cases", () => {
+  const path = fileURLToPath(new URL("../spec/vectors/local-repair.ndjson", import.meta.url))
+  const cases = readVectors(path)
+  expect(cases).toHaveLength(24)
+  const responses = compareWithOracle(cases)
+  for (const [index, current] of cases.entries()) {
+    const actual = responses[index]
+    if (actual === undefined) throw new Error(`local repair oracle response ${index} is missing`)
+    expect(equivalentResponse(actual, current.expected), current.name).toBe(true)
+  }
+})
+
+it("rejects twelve malformed local-repair requests at both wire boundaries", () => {
+  const path = new URL("./fixtures/local-repair-invalid.json", import.meta.url)
+  const fixtures = decodeStrict(Schema.Array(Schema.Struct({ name: Schema.NonEmptyString, raw: Schema.String })), parseJson(readFileSync(path, "utf8")))
+  expect(fixtures).toHaveLength(12)
+  for (const fixture of fixtures) {
+    expect(() => decodeStrict(Repair.OracleRequest, parseJson(fixture.raw)), fixture.name).toThrow()
+    const run = spawnSync(oraclePath, [], { input: fixture.raw + "\n", encoding: "utf8", timeout: 10_000 })
+    if (run.error !== undefined) throw run.error
+    expect(run.status, fixture.name).toBe(1)
+    expect(run.stdout, fixture.name).toBe("")
+    expect(run.stderr, fixture.name).toContain("oracle:")
+  }
 })

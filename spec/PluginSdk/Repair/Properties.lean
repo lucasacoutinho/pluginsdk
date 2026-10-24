@@ -44,7 +44,11 @@ def R4_cleanup_matches_residual (model : Interface) : Prop :=
   ∀ input : BeginInput, ∀ pending change,
     model.begin input = .start pending change →
       (change = .none ↔ input.before.observed.residual = .absent) ∧
-      (change = .removeMarketplace ↔ input.before.observed.residual = .marketplace)
+      (change = .removeMarketplace ↔ input.before.observed.residual = .marketplace) ∧
+      (change = .removeCompanions ↔ input.before.observed.residual = .companions) ∧
+      (change = .removeMarketplaceAndCompanions ↔
+        input.before.observed.residual = .marketplaceAndCompanions) ∧
+      (change = .archiveLocal ↔ input.before.observed.residual = .localPackage)
 
 def R5_current_cleanup_retry_only_resumes (model : Interface) : Prop :=
   ∀ input : BeginInput, ∀ pending,

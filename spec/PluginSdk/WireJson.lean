@@ -7,9 +7,36 @@ namespace PluginSdk.WireJson
 open Lean (Json)
 open Std.Internal.Parsec Std.Internal.Parsec.String
 
+private def escapedScalar : Parser Char := do
+  if (← peek!) != 'u' then return ← Lean.Json.Parser.escapedChar
+  skip
+  let first ← Lean.Json.Parser.hexChar
+  let second ← Lean.Json.Parser.hexChar
+  let third ← Lean.Json.Parser.hexChar
+  let fourth ← Lean.Json.Parser.hexChar
+  let unit := (first <<< 12) ||| (second <<< 8) ||| (third <<< 4) ||| fourth
+  if 0xD800 ≤ unit && unit < 0xDC00 then
+    Lean.Json.Parser.finishSurrogatePair unit
+  else if 0xDC00 ≤ unit && unit < 0xE000 then
+    fail "unpaired Unicode surrogate"
+  else
+    return Char.ofNat unit.toNat
+
+private partial def stringValue (acc : String) : Parser String := do
+  let c ← any
+  if c == '"' then return acc
+  if c == '\\' then return ← stringValue (acc.push (← escapedScalar))
+  if c.toNat < 0x20 then fail "unexpected control character in string"
+  stringValue (acc.push c)
+
 mutual
   private partial def value : Parser Json := do
     match ← peek! with
+    | '"' =>
+      skip
+      let text ← stringValue ""
+      ws
+      return .str text
     | '{' =>
       skip
       ws
@@ -31,7 +58,7 @@ mutual
   private partial def objectFields (fields : Std.TreeMap.Raw String Json) :
       Parser (Std.TreeMap.Raw String Json) := do
     skipString "\""
-    let key ← Lean.Json.Parser.str
+    let key ← stringValue ""
     if fields.contains key then fail s!"duplicate field: {key}"
     ws
     skipString ":"
@@ -60,6 +87,20 @@ def checkFields (json : Json) (expected : List String) : Except String Unit := d
   let keys := fields.toList.map Prod.fst
   unless keys.length == expected.length && keys.all expected.contains do
     throw s!"expected fields: {expected}"
+
+def readUInt32 (json : Json) : Except String Nat := do
+  let number ← json.getNum?
+  let (sign, coefficient, exponent) := number.normalize
+  if sign == 0 then return 0
+  unless sign == 1 && exponent > 0 && exponent ≤ 10 do
+    throw "expected an unsigned 32-bit integer"
+  let digits := (toString coefficient).length
+  unless digits ≤ exponent.toNat do
+    throw "expected an unsigned 32-bit integer"
+  let value := coefficient * 10 ^ (exponent.toNat - digits)
+  unless value ≤ 4294967295 do
+    throw "expected an unsigned 32-bit integer"
+  return value
 
 def readHex (json : Json) : Except String String := do
   let text ← json.getStr?

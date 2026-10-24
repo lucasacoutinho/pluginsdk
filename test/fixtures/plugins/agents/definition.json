@@ -1,0 +1,14 @@
+{
+  "id": "review-agents",
+  "version": "1.0.0",
+  "description": "A shared review agent for Claude Code and Codex.",
+  "skills": [],
+  "mcp": {},
+  "agents": {
+    "auditor": {
+      "description": "Review a change against the repository contracts.",
+      "prompt": "auditor.md",
+      "shell": "deny"
+    }
+  }
+}

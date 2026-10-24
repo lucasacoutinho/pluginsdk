@@ -14,6 +14,16 @@ def packageDigest (packages : FormatDigests) : PackageFormat → Option String
   | .claudeCodeV1 => packages.claudeCodeV1
   | .agentPluginsV2 => packages.agentPluginsV2
   | .claudeCodeV2 => packages.claudeCodeV2
+  | .agentPluginsV3 => packages.agentPluginsV3
+  | .claudeCodeV3 => packages.claudeCodeV3
+  | .claudeCodeV4 => packages.claudeCodeV4
+  | .codexPluginV1 => packages.codexPluginV1
+  | .claudeCodeV5 => packages.claudeCodeV5
+  | .codexPluginV2 => packages.codexPluginV2
+  | .claudeCodePortableV1 => packages.claudeCodePortableV1
+  | .codexPluginPortableV1 => packages.codexPluginPortableV1
+  | .claudeCodePortableV2 => packages.claudeCodePortableV2
+  | .codexPluginPortableV2 => packages.codexPluginPortableV2
 
 def selectArtifact (release : Release) (target : ReleaseTarget) : Resolution :=
   match release.contents, target with

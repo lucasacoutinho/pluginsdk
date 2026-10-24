@@ -5,14 +5,27 @@ namespace PluginSdk.Compiler
 def manifestPath : Format → String
   | .agentPluginsV1 => "plugin.json"
   | .claudeCodeV1 => ".claude-plugin/plugin.json"
+  | .codexPluginV1 => ".codex-plugin/plugin.json"
 
 def mcpPath : Format → String
   | .agentPluginsV1 => "mcp.json"
   | .claudeCodeV1 => ".mcp.json"
+  | .codexPluginV1 => ".mcp.json"
 
 def transport : Format → String
   | .agentPluginsV1 => "streamable-http"
   | .claudeCodeV1 => "http"
+  | .codexPluginV1 => "http"
+
+def headerKey : Format → String
+  | .agentPluginsV1 => "headers"
+  | .claudeCodeV1 => "headers"
+  | .codexPluginV1 => "http_headers"
+
+def serverKeys : Format → List String
+  | .agentPluginsV1 => ["type", "url", "headers"]
+  | .claudeCodeV1 => ["type", "url", "headers"]
+  | .codexPluginV1 => ["url", "http_headers"]
 
 def Field (object : Lean.Json) (key : String) (value : Lean.Json) : Prop :=
   object.getObjVal? key = .ok value
@@ -26,6 +39,7 @@ def SchemaField (format : Format) (object : Lean.Json) (name : String) : Prop :=
   | .agentPluginsV1 =>
     Field object "$schema" (.str ("https://agent-plugins.org/schemas/1.0.0/" ++ name ++ ".schema.json"))
   | .claudeCodeV1 => True
+  | .codexPluginV1 => True
 
 def NativeManifest (input : RenderInput) (file : RenderedFile) : Prop :=
   match file with
@@ -34,16 +48,18 @@ def NativeManifest (input : RenderInput) (file : RenderedFile) : Prop :=
     path.value = manifestPath input.format ∧
     ObjectKeys object.value (match input.format with
       | .agentPluginsV1 => ["$schema", "name", "version", "description"]
-      | .claudeCodeV1 => ["name", "version", "description"]) ∧
+      | .claudeCodeV1 => ["name", "version", "description"]
+      | .codexPluginV1 => ["name", "version", "description"]) ∧
     SchemaField input.format object.value "plugin" ∧
     Field object.value "name" (.str input.metadata.id) ∧
     Field object.value "version" (.str input.metadata.version) ∧
     Field object.value "description" (.str input.metadata.description)
 
 def NativeServer (format : Format) (source : RemoteMcp) (value : Lean.Json) : Prop :=
-  ObjectKeys value ["type", "url", "headers"] ∧
-  Field value "type" (.str (transport format)) ∧ Field value "url" (.str source.url) ∧
-  ∃ headers, Field value "headers" headers ∧ ObjectKeys headers (source.headers.map Prod.fst)
+  ObjectKeys value (serverKeys format) ∧
+  (format ≠ .codexPluginV1 → Field value "type" (.str (transport format))) ∧
+  Field value "url" (.str source.url) ∧
+  ∃ headers, Field value (headerKey format) headers ∧ ObjectKeys headers (source.headers.map Prod.fst)
 
 def NativeMcp (input : RenderInput) (file : RenderedFile) : Prop :=
   match file with
@@ -52,33 +68,34 @@ def NativeMcp (input : RenderInput) (file : RenderedFile) : Prop :=
     input.mcp ≠ [] ∧ path.value = mcpPath input.format ∧
     ObjectKeys object.value (match input.format with
       | .agentPluginsV1 => ["$schema", "mcpServers"]
-      | .claudeCodeV1 => ["mcpServers"]) ∧
+      | .claudeCodeV1 => ["mcpServers"]
+      | .codexPluginV1 => ["mcpServers"]) ∧
     SchemaField input.format object.value "mcp" ∧
     ∃ servers, Field object.value "mcpServers" servers ∧
       ObjectKeys servers (input.mcp.map Prod.fst) ∧
       ∀ name source, (name, source) ∈ input.mcp →
         ∃ value, Field servers name value ∧ NativeServer input.format source value
 
-def HeaderAt (file : RenderedFile) (server header value : String) : Prop :=
+def HeaderAt (format : Format) (file : RenderedFile) (server header value : String) : Prop :=
   match file with
   | .copy _ _ => False
   | .json _ object =>
     ∃ servers entry headers, Field object.value "mcpServers" servers ∧
-      Field servers server entry ∧ Field entry "headers" headers ∧ Field headers header (.str value)
+      Field servers server entry ∧ Field entry (headerKey format) headers ∧ Field headers header (.str value)
 
 def HasExpansion (value : String) : Prop := ['$', '{'].IsInfix value.toList
 
 def HeaderMeaning (format : Format) (requested : HeaderValue) (native : String) : Prop :=
   match requested with
   | .literal value =>
-    native = value ∧ (format = .agentPluginsV1 ∨ ¬ HasExpansion value)
+    native = value ∧ (format ≠ .claudeCodeV1 ∨ ¬ HasExpansion value)
   | .environment name literalPrefix =>
     format = .claudeCodeV1 ∧ ¬ HasExpansion literalPrefix ∧ native = literalPrefix ++ "${" ++ name ++ "}"
 
 def SourceUnsupported (format : Format) (source : RemoteMcp) (reason : McpProblem) : Prop :=
     match reason with
     | .environmentReference header =>
-      format = .agentPluginsV1 ∧ ∃ name environmentName literalPrefix,
+      format ≠ .claudeCodeV1 ∧ ∃ name environmentName literalPrefix,
         (name, .environment environmentName literalPrefix) ∈ source.headers ∧ header = asciiFold name
     | .literalExpansion header =>
       format = .claudeCodeV1 ∧ ∃ name value,

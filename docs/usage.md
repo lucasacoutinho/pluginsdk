@@ -1,154 +1,100 @@
-# Build and review a plugin locally
+# Install, update and remove a plugin
 
-Build the included review skill, inspect the saved installation plan, then apply or remove it from a supported host configuration.
+Use a built package and an existing [supported client configuration](compatibility.md). The commands below manage the release notes plugin in Codex. For Claude Code, use `--host claude_code`, its bundle and `$HOME/.claude`.
 
-Run these commands from the repository root. The checkout includes [`examples/definition.json`](../examples/definition.json), the [review skill](../examples/skills/review/SKILL.md), and its [checklist](../examples/skills/review/references/checklist.txt).
-
-## Run both clients
-
-On Linux, with Node 24+, Claude Code 2.1.304 and Codex CLI 0.163.0 available:
+## Review an installation
 
 ```sh
-npm ci
-npm run example:cross-client
-```
-
-The [example](../examples/README.md) uses one definition to build both native packages. It installs in isolated temporary homes, verifies fresh native skill discovery and identical shared bytes, checks replay, and removes the installations. Bundles and a report remain in `.pluginsdk/cross-client/`. It performs no model turns or provider authentication.
-
-## Install the example in each client
-
-After running the example, the bundles can be reviewed for installation in your regular configuration homes:
-
-```sh
-node dist/src/cli.js plan .pluginsdk/cross-client/claude_code.bundle.json \
-	--host claude_code --home "$HOME/.claude" \
-	--out .pluginsdk/cross-client/claude.plan.json
-node dist/src/cli.js show .pluginsdk/cross-client/claude.plan.json
-node dist/src/cli.js apply .pluginsdk/cross-client/claude.plan.json
-
-node dist/src/cli.js plan .pluginsdk/cross-client/codex.bundle.json \
+npx pluginsdk plan .pluginsdk/build/codex.bundle.json \
 	--host codex --home "$HOME/.codex" \
-	--out .pluginsdk/cross-client/codex.plan.json
-node dist/src/cli.js show .pluginsdk/cross-client/codex.plan.json
-node dist/src/cli.js apply .pluginsdk/cross-client/codex.plan.json
+	--out .pluginsdk/codex.plan.json
+npx pluginsdk show .pluginsdk/codex.plan.json
 ```
 
-Review each `show` result before its `apply`. The configuration directories must exist. A ready plan names the client, destination, native version, bundle digest and exact file paths. In fresh client sessions the installed plugin supplies the `review` skill with its shared checklist. Applying changes to your regular homes is separate from the isolated demonstration above.
+Planning saves a review without changing the native installation. The review includes the client version, destination, current state and files to install.
 
-## Build the bundle
-
-Install the locked dependencies and compile the CLI:
+Apply a `ready` plan after reviewing it:
 
 ```sh
-npm ci
-npm run build
-mkdir -p .pluginsdk
+npx pluginsdk apply .pluginsdk/codex.plan.json
 ```
 
-Build the example for Claude Code:
+`unchanged` means no installation change is needed. A `blocked` or `pending` result needs attention before another change. See [Troubleshooting](troubleshooting.md).
+
+The home is the client's configuration directory, such as `$HOME/.codex`, rather than your user home. Keep saved plans available for recovery.
+
+## Update a plugin
+
+Edit your definition or content, then build again:
 
 ```sh
-node dist/src/cli.js build examples/definition.json \
-	--root examples \
-	--format claude_code_v1 \
-	--out .pluginsdk/review-kit.bundle.json
+npx pluginsdk build examples/release-notes/definition.json
 ```
 
-The output is a complete `Bundle`: schema version, plugin ID, format, digest, and files with paths, Base64 content and executable bits. The digest commits to those bytes. Bundle and plan files contain the complete package, so keep secrets out of the author definition.
+Create a fresh plan with the installation command above. Review the replacement and apply it. PluginSDK uses the captured package bytes, so later source edits cannot alter that plan.
 
-For Codex, build the same definition with `--format agent_plugins_v1`, then use `--host codex` and its configuration home when planning.
+Reapplying a completed plan returns its recorded result without repeating the native change. To inspect the current installation, create a fresh plan.
 
-Use `--json` to print the encoded schema value to stdout. The normal build summary prints the plugin ID, digest, file count, and output path.
+## Install for a project
 
-The [Effect SDK example](../examples/sdk.ts) uses the checkout's public contract modules so it typechecks before `dist` exists. The package exposes the same services as `pluginsdk/Compiler`, `pluginsdk/Installer`, and `pluginsdk/node`.
-
-## Choose a supported host configuration
-
-The qualified profiles target Linux with Claude Code 2.1.304 in user or project scope, and Codex CLI 0.163.0 in user scope. Project scope is supported only for Claude Code. Grok Bot and Meta Muse are unsupported.
-
-Pass the host's configuration directory to `--home`. For example, use `$HOME/.claude` or `$HOME/.codex`, not `$HOME` itself. The directory must already exist. Keep it separate from any work configuration while evaluating a native change.
-
-Run `npm run test:native` with both pinned host binaries installed. The harness creates isolated temporary homes; it does not use your host configuration. CI runs the portable proof, compiler, diagnostics, lint, unit and build checks.
-
-## Plan and inspect an installation
-
-Create a user-scope Claude plan:
+Add the project root to the plan. For Codex 0.163.0, use a project already trusted by Codex with plugins enabled:
 
 ```sh
-CLAUDE_HOME="$HOME/.claude"
-node dist/src/cli.js plan .pluginsdk/review-kit.bundle.json \
-	--host claude_code \
-	--home "$CLAUDE_HOME" \
-	--out .pluginsdk/review-kit.plan.json
+npx pluginsdk plan .pluginsdk/build/codex.bundle.json \
+	--host codex --home "$HOME/.codex" --project "$PWD" \
+	--out .pluginsdk/codex-project.plan.json
+npx pluginsdk show .pluginsdk/codex-project.plan.json
+npx pluginsdk apply .pluginsdk/codex-project.plan.json
 ```
 
-The command writes a `Planning` value. Inspect the summary before applying it:
+Codex keeps its ordinary home and authentication. PluginSDK updates the project's `.codex/config.toml` while preserving unrelated settings. The review includes the config file's digest and permissions. If that file changes after review, create a fresh plan.
+
+For a supported Claude Code version on Linux or Windows:
 
 ```sh
-node dist/src/cli.js show .pluginsdk/review-kit.plan.json
+npx pluginsdk plan .pluginsdk/build/claude_code.bundle.json --host claude_code --home "$HOME/.claude" --project "$PWD" --out .pluginsdk/claude-project.plan.json
+npx pluginsdk show .pluginsdk/claude-project.plan.json
+npx pluginsdk apply .pluginsdk/claude-project.plan.json
 ```
 
-Only a `ready` result can be applied. `unchanged` means the requested state already holds. `blocked` and `pending` results need recovery before you plan another change. The summary includes the intent, destination, native version/profile, before-state, current ownership, plan ID, new bundle digest, and file paths with executable bits. It does not print file contents or expanded credentials.
+Claude enables the plugin through the selected project's `.claude/settings.json`. It stores marketplace metadata in its shared home, so another project may list this installation as disabled.
 
-To plan a Claude project installation, add `--project "$PWD"`. That flag selects project scope. Do not use it for Codex.
+Project scope supports skills, supporting files and remote HTTP MCP declarations on the [listed versions](compatibility.md). Bundled stdio, hooks and agents also work in Claude Code 2.1.304 projects on Linux and Windows, and Codex 0.163.0 projects on Linux and Windows, using the same built packages.
 
-## Apply the reviewed plan
+A conflicting agent name or an edited installed package blocks replacement and removal. Resolve the conflicting name or restore the reviewed contents, then create a fresh plan.
 
-Applying a ready plan is the explicit native action. The CLI does not ask for a second confirmation:
+PluginSDK serializes operations that share a client home or project, including a project managed from different client homes. Keep the generated `.pluginsdk/installer/` directory out of version control.
+
+## Remove a plugin
+
+Plan removal using the plugin ID from its definition:
 
 ```sh
-node dist/src/cli.js apply .pluginsdk/review-kit.plan.json
+npx pluginsdk remove release-notes \
+	--host codex --home "$HOME/.codex" \
+	--out .pluginsdk/codex-remove.plan.json
+npx pluginsdk show .pluginsdk/codex-remove.plan.json
+npx pluginsdk apply .pluginsdk/codex-remove.plan.json
 ```
 
-The result distinguishes an installed plugin, a removal, `not_applied`, and an uncertain outcome. Stop and inspect host state when the CLI reports `uncertain`.
+Use the same home and project scope as the installation. A successful result is `removed`. Removing a client plugin does not revoke credentials or backend permissions.
 
-## Repair an interrupted operation
+## Resume an interrupted change
 
-Use the saved plan from the interrupted operation to request a cleanup review:
+Apply the saved plan again. PluginSDK inspects the interrupted operation before reporting its outcome. It does not repeat an uncertain native change.
+
+If the result stays `uncertain`, request a cleanup review:
 
 ```sh
-node dist/src/cli.js repair .pluginsdk/review-kit.plan.json \
-	--out .pluginsdk/review-kit.repair.json
+npx pluginsdk repair .pluginsdk/codex.plan.json \
+	--out .pluginsdk/codex-repair.plan.json
+npx pluginsdk show .pluginsdk/codex-repair.plan.json
 ```
 
-`repair` accepts the interrupted `ReadyPlan` or the current `RepairPlan`. It writes a new `Planning` value and never applies it. Review the cleanup plan, then apply it:
+If the cleanup result is `repair_ready` and the proposed cleanup is correct, apply it:
 
 ```sh
-node dist/src/cli.js show .pluginsdk/review-kit.repair.json
-node dist/src/cli.js apply .pluginsdk/review-kit.repair.json
+npx pluginsdk apply .pluginsdk/codex-repair.plan.json
 ```
 
-The review shows the new plan ID, interrupted plan ID, current pending plan ID, physical target, host version and profile, observed residual and fingerprint, and intended action. `none` means the review authorizes no native command. `remove marketplace` means it authorizes removal of the owned SDK marketplace.
-
-Repair proceeds only when the host process is quiescent and complete inventory proves that no plugin uses the SDK marketplace in any scope. The requested scope must also have no same-name plugin or configuration entry. Any remaining marketplace registration must still point to the SDK path and match its retained catalog. Unknown, unowned, changed, or active state blocks the review. Resolve the host state before requesting another cleanup review. Repair does not change host sign-in or provider authentication.
-
-After applying a cleanup plan, build or reuse the retained bundle and create a fresh installation plan:
-
-```sh
-node dist/src/cli.js plan .pluginsdk/review-kit.bundle.json \
-	--host claude_code \
-	--home "$CLAUDE_HOME" \
-	--out .pluginsdk/review-kit.fresh-plan.json
-node dist/src/cli.js show .pluginsdk/review-kit.fresh-plan.json
-node dist/src/cli.js apply .pluginsdk/review-kit.fresh-plan.json
-```
-
-## Plan and apply removal
-
-Create a removal plan for the same plugin and destination:
-
-```sh
-node dist/src/cli.js remove review-kit \
-	--host claude_code \
-	--home "$CLAUDE_HOME" \
-	--out .pluginsdk/review-kit.remove-plan.json
-```
-
-Inspect the ready plan, then apply it:
-
-```sh
-node dist/src/cli.js show .pluginsdk/review-kit.remove-plan.json
-node dist/src/cli.js apply .pluginsdk/review-kit.remove-plan.json
-```
-
-The CLI stores plans and bundles as JSON artifacts. Keep them with the review record for the change. See [native execution and durability](runtime.md) for the lifecycle and recovery rules, and [the Lean contract](../spec/README.md) for the formal models and proof limits.
+Cleanup requires the previous operation to have stopped and the remaining files to match PluginSDK's ownership records. Changed or unowned content blocks cleanup. After cleanup, create a fresh installation plan.

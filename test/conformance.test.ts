@@ -8,8 +8,8 @@ import * as CompilerModel from "../contracts/CompilerModel.ts"
 import * as Installer from "../contracts/Installer.ts"
 import * as Lifecycle from "../contracts/Lifecycle.ts"
 import { RemoteMcp } from "../contracts/Plugin.ts"
-import { checkBundle, render } from "../src/model/compiler.ts"
-import { begin, decide, settle } from "../src/model/lifecycle.ts"
+import { checkBundle, render } from "../src/compiler/package/model.ts"
+import { begin, decide, settle } from "../src/installer/lifecycle/model.ts"
 
 type LifecycleRequest = Lifecycle.OracleRequest
 type LifecycleResponse = Lifecycle.OracleResponse
@@ -117,7 +117,7 @@ type BundleCase = {
 function loadLifecycleCases(): ReadonlyArray<LifecycleCase> {
   const cases: Array<LifecycleCase> = []
   const vectorPath = fileURLToPath(new URL("../spec/vectors/lifecycle.ndjson", import.meta.url))
-  const examplePath = fileURLToPath(new URL("../docs/examples/replay.ndjson", import.meta.url))
+  const examplePath = fileURLToPath(new URL("../docs/internals/examples/replay.ndjson", import.meta.url))
   for (const raw of readNdjson(vectorPath)) {
     const row = decodeStrict(VectorRow, raw)
     cases.push({
@@ -142,7 +142,7 @@ function loadLifecycleCases(): ReadonlyArray<LifecycleCase> {
 function loadRenderCases(): ReadonlyArray<RenderCase> {
   const cases: Array<RenderCase> = []
   const vectorPath = fileURLToPath(new URL("../spec/vectors/compiler.ndjson", import.meta.url))
-  const examplePath = fileURLToPath(new URL("../docs/examples/compiler.ndjson", import.meta.url))
+  const examplePath = fileURLToPath(new URL("../docs/internals/examples/compiler.ndjson", import.meta.url))
   for (const raw of readNdjson(vectorPath)) {
     const row = decodeStrict(VectorRow, raw)
     cases.push({
@@ -167,7 +167,7 @@ function loadRenderCases(): ReadonlyArray<RenderCase> {
 function loadBundleCases(): ReadonlyArray<BundleCase> {
   const cases: Array<BundleCase> = []
   const vectorPath = fileURLToPath(new URL("../spec/vectors/bundle.ndjson", import.meta.url))
-  const examplePath = fileURLToPath(new URL("../docs/examples/bundle.ndjson", import.meta.url))
+  const examplePath = fileURLToPath(new URL("../docs/internals/examples/bundle.ndjson", import.meta.url))
   for (const raw of readNdjson(vectorPath)) {
     const row = decodeStrict(VectorRow, raw)
     cases.push({
@@ -738,7 +738,7 @@ it("matches lifecycle examples and committed vectors with the Lean oracle", () =
 
 it("matches renderer examples and committed vectors with the Lean oracle", () => {
   const cases = loadRenderCases()
-  expect(cases.length).toBe(30)
+  expect(cases.length).toBe(35)
   compareRenderCases(cases)
 })
 

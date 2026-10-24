@@ -65,7 +65,7 @@ private def readHeader (json : Json) : Except String HeaderValue := do
     unless (← (← json.getObjVal? "type").getStr?) == "environment" do throw "expected an environment reference"
     return .environment (← readEnvironmentName (← json.getObjVal? "name")) (← readHeaderText (← json.getObjVal? "prefix"))
 
-private def readServer (json : Json) : Except String RemoteMcp := do
+def readServer (json : Json) : Except String RemoteMcp := do
   checkFields json ["url", "headers"]
   let headers ← (← (← json.getObjVal? "headers").getObj?).toList.mapM fun (name, value) => do
     unless !name.isEmpty && name.toList.all (fun c => asciiLetter c || digit c || "!#$%&'*+.^_`|~-".contains c) do
@@ -78,6 +78,7 @@ private def readInput (json : Json) : Except String RenderInput := do
   let format ← match ← (← json.getObjVal? "format").getStr? with
     | "agent_plugins_v1" => pure Format.agentPluginsV1
     | "claude_code_v1" => pure Format.claudeCodeV1
+    | "codex_plugin_v1" => pure Format.codexPluginV1
     | tag => throw s!"unsupported format: {tag}"
   let metadata ← json.getObjVal? "metadata"
   checkFields metadata ["id", "version", "description"]

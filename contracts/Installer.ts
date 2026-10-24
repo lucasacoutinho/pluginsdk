@@ -1,8 +1,11 @@
 import { Context, Effect, Schema } from "effect"
 import { Bundle, BundleDigest, BundleRejected } from "./Compiler.ts"
+import { CompanionCapture } from "./Companions.ts"
 import { Directory, PluginId } from "./Plugin.ts"
+import { ProjectCapture } from "./ProjectConfig.ts"
+import { Host as ClientHost } from "./Clients.ts"
 
-export const Host = Schema.Literals(["claude_code", "codex", "grok_bot", "muse"])
+export const Host = ClientHost
 export type Host = typeof Host.Type
 
 export const Destination = Schema.Union([
@@ -95,16 +98,21 @@ export const PlanBody = Schema.Struct({
   schema: Schema.Literal(1),
   target: Target,
   before: Snapshot,
-  change: PlanChange
+  change: PlanChange,
+  companions: Schema.optionalKey(CompanionCapture),
+  project: Schema.optionalKey(ProjectCapture)
 })
 export type PlanBody = typeof PlanBody.Type
 
 export const ReadyPlan = Schema.Struct({ ...PlanBody.fields, id: PlanId })
 export type ReadyPlan = typeof ReadyPlan.Type
 
+export const RepairResidual = Schema.Literals(["absent", "marketplace", "companions", "marketplace_and_companions", "local"])
+export type RepairResidual = typeof RepairResidual.Type
+
 export const RepairSnapshot = Schema.Struct({
   fingerprint: Fingerprint,
-  residual: Schema.Literals(["absent", "marketplace"])
+  residual: RepairResidual
 })
 export type RepairSnapshot = typeof RepairSnapshot.Type
 
@@ -119,7 +127,8 @@ export const RepairPlanBody = Schema.Struct({
   type: Schema.Literal("repair_ready"),
   schema: Schema.Literal(1),
   target: Target,
-  before: RepairBasis
+  before: RepairBasis,
+  companions: Schema.optionalKey(CompanionCapture)
 })
 export type RepairPlanBody = typeof RepairPlanBody.Type
 
@@ -172,13 +181,18 @@ export class PlanRejected extends Schema.TaggedError<PlanRejected, { readonly br
   reason: PlanRejection
 }) {}
 
+export const PlanningFailure = Schema.Union([BundleRejected, DestinationUnsupported, HostUnavailable, StateUnavailable])
+export type PlanningFailure = typeof PlanningFailure.Type
+export const ApplyFailure = Schema.Union([DestinationUnsupported, HostUnavailable, StateUnavailable, PlanRejected])
+export type ApplyFailure = typeof ApplyFailure.Type
+
 export class Installer extends Context.Service<Installer, {
   readonly plan: (request: PlanRequest) => Effect.Effect<
     Planning,
-    BundleRejected | DestinationUnsupported | HostUnavailable | StateUnavailable
+    PlanningFailure
   >
   readonly apply: (plan: ReviewedPlan) => Effect.Effect<
     ApplyOutcome,
-    DestinationUnsupported | HostUnavailable | StateUnavailable | PlanRejected
+    ApplyFailure
   >
 }>()("pluginsdk/Installer") {}

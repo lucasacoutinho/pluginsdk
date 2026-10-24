@@ -101,15 +101,25 @@ private theorem selectArtifact_from_selects (source : Release) (target : Release
 
 theorem C1_registration_adds_only_absent_key :
     C1_registration_adds_only_absent_key model := by
-  intro ledger release next registered
-  by_cases conflict : ∃ prior, prior ∈ ledger ∧ prior.key = release.key ∧ prior ≠ release
-  · simp [model, register, conflict] at registered
-  · by_cases keyPresent : ∃ prior, prior ∈ ledger ∧ prior.key = release.key
-    · simp [model, register, conflict, keyPresent] at registered
-    · simp [model, register, conflict, keyPresent] at registered
-      constructor
-      · exact registered.symm
-      · exact no_key_of_absent ledger release keyPresent
+  intro ledger release next
+  constructor
+  · intro registered
+    by_cases conflict : ∃ prior, prior ∈ ledger ∧ prior.key = release.key ∧ prior ≠ release
+    · simp [model, register, conflict] at registered
+    · by_cases keyPresent : ∃ prior, prior ∈ ledger ∧ prior.key = release.key
+      · simp [model, register, conflict, keyPresent] at registered
+      · simp [model, register, conflict, keyPresent] at registered
+        constructor
+        · exact registered.symm
+        · exact no_key_of_absent ledger release keyPresent
+  · rintro ⟨rfl, absent⟩
+    have noKey : ¬ ∃ prior, prior ∈ ledger ∧ prior.key = release.key := by
+      rintro ⟨prior, member, sameKey⟩
+      exact absent prior member sameKey
+    have noConflict : ¬ ∃ prior, prior ∈ ledger ∧ prior.key = release.key ∧ prior ≠ release := by
+      rintro ⟨prior, member, sameKey, _⟩
+      exact absent prior member sameKey
+    simp [model, register, noConflict, noKey]
 
 theorem C2_conflicting_identity_rejected :
     C2_conflicting_identity_rejected model := by

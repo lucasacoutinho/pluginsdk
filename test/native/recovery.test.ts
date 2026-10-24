@@ -9,8 +9,8 @@ import { Effect, Schema } from "effect"
 import { BuildRequest, Compiler, type Bundle } from "../../contracts/Compiler.ts"
 import { ApplyOutcome, Destination, Installer, ReadyPlan, type Host } from "../../contracts/Installer.ts"
 import { parseJson } from "../../src/internal/json.ts"
-import { StoredState } from "../../src/installer/records.ts"
-import { targetPaths } from "../../src/installer/target.ts"
+import { StoredState } from "../../src/installer/lifecycle/records.ts"
+import { targetPaths } from "../../src/installer/target/resolve.ts"
 import { PluginSdkLive } from "../../src/node.ts"
 
 const cli = fileURLToPath(new URL("../../src/cli.ts", import.meta.url))

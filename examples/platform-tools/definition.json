@@ -1,0 +1,25 @@
+{
+  "id": "platform-tools",
+  "version": "1.0.0",
+  "description": "Investigate service incidents and assess production release readiness from internal service and deployment records.",
+  "skills": [
+    "skills/triage-incident",
+    "skills/release-readiness"
+  ],
+  "mcp": {
+    "services": {
+      "url": "https://services.acme.internal/mcp",
+      "headers": {}
+    },
+    "deployments": {
+      "url": "https://deployments.acme.internal/mcp",
+      "headers": {}
+    }
+  },
+  "publish": {
+    "type": "git",
+    "repository": "git@github.com:acme/agent-plugins.git",
+    "branch": "main",
+    "marketplace": "acme"
+  }
+}

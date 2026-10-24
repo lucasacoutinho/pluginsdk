@@ -1,0 +1,9 @@
+{"name":"empty argument","request":{"schema":1,"type":"quote_process_text","input":{"text":""}},"expected":{"schema":1,"type":"quote_process_text","output":{"quoted":"''"}}}
+{"name":"ordinary word","request":{"schema":1,"type":"quote_process_text","input":{"text":"node"}},"expected":{"schema":1,"type":"quote_process_text","output":{"quoted":"'node'"}}}
+{"name":"apostrophe","request":{"schema":1,"type":"quote_process_text","input":{"text":"'"}},"expected":{"schema":1,"type":"quote_process_text","output":{"quoted":"''\\'''"}}}
+{"name":"embedded apostrophe","request":{"schema":1,"type":"quote_process_text","input":{"text":"a'b"}},"expected":{"schema":1,"type":"quote_process_text","output":{"quoted":"'a'\\''b'"}}}
+{"name":"literal placeholders","request":{"schema":1,"type":"quote_process_text","input":{"text":"${TOKEN} $HOME ${PLUGIN_ROOT}"}},"expected":{"schema":1,"type":"quote_process_text","output":{"quoted":"'${TOKEN} $HOME ${PLUGIN_ROOT}'"}}}
+{"name":"substitution syntax","request":{"schema":1,"type":"quote_process_text","input":{"text":"$(printf changed) `printf changed`; printf changed >&2"}},"expected":{"schema":1,"type":"quote_process_text","output":{"quoted":"'$(printf changed) `printf changed`; printf changed >&2'"}}}
+{"name":"whitespace and glob syntax","request":{"schema":1,"type":"quote_process_text","input":{"text":" \t\n*?[]{}~ #&|<>"}},"expected":{"schema":1,"type":"quote_process_text","output":{"quoted":"' \t\n*?[]{}~ #&|<>'"}}}
+{"name":"backslash and double quotes","request":{"schema":1,"type":"quote_process_text","input":{"text":"\\\"quoted\"\\end\\"}},"expected":{"schema":1,"type":"quote_process_text","output":{"quoted":"'\\\"quoted\"\\end\\'"}}}
+{"name":"unicode","request":{"schema":1,"type":"quote_process_text","input":{"text":"ação é 😀  "}},"expected":{"schema":1,"type":"quote_process_text","output":{"quoted":"'ação é 😀  '"}}}

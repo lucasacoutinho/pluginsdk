@@ -16,6 +16,9 @@ private def readResidual (json : Json) : Except String Residual := do
   match ← json.getStr? with
   | "absent" => pure .absent
   | "marketplace" => pure .marketplace
+  | "companions" => pure .companions
+  | "marketplace_and_companions" => pure .marketplaceAndCompanions
+  | "local" => pure .localPackage
   | value => throw s!"unknown repair residual: {value}"
 
 private def readSnapshot (json : Json) : Except String Snapshot := do
@@ -86,7 +89,10 @@ private def writeSnapshot (state : Snapshot) : Json :=
     ("fingerprint", .str state.fingerprint.value),
     ("residual", .str (match state.residual with
       | .absent => "absent"
-      | .marketplace => "marketplace"))
+      | .marketplace => "marketplace"
+      | .companions => "companions"
+      | .marketplaceAndCompanions => "marketplace_and_companions"
+      | .localPackage => "local"))
   ]
 
 private def writeBasis (before : Basis) : Json :=
@@ -124,6 +130,9 @@ private def writeProposal : Proposal → Json
 private def writeChange : Change → Json
   | .none => .str "none"
   | .removeMarketplace => .str "remove_marketplace"
+  | .removeCompanions => .str "remove_companions"
+  | .removeMarketplaceAndCompanions => .str "remove_marketplace_and_companions"
+  | .archiveLocal => .str "archive_local"
 
 private def writeRejection : PlanRejection → Json
   | .invalidPlan => .str "invalid_plan"

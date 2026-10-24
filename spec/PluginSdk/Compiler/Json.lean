@@ -71,6 +71,7 @@ def schemaRows (format : Format) (name : String) : List (String × Json) :=
   match format with
   | .agentPluginsV1 => [("$schema", .str ("https://agent-plugins.org/schemas/1.0.0/" ++ name ++ ".schema.json"))]
   | .claudeCodeV1 => []
+  | .codexPluginV1 => []
 
 def manifestRows (input : RenderInput) : List (String × Json) :=
   schemaRows input.format "plugin" ++
@@ -88,7 +89,8 @@ def headerRows (source : RemoteMcp) : List (String × Json) :=
   source.headers.map fun (name, value) => (name, .str (headerText value))
 
 def serverRows (format : Format) (source : RemoteMcp) : List (String × Json) :=
-  [("type", .str (transport format)), ("url", .str source.url), ("headers", (object (headerRows source)).value)]
+  (if format = .codexPluginV1 then [] else [("type", .str (transport format))]) ++
+    [("url", .str source.url), (headerKey format, (object (headerRows source)).value)]
 
 def mcpRows (input : RenderInput) : List (String × Json) :=
   schemaRows input.format "mcp" ++ [("mcpServers", (object (input.mcp.map fun (name, source) =>

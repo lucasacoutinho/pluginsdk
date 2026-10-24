@@ -2,7 +2,7 @@ import { expect, it } from "@effect/vitest"
 import { Schema } from "effect"
 import { createRequire } from "node:module"
 import { spawnSync } from "node:child_process"
-import { mkdtempSync, mkdirSync, readFileSync, rmSync, writeFileSync } from "node:fs"
+import { existsSync, mkdtempSync, mkdirSync, readFileSync, rmSync, writeFileSync } from "node:fs"
 import { tmpdir } from "node:os"
 import { join } from "node:path"
 import { fileURLToPath } from "node:url"
@@ -132,7 +132,7 @@ it("builds a schema-encoded bundle and rejects invalid or duplicate-key definiti
       join(directory, "invalid-bundle.json")
     ])
     expect(invalid.status).not.toBe(0)
-    expect(invalid.stderr).toContain("Plugin definition does not match the Plugin schema")
+    expect(invalid.stderr).toContain("Project definition does not match the ProjectDefinition schema")
 
     const duplicateDefinition = join(directory, "duplicate.json")
     writeFileSync(duplicateDefinition, '{"id":"first","id":"second","version":"1.0.0","description":"duplicate key","skills":[],"mcp":{}}')
@@ -165,5 +165,132 @@ it("shows a persisted ready plan without printing package contents or consulting
     expect(shown.stdout).toContain("file: plugin.json executable=false")
     expect(shown.stdout).not.toContain(packageContent)
     expect(shown.stdout).not.toContain(Buffer.from(packageContent).toString("base64"))
+  })
+})
+
+it("builds both clients from one definition without source-root or SDK setup", () => {
+  withTempDirectory((directory) => {
+    const source = join(directory, "plugin")
+    const skill = join(source, "skills", "review")
+    mkdirSync(skill, { recursive: true })
+    const content = "---\nname: review\ndescription: Review code changes.\n---\nReview the requested changes.\n"
+    writeFileSync(join(skill, "SKILL.md"), content)
+    const definition = join(source, "definition.json")
+    writeFileSync(definition, JSON.stringify({ id: "demo", version: "1.0.0", description: "One maintained plugin", skills: ["skills/review"], mcp: {} }))
+
+    const built = runCli(directory, ["build", definition, "--json"])
+    expect(built.status, built.stderr).toBe(0)
+    const outputs = built.stdout.trim().split("\n").map((line) => Schema.decodeUnknownSync(Bundle)(parseJson(line)))
+    expect(outputs.map((bundle) => bundle.format)).toEqual(["claude_code_v2", "agent_plugins_v2"])
+    const discovered = runCli(source, ["build", "--json"])
+    expect(discovered.status, discovered.stderr).toBe(0)
+    const discoveredOutputs = discovered.stdout.trim().split("\n").map((line) => Schema.decodeUnknownSync(Bundle)(parseJson(line)))
+    expect(discoveredOutputs).toEqual(outputs)
+    for (const [host, format] of [["claude_code", "claude_code_v2"], ["codex", "agent_plugins_v2"]]) {
+      const bundle = Schema.decodeUnknownSync(Bundle)(parseJson(readFileSync(join(directory, ".pluginsdk", "build", `${host}.bundle.json`), "utf8")))
+      expect(bundle.format).toBe(format)
+      const entry = bundle.files.find((file) => file.path === "skills/review/SKILL.md")
+      if (entry === undefined) throw new Error("Built skill is missing")
+      expect(new TextDecoder().decode(entry.content)).toBe(content)
+    }
+  })
+})
+
+it("selects one client and writes no bundles when a requested client cannot preserve the definition", () => {
+  withTempDirectory((directory) => {
+    const definition = join(directory, "definition.json")
+    writeFileSync(definition, JSON.stringify({
+      id: "demo", version: "1.0.0", description: "Per-user service credential reference", skills: [],
+      mcp: { docs: { url: "https://docs.example/mcp", headers: { Authorization: { type: "environment", name: "DOCS_TOKEN", prefix: "Bearer " } } } }
+    }))
+    const selected = runCli(directory, ["build", definition, "--target", "claude_code", "--out", "claude"])
+    expect(selected.status, selected.stderr).toBe(0)
+    expect(existsSync(join(directory, "claude", "claude_code.bundle.json"))).toBe(true)
+    expect(existsSync(join(directory, "claude", "codex.bundle.json"))).toBe(false)
+
+    const rejected = runCli(directory, ["build", definition])
+    expect(rejected.status).not.toBe(0)
+    expect(rejected.stderr).toContain("unsupported MCP configuration")
+    expect(existsSync(join(directory, ".pluginsdk", "build"))).toBe(false)
+
+    const unknown = runCli(directory, ["build", definition, "--target", "grok_bot"])
+    expect(unknown.status).not.toBe(0)
+    expect(existsSync(join(directory, ".pluginsdk", "build"))).toBe(false)
+
+    const ambiguous = runCli(directory, ["build", definition, "--target", "claude_code", "--format", "claude_code_v2"])
+    expect(ambiguous.status).not.toBe(0)
+    expect(ambiguous.stderr).toContain("Choose --target or --format")
+  })
+})
+
+it("selects v3 automatically for bundled stdio and rejects incomplete multi-client builds before writing", () => {
+  withTempDirectory((directory) => {
+    mkdirSync(join(directory, "server"))
+    writeFileSync(join(directory, "server", "app.mjs"), "throw new Error('Building must not run this application')\n")
+    const definition = join(directory, "definition.json")
+    const plugin = {
+      id: "application", version: "1.0.0", description: "One existing application server", skills: [], assets: ["server"],
+      mcp: { app: { type: "stdio", command: "node", args: [{ file: "server/app.mjs" }] } }
+    }
+    writeFileSync(definition, JSON.stringify(plugin))
+    const built = runCli(directory, ["build", definition, "--json"])
+    expect(built.status, built.stderr).toBe(0)
+    const bundles = built.stdout.trim().split("\n").map((line) => Schema.decodeUnknownSync(Bundle)(parseJson(line)))
+    expect(bundles.map((bundle) => bundle.format)).toEqual(["claude_code_v3", "agent_plugins_v3"])
+    for (const bundle of bundles) {
+      expect(bundle.files.find((file) => file.path === ".psdk/mcp/0.sh")?.executable).toBe(true)
+      expect(bundle.files.some((file) => file.path === "server/app.mjs")).toBe(true)
+    }
+    const old = runCli(directory, ["build", definition, "--format", "claude_code_v2", "--out", "old.bundle.json"])
+    expect(old.status).not.toBe(0)
+    expect(old.stderr).toContain("cannot preserve stdio")
+    expect(existsSync(join(directory, "old.bundle.json"))).toBe(false)
+
+    writeFileSync(definition, JSON.stringify({
+      ...plugin,
+      mcp: { app: { ...plugin.mcp.app, env: { TOKEN: { type: "environment", name: "PSDK_SAFE_EXAMPLE_SOURCE" } } } }
+    }))
+    const rejected = runCli(directory, ["build", definition, "--out", "rejected"])
+    expect(rejected.status).not.toBe(0)
+    expect(rejected.stderr).toContain("client cannot supply environment source: PSDK_SAFE_EXAMPLE_SOURCE")
+    expect(existsSync(join(directory, "rejected"))).toBe(false)
+    const selected = runCli(directory, ["build", definition, "--target", "claude_code", "--out", "claude-only"])
+    expect(selected.status, selected.stderr).toBe(0)
+    expect(existsSync(join(directory, "claude-only", "claude_code.bundle.json"))).toBe(true)
+  })
+})
+
+it("builds the shared skill, MCP and two-event policy example with one command", () => {
+  withTempDirectory((directory) => {
+    const definition = fileURLToPath(new URL("./fixtures/plugins/automation.json", import.meta.url))
+    const built = runCli(directory, ["build", definition, "--out", "automation", "--json"])
+    expect(built.status, built.stderr).toBe(0)
+    const bundles = built.stdout.trim().split("\n").map((line) => Schema.decodeUnknownSync(Bundle)(parseJson(line)))
+    expect(bundles.map((bundle) => bundle.format)).toEqual(["claude_code_v4", "codex_plugin_v1"])
+    const sharedPaths = [
+      ".psdk/hooks/0.sh", ".psdk/hooks/1.sh", "automation/policy.mjs", "mcp/server/echo.mjs",
+      "skills/review/SKILL.md", "skills/review/references/checklist.txt"
+    ]
+    const shared = bundles.map((bundle) => {
+      expect(bundle.files).toHaveLength(10)
+      const files = bundle.files.filter((file) => sharedPaths.includes(file.path))
+      expect(files.map((file) => file.path)).toEqual(sharedPaths)
+      return files
+    })
+    expect(shared[0]).toEqual(shared[1])
+    for (const host of ["claude_code", "codex"]) {
+      expect(existsSync(join(directory, "automation", `${host}.bundle.json`))).toBe(true)
+    }
+
+    const invalid = join(directory, "invalid-hooks.json")
+    writeFileSync(invalid, JSON.stringify({
+      id: "invalid-hooks", version: "1.0.0", description: "Unsupported hook environment source", skills: [], mcp: {},
+      hooks: { context: { event: "SessionStart", command: "node", env: { TOKEN: { type: "environment", name: "TEAM_TOKEN" } } } }
+    }))
+    const rejected = runCli(directory, ["build", invalid, "--out", "rejected-hooks"])
+    expect(rejected.status).not.toBe(0)
+    expect(rejected.stderr).toContain("invalid hook process for context")
+    expect(rejected.stderr).toContain("client cannot supply environment source: TEAM_TOKEN")
+    expect(existsSync(join(directory, "rejected-hooks"))).toBe(false)
   })
 })

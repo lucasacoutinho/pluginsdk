@@ -1,0 +1,14 @@
+{
+  "id": "organization-tools",
+  "version": "1.0.0",
+  "description": "Bundle an existing organization tools MCP server.",
+  "skills": [],
+  "assets": ["server"],
+  "mcp": {
+    "app": {
+      "type": "stdio",
+      "command": "node",
+      "args": [{ "file": "server/echo.mjs" }]
+    }
+  }
+}

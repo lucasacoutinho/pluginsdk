@@ -1,0 +1,172 @@
+[
+  {
+    "name": "separate_agent_product",
+    "request": {
+      "schema": 1,
+      "type": "select_native_profile",
+      "input": {
+        "query": {
+          "host": "cursor_agent",
+          "platform": "win32",
+          "version": "3.26.16+8fcb8ace5c73fa31f2e2707fd6783160e4ed3e40",
+          "scope": "user",
+          "format": "claude_code_portable_v1"
+        },
+        "profiles": [
+          {
+            "host": "cursor",
+            "platform": "win32",
+            "version": "3.26.16+8fcb8ace5c73fa31f2e2707fd6783160e4ed3e40",
+            "scope": "user",
+            "revision": "cursor-local-directory:1",
+            "formats": [
+              "claude_code_portable_v1"
+            ]
+          }
+        ]
+      }
+    }
+  },
+  {
+    "name": "host_object",
+    "request": {
+      "schema": 1,
+      "type": "select_native_profile",
+      "input": {
+        "query": {
+          "host": {
+            "name": "cursor"
+          },
+          "platform": "win32",
+          "version": "3.26.16+8fcb8ace5c73fa31f2e2707fd6783160e4ed3e40",
+          "scope": "user",
+          "format": "claude_code_portable_v1"
+        },
+        "profiles": [
+          {
+            "host": "cursor",
+            "platform": "win32",
+            "version": "3.26.16+8fcb8ace5c73fa31f2e2707fd6783160e4ed3e40",
+            "scope": "user",
+            "revision": "cursor-local-directory:1",
+            "formats": [
+              "claude_code_portable_v1"
+            ]
+          }
+        ]
+      }
+    }
+  },
+  {
+    "name": "empty_profile_formats",
+    "request": {
+      "schema": 1,
+      "type": "select_native_profile",
+      "input": {
+        "query": {
+          "host": "cursor",
+          "platform": "win32",
+          "version": "3.26.16+8fcb8ace5c73fa31f2e2707fd6783160e4ed3e40",
+          "scope": "user",
+          "format": "claude_code_portable_v1"
+        },
+        "profiles": [
+          {
+            "host": "cursor",
+            "platform": "win32",
+            "version": "3.26.16+8fcb8ace5c73fa31f2e2707fd6783160e4ed3e40",
+            "scope": "user",
+            "revision": "cursor-local-directory:1",
+            "formats": []
+          }
+        ]
+      }
+    }
+  },
+  {
+    "name": "force_field",
+    "request": {
+      "schema": 1,
+      "type": "select_native_profile",
+      "input": {
+        "query": {
+          "host": "cursor",
+          "platform": "win32",
+          "version": "3.26.16+8fcb8ace5c73fa31f2e2707fd6783160e4ed3e40",
+          "scope": "user",
+          "format": "claude_code_portable_v1"
+        },
+        "profiles": [
+          {
+            "host": "cursor",
+            "platform": "win32",
+            "version": "3.26.16+8fcb8ace5c73fa31f2e2707fd6783160e4ed3e40",
+            "scope": "user",
+            "revision": "cursor-local-directory:1",
+            "formats": [
+              "claude_code_portable_v1"
+            ]
+          }
+        ],
+        "force": true
+      }
+    }
+  },
+  {
+    "name": "query_extra_field",
+    "request": {
+      "schema": 1,
+      "type": "select_native_profile",
+      "input": {
+        "query": {
+          "host": "cursor",
+          "platform": "win32",
+          "version": "3.26.16+8fcb8ace5c73fa31f2e2707fd6783160e4ed3e40",
+          "scope": "user",
+          "format": "claude_code_portable_v1",
+          "binary": "Cursor.exe"
+        },
+        "profiles": [
+          {
+            "host": "cursor",
+            "platform": "win32",
+            "version": "3.26.16+8fcb8ace5c73fa31f2e2707fd6783160e4ed3e40",
+            "scope": "user",
+            "revision": "cursor-local-directory:1",
+            "formats": [
+              "claude_code_portable_v1"
+            ]
+          }
+        ]
+      }
+    }
+  },
+  {
+    "name": "bad_schema",
+    "request": {
+      "schema": 2,
+      "type": "select_native_profile",
+      "input": {
+        "query": {
+          "host": "cursor",
+          "platform": "win32",
+          "version": "3.26.16+8fcb8ace5c73fa31f2e2707fd6783160e4ed3e40",
+          "scope": "user",
+          "format": "claude_code_portable_v1"
+        },
+        "profiles": [
+          {
+            "host": "cursor",
+            "platform": "win32",
+            "version": "3.26.16+8fcb8ace5c73fa31f2e2707fd6783160e4ed3e40",
+            "scope": "user",
+            "revision": "cursor-local-directory:1",
+            "formats": [
+              "claude_code_portable_v1"
+            ]
+          }
+        ]
+      }
+    }
+  }
+]

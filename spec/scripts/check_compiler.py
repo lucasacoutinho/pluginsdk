@@ -6,7 +6,7 @@ import random
 from check_replay import SPEC, execute, replay
 
 
-EXAMPLES = SPEC.parent / "docs/examples/compiler.ndjson"
+EXAMPLES = SPEC.parent / "docs/internals/examples/compiler.ndjson"
 VECTORS = SPEC / "vectors/compiler.ndjson"
 
 

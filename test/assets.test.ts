@@ -20,7 +20,7 @@ import {
 import { PackagePath } from "../contracts/Plugin.ts"
 import { bundleDigest, fileDigest } from "../src/internal/identity.ts"
 import { CompilerLive } from "../src/compiler/index.ts"
-import { validateBundle } from "../src/compiler/native.ts"
+import { validateBundle } from "../src/compiler/package/native.ts"
 
 const CompilerTest = Layer.provideMerge(CompilerLive, NodeServices.layer)
 const v1Formats: ReadonlyArray<Format> = ["agent_plugins_v1", "claude_code_v1"]

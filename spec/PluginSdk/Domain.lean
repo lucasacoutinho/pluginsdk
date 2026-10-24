@@ -55,6 +55,7 @@ structure SkillName where
 inductive Format where
   | agentPluginsV1
   | claudeCodeV1
+  | codexPluginV1
   deriving DecidableEq, Repr
 
 def asciiFold (value : String) : String :=
