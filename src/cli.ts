@@ -1,28 +1,17 @@
 #!/usr/bin/env node
 import { NodeRuntime, NodeServices } from "@effect/platform-node"
-import { Console, Effect, FileSystem, Layer, Match, Option, Schema } from "effect"
+import { Console, Effect, Layer, Match, Option, Schema } from "effect"
 import { Argument, Command, Flag } from "effect/cli"
 import { createRequire } from "node:module"
-import {
-  BuildRejected,
-  Bundle,
-  BundleRejected,
-  Compiler,
-  Format,
-  SourceUnavailable,
-  type BuildIssue,
-  type BundleIssue
-} from "../contracts/Compiler.ts"
+import { join } from "node:path"
+import type { Bundle } from "../contracts/Compiler.ts"
 import {
   ApplyOutcome,
   Destination,
-  DestinationUnsupported,
-  HostUnavailable,
+  Host,
   Installer,
-  PlanRejected,
   Planning,
   ReviewedPlan,
-  StateUnavailable,
   type ApplyOutcome as ApplyOutcomeType,
   type Host as HostType,
   type Planning as PlanningType,
@@ -31,119 +20,17 @@ import {
   type ReviewedPlan as ReviewedPlanType,
   type Target
 } from "../contracts/Installer.ts"
-import { Directory, Plugin, PluginId } from "../contracts/Plugin.ts"
-import { canonicalJson, jsonBytes, parseJson, type Json } from "./internal/json.ts"
+import { PluginId } from "../contracts/Plugin.ts"
+import { canonicalJson } from "./internal/json.ts"
 import { PluginSdkLive } from "./node.ts"
-import { snapshotPlan } from "./installer/plan.ts"
+import { CliFailure, InputRejected, jsonFlag, readBundle, readPlan, toCliFailure, writeJson } from "./cli/shared.ts"
+import { catalogCommand } from "./cli/catalog.ts"
+import { distributionCommand } from "./cli/distribution.ts"
+import { buildCommand, previewCommand, publishCommand } from "./cli/project.ts"
+import { fileDigest } from "./internal/identity.ts"
+import { companionNames } from "./installer/companions/capture.ts"
+import { reviewCompanions } from "./installer/companions/model.ts"
 
-export class InputRejected extends Schema.TaggedError<InputRejected, { readonly brand: unique symbol }>()("InputRejected", {
-  path: Schema.String,
-  detail: Schema.NonEmptyString
-}) {}
-
-export class OutputRejected extends Schema.TaggedError<OutputRejected, { readonly brand: unique symbol }>()("OutputRejected", {
-  path: Schema.String,
-  detail: Schema.NonEmptyString
-}) {}
-
-export class CliFailure extends Schema.TaggedError<CliFailure, { readonly brand: unique symbol }>()("CliFailure", {
-  message: Schema.NonEmptyString
-}) {}
-
-type CommandFailure =
-  | InputRejected
-  | OutputRejected
-  | BuildRejected
-  | SourceUnavailable
-  | BundleRejected
-  | DestinationUnsupported
-  | HostUnavailable
-  | StateUnavailable
-  | PlanRejected
-
-const buildIssueText = (issue: BuildIssue): string => Match.value(issue).pipe(
-  Match.discriminatorsExhaustive("type")({
-    invalid_metadata: (value) => `invalid ${value.field} metadata`,
-    invalid_skill: (value) => `invalid skill at ${value.path}`,
-    invalid_asset: (value) => `invalid asset at ${value.path}`,
-    path_collision: (value) => `path collision at ${value.path}`,
-    reserved_asset: (value) => `asset uses a native component path at ${value.path}`,
-    unsupported_feature: (value) => `${value.format} cannot preserve ${value.feature}`,
-    source_escape: (value) => `source path escapes at ${value.path}`,
-    unsupported_mcp: (value) => `unsupported MCP configuration for ${value.server}: ${value.reason.type}`
-  })
-)
-
-const bundleIssueText = (issue: BundleIssue): string => Match.value(issue).pipe(
-  Match.discriminatorsExhaustive("type")({
-    digest_mismatch: () => "bundle digest mismatch",
-    noncanonical_order: () => "bundle files are not in canonical order",
-    path_collision: (value) => `path collision at ${value.path}`,
-    invalid_native_package: () => "invalid native package"
-  })
-)
-
-const toCliFailure = (failure: CommandFailure): CliFailure => Match.value(failure).pipe(
-  Match.tagsExhaustive({
-    InputRejected: (value) => new CliFailure({ message: `${value.path}: ${value.detail}` }),
-    OutputRejected: (value) => new CliFailure({ message: `${value.path}: ${value.detail}` }),
-    BuildRejected: (value) => new CliFailure({ message: `Build rejected: ${value.issues.map(buildIssueText).join("; ")}` }),
-    SourceUnavailable: (value) => new CliFailure({ message: `Source unavailable under ${value.root}` }),
-    BundleRejected: (value) => new CliFailure({ message: `Bundle rejected: ${value.issues.map(bundleIssueText).join("; ")}` }),
-    DestinationUnsupported: (value) => new CliFailure({
-      message: `Destination is unsupported for ${value.destination.host}: ${value.detail}`
-    }),
-    HostUnavailable: (value) => new CliFailure({ message: `Host unavailable: ${value.host}` }),
-    StateUnavailable: () => new CliFailure({ message: "Installation state is unavailable; inspect the host state before retrying" }),
-    PlanRejected: (value) => new CliFailure({ message: `Plan rejected: ${value.reason}` })
-  })
-)
-
-const readJson = Effect.fn("pluginsdk.cli.readJson")(function*(path: string): Effect.fn.Return<Json, InputRejected, FileSystem.FileSystem> {
-  const fs = yield* FileSystem.FileSystem
-  const bytes = yield* fs.readFile(path).pipe(
-    Effect.mapError(() => new InputRejected({ path, detail: "Cannot read input file" }))
-  )
-  const text = yield* Effect.try({
-    try: () => new TextDecoder("utf-8", { fatal: true }).decode(bytes),
-    catch: () => new InputRejected({ path, detail: "Input file is not valid UTF-8" })
-  })
-  return yield* Effect.try({
-    try: () => parseJson(text),
-    catch: () => new InputRejected({ path, detail: "Input is not valid JSON" })
-  })
-})
-
-const readPlugin = Effect.fn("pluginsdk.cli.readPlugin")(function*(path: string) {
-  const json = yield* readJson(path)
-  return yield* Schema.decodeUnknownEffect(Plugin, { onExcessProperty: "error" })(json).pipe(
-    Effect.mapError(() => new InputRejected({ path, detail: "Plugin definition does not match the Plugin schema" }))
-  )
-})
-
-const readBundle = Effect.fn("pluginsdk.cli.readBundle")(function*(path: string) {
-  const json = yield* readJson(path)
-  return yield* Schema.decodeUnknownEffect(Bundle, { onExcessProperty: "error" })(json).pipe(
-    Effect.mapError(() => new InputRejected({ path, detail: "Bundle does not match the Bundle schema" }))
-  )
-})
-
-const readPlan = Effect.fn("pluginsdk.cli.readPlan")(function*(path: string) {
-  const json = yield* readJson(path)
-  const plan = yield* Schema.decodeUnknownEffect(ReviewedPlan, { onExcessProperty: "error" })(json).pipe(
-    Effect.mapError(() => new InputRejected({ path, detail: "Plan does not match the ReviewedPlan schema" }))
-  )
-  return yield* Effect.try({ try: () => snapshotPlan(plan), catch: () => new InputRejected({ path, detail: "Plan commitment or bundle is invalid" }) })
-})
-
-const writeJson = Effect.fn("pluginsdk.cli.writeJson")(function*(path: string, value: Json) {
-  const fs = yield* FileSystem.FileSystem
-  yield* fs.writeFile(path, jsonBytes(value)).pipe(
-    Effect.mapError(() => new OutputRejected({ path, detail: "Cannot write output file" }))
-  )
-})
-
-const encodedBundle = Schema.encodeSync(Bundle)
 const encodedPlanning = Schema.encodeSync(Planning)
 const encodedPlan = Schema.encodeSync(ReviewedPlan)
 const encodedApply = Schema.encodeSync(ApplyOutcome)
@@ -193,6 +80,31 @@ const planChangeSummary = (plan: ReadyPlanType): {
   })
 )
 
+const companionPlanText = (plan: ReviewedPlanType): ReadonlyArray<string> => {
+  const capture = plan.companions
+  if (capture === undefined) return []
+  const previous = capture.previous.map((file) => ({ name: file.name, digest: fileDigest(file.content) }))
+  const desired = capture.desired.map((file) => ({ name: file.name, digest: fileDigest(file.content) }))
+  const before = new Map(previous.map((file) => [file.name, file.digest]))
+  const changes = reviewCompanions({
+    previous,
+    desired,
+    observed: companionNames(capture).map((name) => {
+      const digest = before.get(name)
+      return { name, observed: digest === undefined ? { type: "absent" } : { type: "file", digest } }
+    })
+  })
+  return Match.value(changes).pipe(Match.discriminatorsExhaustive("type")({
+    blocked: () => { throw new Error("Reviewed companion capture is inconsistent") },
+    ready: ({ changes }) => changes.map((change) => Match.value(change).pipe(Match.discriminatorsExhaustive("type")({
+      create: ({ name, after }) => `agent role: ${name} create after=${after}`,
+      replace: ({ name, before, after }) => `agent role: ${name} replace before=${before} after=${after}`,
+      remove: ({ name, before }) => `agent role: ${name} remove before=${before}`,
+      keep: ({ name, digest }) => `agent role: ${name} keep digest=${digest}`
+    })))
+  }))
+}
+
 const readyPlanText = (status: string, plan: ReadyPlanType): string => {
   const summary = planChangeSummary(plan)
   const fileLines = summary.bundle === null
@@ -201,6 +113,15 @@ const readyPlanText = (status: string, plan: ReadyPlanType): string => {
   const executableCount = summary.bundle === null
     ? 0
     : summary.bundle.files.filter((file) => file.executable).length
+  const projectLines = plan.project === undefined || plan.target.destination.type !== "project" ? [] : [
+    `project config: ${join(plan.target.destination.root, ".codex", "config.toml")}`,
+    `project config before: ${Match.value(plan.project.before).pipe(Match.discriminatorsExhaustive("type")({
+      absent: () => "absent",
+      file: ({ digest, mode }) => `sha256=${digest} mode=${mode.toString(8).padStart(4, "0")}`,
+      windows_file: ({ digest, attributes, security }) =>
+        `sha256=${digest} attributes=0x${attributes.toString(16).padStart(8, "0")} access-policy=sha256=${security}`
+    }))}`
+  ]
   return [
     `status: ${status}`,
     `intent: ${summary.intent}`,
@@ -211,7 +132,9 @@ const readyPlanText = (status: string, plan: ReadyPlanType): string => {
     `owned bundle: ${plan.before.receipt?.identity.bundle ?? "none"}`,
     `bundle digest: ${summary.bundle?.digest ?? "none"}`,
     `files: ${fileLines.length} (${executableCount} executable)`,
-    ...fileLines
+    ...fileLines,
+    ...projectLines,
+    ...companionPlanText(plan)
   ].join("\n")
 }
 
@@ -219,6 +142,9 @@ const repairPlanText = (status: string, plan: RepairPlanType): string => {
   const action = Match.value(plan.before.observed.residual).pipe(
     Match.when("absent", () => "none"),
     Match.when("marketplace", () => "remove marketplace"),
+    Match.when("companions", () => "remove owned agent roles"),
+    Match.when("local", () => "archive owned local plugin packages"),
+    Match.when("marketplace_and_companions", () => "remove marketplace and owned agent roles"),
     Match.exhaustive
   )
   return [
@@ -230,7 +156,8 @@ const repairPlanText = (status: string, plan: RepairPlanType): string => {
     `current pending plan ID: ${plan.before.pending}`,
     `observed residual: ${plan.before.observed.residual}`,
     `observed fingerprint: ${plan.before.observed.fingerprint}`,
-    `intended action: ${action}`
+    `intended action: ${action}`,
+    ...companionPlanText(plan)
   ].join("\n")
 }
 
@@ -290,43 +217,8 @@ const applyText = (outcome: ApplyOutcomeType): { readonly text: string; readonly
     }))
   }))
 
-const jsonFlag = () => Flag.Boolean("json").pipe(
-  Flag.withDescription("Print the encoded schema value as JSON"),
-  Flag.withDefault(false)
-)
-
-const buildCommand = Command.make(
-  "build",
-  {
-    definition: Argument.String("definition.json"),
-    root: Flag.String("root").pipe(Flag.withDefault("."), Flag.withDescription("Source root directory")),
-    format: Flag.Literals("format", Format.literals).pipe(
-      Flag.withDefault("agent_plugins_v1"),
-      Flag.withDescription("Native package format")
-    ),
-    out: Flag.String("out").pipe(Flag.withDescription("Bundle JSON output path")),
-    json: jsonFlag()
-  },
-  Effect.fn("pluginsdk.cli.build")(function*(input) {
-    const plugin = yield* readPlugin(input.definition).pipe(Effect.mapError(toCliFailure))
-    const root = yield* Schema.decodeEffect(Directory)(input.root).pipe(Effect.mapError(() => new CliFailure({ message: "Source root must be non-empty" })))
-    const bundle = yield* Compiler.use((compiler) => compiler.build({ root, plugin, format: input.format })).pipe(Effect.mapError(toCliFailure))
-    yield* writeJson(input.out, encodedBundle(bundle)).pipe(Effect.mapError(toCliFailure))
-    if (input.json) {
-      yield* Console.log(canonicalJson(encodedBundle(bundle)))
-      return
-    }
-    yield* Console.log([
-      `Built ${bundle.plugin}`,
-      `bundle digest: ${bundle.digest}`,
-      `files: ${bundle.files.length}`,
-      `output: ${input.out}`
-    ].join("\n"))
-  })
-).pipe(Command.withDescription("Build a byte-complete plugin bundle"))
-
 const planFlags = () => ({
-  host: Flag.Literals("host", ["claude_code", "codex", "grok_bot", "muse"]).pipe(
+  host: Flag.Literals("host", Host.literals).pipe(
     Flag.withDescription("Installation host")
   ),
   home: Flag.String("home").pipe(Flag.withDescription("Existing host configuration directory")),
@@ -434,8 +326,8 @@ const packageMetadata: unknown = createRequire(import.meta.url)("pluginsdk/packa
 const version = Schema.decodeUnknownSync(versionSchema)(packageMetadata).version
 
 const rootCommand = Command.make("pluginsdk").pipe(
-  Command.withDescription("Build reproducible agent plugins and apply reviewed plans"),
-  Command.withSubcommands([buildCommand, planCommand, removeCommand, repairCommand, applyCommand, showCommand]),
+  Command.withDescription("Build, preview and publish plugins across agent clients"),
+  Command.withSubcommands([buildCommand, previewCommand, publishCommand, planCommand, removeCommand, repairCommand, applyCommand, showCommand, catalogCommand, distributionCommand]),
   Command.run({ version }),
   Effect.provide(Layer.merge(PluginSdkLive, NodeServices.layer)),
   Effect.catchTag("CliFailure", (failure) => Effect.gen(function*() {

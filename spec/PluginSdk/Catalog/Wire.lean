@@ -6,12 +6,12 @@ namespace PluginSdk.Catalog.Wire
 open Lean (Json)
 open WireJson
 
-private def readNonempty (json : Json) : Except String String := do
+def readNonempty (json : Json) : Except String String := do
   let value ← json.getStr?
   if value.isEmpty then throw "expected a nonempty string"
   return value
 
-private def readPluginId (json : Json) : Except String String := do
+def readPluginId (json : Json) : Except String String := do
   let text ← readNonempty json
   let chars := text.toList
   unless text.length ≤ 64 && chars.all (fun c => ('a' ≤ c && c ≤ 'z') || ('0' ≤ c && c ≤ '9') || c == '.' || c == '-') &&
@@ -51,17 +51,16 @@ private def readReleaseOrigin (json : Json) : Except String ReleaseOrigin := do
       (← readHex (← json.getObjVal? "digest"))
   | tag => throw s!"unknown release origin: {tag}"
 
-private def readPackageDigests (json : Json) : Except String FormatDigests := do
+def readPackageDigests (json : Json) : Except String FormatDigests := do
   let fields ← json.getObj?
   let keys := fields.toList.map Prod.fst
-  let allowed := ["agent_plugins_v1", "claude_code_v1", "agent_plugins_v2", "claude_code_v2"]
+  let allowed := ["claude_code", "codex"]
   unless !keys.isEmpty && keys.all allowed.contains do
     throw "expected one or more native package digests"
   let readDigest (key : String) : Except String (Option String) := do
     if keys.contains key then some <$> readHex (← json.getObjVal? key)
     else pure none
-  return ⟨← readDigest "agent_plugins_v1", ← readDigest "claude_code_v1",
-    ← readDigest "agent_plugins_v2", ← readDigest "claude_code_v2"⟩
+  return ⟨← readDigest "claude_code", ← readDigest "codex"⟩
 
 private def readReleaseContents (json : Json) : Except String ReleaseContents := do
   match ← (← json.getObjVal? "type").getStr? with
@@ -85,12 +84,10 @@ private def readRelease (json : Json) : Except String Release := do
 private def readLedger (json : Json) : Except String ReleaseLedger := do
   (← json.getArr?).toList.mapM readRelease
 
-private def readPackageFormat (json : Json) : Except String PackageFormat := do
+def readPackageFormat (json : Json) : Except String PackageFormat := do
   match ← json.getStr? with
-  | "agent_plugins_v1" => pure .agentPluginsV1
-  | "claude_code_v1" => pure .claudeCodeV1
-  | "agent_plugins_v2" => pure .agentPluginsV2
-  | "claude_code_v2" => pure .claudeCodeV2
+  | "claude_code" => pure .claudeCode
+  | "codex" => pure .codex
   | tag => throw s!"unknown package format: {tag}"
 
 private def readReleaseTarget (json : Json) : Except String ReleaseTarget := do
@@ -108,10 +105,8 @@ private def writeOptionalDigest (key : String) : Option String → List (String 
   | some digest => [(key, .str digest)]
 
 private def writePackageDigests (packages : FormatDigests) : Json :=
-  Json.mkObj (writeOptionalDigest "agent_plugins_v1" packages.agentPluginsV1 ++
-    writeOptionalDigest "claude_code_v1" packages.claudeCodeV1 ++
-    writeOptionalDigest "agent_plugins_v2" packages.agentPluginsV2 ++
-    writeOptionalDigest "claude_code_v2" packages.claudeCodeV2)
+  Json.mkObj (writeOptionalDigest "claude_code" packages.claudeCode ++
+    writeOptionalDigest "codex" packages.codex)
 
 private def writeReleaseKey (key : ReleaseKey) : Json := Json.mkObj [
   ("organization", .str key.organization.value),
@@ -142,11 +137,9 @@ private def writeRelease (release : Release) : Json := Json.mkObj [
   ("contents", writeReleaseContents release.contents)
 ]
 
-private def writePackageFormat : PackageFormat → String
-  | .agentPluginsV1 => "agent_plugins_v1"
-  | .claudeCodeV1 => "claude_code_v1"
-  | .agentPluginsV2 => "agent_plugins_v2"
-  | .claudeCodeV2 => "claude_code_v2"
+def writePackageFormat : PackageFormat → String
+  | .claudeCode => "claude_code"
+  | .codex => "codex"
 
 private def writeSelectedArtifact : SelectedArtifact → Json
   | .plugin plugin format digest => tagged "plugin" [

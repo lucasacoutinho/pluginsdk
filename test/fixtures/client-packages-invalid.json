@@ -1,0 +1,401 @@
+[
+  {
+    "schema": 1,
+    "type": "client_package_host",
+    "input": null
+  },
+  {
+    "schema": 1,
+    "type": "client_package_host",
+    "input": []
+  },
+  {
+    "schema": 1,
+    "type": "client_package_host",
+    "input": 0
+  },
+  {
+    "schema": 1,
+    "type": "client_package_host",
+    "input": true
+  },
+  {
+    "schema": 1,
+    "type": "client_package_host",
+    "input": {}
+  },
+  {
+    "schema": 1,
+    "type": "client_package_host",
+    "input": {
+      "client": "cursor",
+      "extra": true
+    }
+  },
+  {
+    "schema": 0,
+    "type": "client_package_host",
+    "input": {
+      "client": "cursor"
+    }
+  },
+  {
+    "schema": 2,
+    "type": "client_package_host",
+    "input": {
+      "client": "cursor"
+    }
+  },
+  {
+    "schema": true,
+    "type": "client_package_host",
+    "input": {
+      "client": "cursor"
+    }
+  },
+  {
+    "schema": null,
+    "type": "client_package_host",
+    "input": {
+      "client": "cursor"
+    }
+  },
+  {
+    "schema": "1",
+    "type": "client_package_host",
+    "input": {
+      "client": "cursor"
+    }
+  },
+  {
+    "schema": 1,
+    "type": "client_package_host",
+    "input": {
+      "client": "cursor"
+    },
+    "extra": true
+  },
+  {
+    "schema": 1,
+    "type": "client_package_host"
+  },
+  {
+    "type": "client_package_host",
+    "input": {
+      "client": "cursor"
+    }
+  },
+  {
+    "schema": 1,
+    "type": "client_package_host?",
+    "input": {
+      "client": "cursor"
+    }
+  },
+  {
+    "schema": 1,
+    "type": "normalize_build_clients",
+    "input": null
+  },
+  {
+    "schema": 1,
+    "type": "normalize_build_clients",
+    "input": []
+  },
+  {
+    "schema": 1,
+    "type": "normalize_build_clients",
+    "input": 0
+  },
+  {
+    "schema": 1,
+    "type": "normalize_build_clients",
+    "input": true
+  },
+  {
+    "schema": 1,
+    "type": "normalize_build_clients",
+    "input": {}
+  },
+  {
+    "schema": 1,
+    "type": "normalize_build_clients",
+    "input": {
+      "clients": [
+        "cursor"
+      ],
+      "extra": true
+    }
+  },
+  {
+    "schema": 0,
+    "type": "normalize_build_clients",
+    "input": {
+      "clients": [
+        "cursor"
+      ]
+    }
+  },
+  {
+    "schema": 2,
+    "type": "normalize_build_clients",
+    "input": {
+      "clients": [
+        "cursor"
+      ]
+    }
+  },
+  {
+    "schema": true,
+    "type": "normalize_build_clients",
+    "input": {
+      "clients": [
+        "cursor"
+      ]
+    }
+  },
+  {
+    "schema": null,
+    "type": "normalize_build_clients",
+    "input": {
+      "clients": [
+        "cursor"
+      ]
+    }
+  },
+  {
+    "schema": "1",
+    "type": "normalize_build_clients",
+    "input": {
+      "clients": [
+        "cursor"
+      ]
+    }
+  },
+  {
+    "schema": 1,
+    "type": "normalize_build_clients",
+    "input": {
+      "clients": [
+        "cursor"
+      ]
+    },
+    "extra": true
+  },
+  {
+    "schema": 1,
+    "type": "normalize_build_clients"
+  },
+  {
+    "type": "normalize_build_clients",
+    "input": {
+      "clients": [
+        "cursor"
+      ]
+    }
+  },
+  {
+    "schema": 1,
+    "type": "normalize_build_clients?",
+    "input": {
+      "clients": [
+        "cursor"
+      ]
+    }
+  },
+  {
+    "schema": 1,
+    "type": "client_package_host",
+    "input": {
+      "client": "grok_bot"
+    }
+  },
+  {
+    "schema": 1,
+    "type": "normalize_build_clients",
+    "input": {
+      "clients": [
+        "cursor",
+        "grok_bot"
+      ]
+    }
+  },
+  {
+    "schema": 1,
+    "type": "client_package_host",
+    "input": {
+      "client": "muse"
+    }
+  },
+  {
+    "schema": 1,
+    "type": "normalize_build_clients",
+    "input": {
+      "clients": [
+        "cursor",
+        "muse"
+      ]
+    }
+  },
+  {
+    "schema": 1,
+    "type": "client_package_host",
+    "input": {
+      "client": "claude"
+    }
+  },
+  {
+    "schema": 1,
+    "type": "normalize_build_clients",
+    "input": {
+      "clients": [
+        "cursor",
+        "claude"
+      ]
+    }
+  },
+  {
+    "schema": 1,
+    "type": "client_package_host",
+    "input": {
+      "client": "unknown"
+    }
+  },
+  {
+    "schema": 1,
+    "type": "normalize_build_clients",
+    "input": {
+      "clients": [
+        "cursor",
+        "unknown"
+      ]
+    }
+  },
+  {
+    "schema": 1,
+    "type": "client_package_host",
+    "input": {
+      "client": null
+    }
+  },
+  {
+    "schema": 1,
+    "type": "normalize_build_clients",
+    "input": {
+      "clients": [
+        "cursor",
+        null
+      ]
+    }
+  },
+  {
+    "schema": 1,
+    "type": "client_package_host",
+    "input": {
+      "client": 0
+    }
+  },
+  {
+    "schema": 1,
+    "type": "normalize_build_clients",
+    "input": {
+      "clients": [
+        "cursor",
+        0
+      ]
+    }
+  },
+  {
+    "schema": 1,
+    "type": "client_package_host",
+    "input": {
+      "client": true
+    }
+  },
+  {
+    "schema": 1,
+    "type": "normalize_build_clients",
+    "input": {
+      "clients": [
+        "cursor",
+        true
+      ]
+    }
+  },
+  {
+    "schema": 1,
+    "type": "client_package_host",
+    "input": {
+      "client": []
+    }
+  },
+  {
+    "schema": 1,
+    "type": "normalize_build_clients",
+    "input": {
+      "clients": [
+        "cursor",
+        []
+      ]
+    }
+  },
+  {
+    "schema": 1,
+    "type": "client_package_host",
+    "input": {
+      "client": {}
+    }
+  },
+  {
+    "schema": 1,
+    "type": "normalize_build_clients",
+    "input": {
+      "clients": [
+        "cursor",
+        {}
+      ]
+    }
+  },
+  {
+    "schema": 1,
+    "type": "normalize_build_clients",
+    "input": {
+      "clients": []
+    }
+  },
+  {
+    "schema": 1,
+    "type": "normalize_build_clients",
+    "input": {
+      "clients": null
+    }
+  },
+  {
+    "schema": 1,
+    "type": "normalize_build_clients",
+    "input": {
+      "clients": "cursor"
+    }
+  },
+  {
+    "schema": 1,
+    "type": "normalize_build_clients",
+    "input": {
+      "clients": true
+    }
+  },
+  {
+    "schema": 1,
+    "type": "normalize_build_clients",
+    "input": {
+      "clients": 0
+    }
+  },
+  {
+    "schema": 1,
+    "type": "normalize_build_clients",
+    "input": {
+      "clients": {}
+    }
+  }
+]

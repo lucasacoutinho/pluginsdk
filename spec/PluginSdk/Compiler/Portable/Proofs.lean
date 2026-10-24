@@ -1,0 +1,3 @@
+import PluginSdk.Compiler.Portable.AdmissionProofs
+import PluginSdk.Compiler.Portable.FileProofs
+import PluginSdk.Compiler.Portable.CompatibilityProofs

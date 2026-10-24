@@ -19,7 +19,7 @@ import {
 import { bundleDigest, commitment, fileDigest, sha256 } from "../src/internal/identity.ts"
 import { canonicalJson, parseJson } from "../src/internal/json.ts"
 import { CompilerLive } from "../src/compiler/index.ts"
-import { validateBundle } from "../src/compiler/native.ts"
+import { validateBundle } from "../src/compiler/package/native.ts"
 
 const CompilerTest = Layer.provideMerge(CompilerLive, NodeServices.layer)
 
@@ -51,7 +51,7 @@ type BuildOutcome =
 const makeRequest = (root: string, options: RequestOptions = {}) =>
   Schema.decodeSync(BuildRequest)({
     root,
-    format: options.format ?? "agent_plugins_v1",
+    format: options.format ?? "claude_code",
     plugin: {
       id: options.id ?? "demo",
       version: options.version ?? "1.0.0",
@@ -171,8 +171,8 @@ it.effect("builds byte-complete deterministic bundles and keeps captured bytes s
     expect(first).toStrictEqual(second)
     expect(first.digest).toBe(second.digest)
     expect(first.files.map((file) => file.path)).toEqual([
-      "mcp.json",
-      "plugin.json",
+      ".claude-plugin/plugin.json",
+      ".mcp.json",
       "skills/alpha/SKILL.md",
       "skills/alpha/assets/payload.bin",
       "skills/beta/SKILL.md",
@@ -303,7 +303,7 @@ it.effect("reports header collisions and format-incompatible expansions", () =>
 
     const environmentReference = issuesFrom(yield* buildOutcome(makeRequest(root, {
       skills: [],
-      format: "agent_plugins_v1",
+      format: "codex",
       mcp: {
         docs: {
           url: "https://docs.example.test/mcp",
@@ -319,7 +319,7 @@ it.effect("reports header collisions and format-incompatible expansions", () =>
 
     const literalExpansion = issuesFrom(yield* buildOutcome(makeRequest(root, {
       skills: [],
-      format: "claude_code_v1",
+      format: "claude_code",
       mcp: {
         docs: {
           url: "https://docs.example.test/mcp",
@@ -341,7 +341,7 @@ it.effect("normalizes source URLs and rejects malformed metadata Unicode", () =>
     const root = yield* fs.makeTempDirectoryScoped({ prefix: "pluginsdk-normalize-" })
     const bundle = bundleFrom(yield* buildOutcome(makeRequest(root, {
       skills: [],
-      format: "claude_code_v1",
+      format: "claude_code",
       mcp: {
         docs: { url: "https://EXAMPLE.com:443/a/../mcp", headers: {} }
       }
@@ -376,11 +376,11 @@ it("matches canonical JSON and known SHA-256 domain commitments", () => {
   const body = Schema.decodeUnknownSync(Schema.toType(BundleBody))({
     schema: 1,
     plugin: "demo",
-    format: "claude_code_v1",
+    format: "claude_code",
     files: [{ path: "a", content: new Uint8Array([0]), executable: false }]
   })
   const encodedBody = Schema.decodeSync(Schema.Json)({
-    format: "claude_code_v1",
+    format: "claude_code",
     files: [{ content: "AA==", executable: false, path: "a" }],
     plugin: "demo",
     schema: 1
@@ -388,8 +388,8 @@ it("matches canonical JSON and known SHA-256 domain commitments", () => {
   expect(sha256(new TextEncoder().encode("abc"))).toBe("ba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad")
   expect(fileDigest(new Uint8Array())).toBe("e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855")
   expect(commitment("test", null)).toBe("4bb2b81d1b0bf43411a30f1903a474bd4151a6a29b3bae1151787ab3a6d3297a")
-  expect(commitment("bundle", encodedBody)).toBe("3ef29d7f9c80f44d0997e96132fd88ef2f57dafd5bbd0e199b997d20f6520330")
-  expect(bundleDigest(body)).toBe("3ef29d7f9c80f44d0997e96132fd88ef2f57dafd5bbd0e199b997d20f6520330")
+  expect(commitment("bundle", encodedBody)).toBe("15156bc7694ff719abe3ab04df27b98b4de9d3a0d8179fe30f25e87480c1dc9b")
+  expect(bundleDigest(body)).toBe("15156bc7694ff719abe3ab04df27b98b4de9d3a0d8179fe30f25e87480c1dc9b")
 })
 
 it.effect("rejects imported tampering, noncanonical order, and invalid native documents", () =>
@@ -415,16 +415,16 @@ it.effect("rejects imported tampering, noncanonical order, and invalid native do
     const wrongOrder = repackage(bundle, [...bundle.files].reverse())
     expect(validationIssues(wrongOrder).map((issue) => issue.type)).toEqual(["noncanonical_order"])
 
-    const manifest = "plugin.json"
+    const manifest = ".claude-plugin/plugin.json"
     const unknownFeature = repackage(bundle, replaceFileContent(bundle, manifest, new TextEncoder().encode(
-      '{"$schema":"https://agent-plugins.org/schemas/1.0.0/plugin.schema.json","description":"Compiler test","name":"demo","unexpected":true,"version":"1.0.0"}'
+      '{"description":"Compiler test","name":"demo","unexpected":true,"version":"1.0.0"}'
     )))
     const unknownFeatureIssues = validationIssues(unknownFeature)
     expect(unknownFeatureIssues).toHaveLength(1)
     expect(unknownFeatureIssues[0]?.type).toBe("invalid_native_package")
 
     const mismatchedName = repackage(bundle, replaceFileContent(bundle, manifest, new TextEncoder().encode(
-      '{"$schema":"https://agent-plugins.org/schemas/1.0.0/plugin.schema.json","description":"Compiler test","name":"other-plugin","version":"1.0.0"}'
+      '{"description":"Compiler test","name":"other-plugin","version":"1.0.0"}'
     )))
     const mismatchedNameIssues = validationIssues(mismatchedName)
     expect(mismatchedNameIssues).toHaveLength(1)

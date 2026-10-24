@@ -1,0 +1,11 @@
+# Windows Claude user CLI qualification
+
+Keep the accepted Windows Codex user checkpoint as the production baseline. Qualify only the exact Claude Code 2.1.304 user profile, `claude-local-marketplace:1`, after the seven-case raw recovery snapshot has independent receipts, retained evidence and confirmed cleanup. macOS has no available host and remains deferred.
+
+Reuse the accepted profile oracle projection, read-only process observer and exact skill-inventory display vector. Do not add a pure policy or change its proof. Prepare compiled sources with only the profile projection and standard transaction-worker tracing overlays; the installer engine must match the accepted production bytes without recovery cuts. Record every compiler output, both JSON schemas, worker imports and all staged inputs before native execution.
+
+The normal compiled CLI case builds twice, reviews and applies install, replace and removal, replays each approved plan and checks unchanged planning. It has 17 CLI calls, 12 SDK workers and three native execution entries. The preview case uses one author root and stable development plugin ID across install, unchanged, edited source, remove and unchanged removal. It has five CLI calls, eight SDK workers and three native execution entries. Both cases check discovery from two distinct projects, preserve unrelated user and project configuration and compare all approved payload bytes and provenance.
+
+Claude's native list and marketplace output establish its installed metadata, approved payload folder and marketplace. Its details output must contain the exact checked inventory line. Do not infer Codex's physical cache layout for Claude. Every native query needs its own exact process-birth identities, retained handles, bounded terminal waits and explicit handle closure; only the root image must be the staged Claude executable. Descendants retain their observed absolute kernel image paths. A failed or incomplete frame cannot qualify a case.
+
+Run the two cases serially from one immutable snapshot. Retain each closed case before independent validation and allow the second only after the first passes. Native accounting alone never authorizes inventory or cleanup. Promote the public profile only after both cases pass and the owned scratch stage is removed. Keep CI, package-consumer and release-wide checks deferred.

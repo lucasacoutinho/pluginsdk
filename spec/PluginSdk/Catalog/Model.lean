@@ -10,10 +10,8 @@ def register (ledger : ReleaseLedger) (release : Release) : Registration :=
   else .registered (ledger ++ [release])
 
 def packageDigest (packages : FormatDigests) : PackageFormat → Option String
-  | .agentPluginsV1 => packages.agentPluginsV1
-  | .claudeCodeV1 => packages.claudeCodeV1
-  | .agentPluginsV2 => packages.agentPluginsV2
-  | .claudeCodeV2 => packages.claudeCodeV2
+  | .claudeCode => packages.claudeCode
+  | .codex => packages.codex
 
 def selectArtifact (release : Release) (target : ReleaseTarget) : Resolution :=
   match release.contents, target with

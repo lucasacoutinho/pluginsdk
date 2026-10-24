@@ -95,8 +95,8 @@ class NativeInventoryInvalid extends Schema.TaggedError<NativeInventoryInvalid, 
 }) {}
 
 const formatFor = (host: SupportedHost): Format => Match.value(host).pipe(
-  Match.when("claude_code", () => Schema.decodeSync(Format)("claude_code_v1")),
-  Match.when("codex", () => Schema.decodeSync(Format)("agent_plugins_v1")),
+  Match.when("claude_code", (): Format => "claude_code"),
+  Match.when("codex", (): Format => "codex"),
   Match.exhaustive
 )
 

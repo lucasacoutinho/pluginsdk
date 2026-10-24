@@ -1,0 +1,9 @@
+{
+  "id": "release-notes",
+  "version": "1.0.0",
+  "description": "Prepare evidence-backed release notes from a Git tag or commit range.",
+  "skills": [
+    "skills/release-notes"
+  ],
+  "mcp": {}
+}

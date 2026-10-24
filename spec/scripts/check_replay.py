@@ -1,13 +1,14 @@
 import argparse
 import copy
 import json
+import os
 from pathlib import Path
 import subprocess
 
 
 SPEC = Path(__file__).resolve().parents[1]
-ORACLE = SPEC / ".lake/build/bin/oracle"
-EXAMPLES = SPEC.parent / "docs/examples/replay.ndjson"
+ORACLE = Path(os.environ.get("PLUGINSDK_ORACLE", str(SPEC / ".lake/build/bin/oracle")))
+EXAMPLES = SPEC.parent / "docs/internals/examples/replay.ndjson"
 VECTORS = SPEC / "vectors/lifecycle.ndjson"
 
 
@@ -39,8 +40,14 @@ def replay(write, examples=EXAMPLES, vectors=VECTORS, label="lifecycle"):
     if write:
         vectors.parent.mkdir(exist_ok=True)
         vectors.write_text(generated)
-    elif vectors.read_text() != generated:
-        raise RuntimeError(f"{label} vectors differ from the current oracle")
+    else:
+        existing = "".join(
+            json.dumps(json.loads(line), sort_keys=True, separators=(",", ":")) + "\n"
+            for line in vectors.read_text().splitlines()
+            if line.strip()
+        )
+        if existing != generated:
+            raise RuntimeError(f"{label} vectors differ from the current oracle")
     print(f"{len(cases)} {label} frames match the design examples and generated vectors")
 
 

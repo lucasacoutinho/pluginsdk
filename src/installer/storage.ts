@@ -1,23 +1,22 @@
 import { constants } from "node:fs"
-import { open, mkdir, realpath, rename, rm, writeFile } from "node:fs/promises"
-import { dirname, join } from "node:path"
+import { open, mkdir, realpath } from "node:fs/promises"
+import { dirname } from "node:path"
 import { Effect, Schema } from "effect"
-import { tryLock } from "fs-native-extensions"
 import { StateUnavailable, type InstallationKey } from "../../contracts/Installer.ts"
-import { parseJson, canonicalJson, type Json } from "../internal/json.ts"
+import { Directory } from "../../contracts/Plugin.ts"
+import { PermissionBits } from "../../contracts/ExecutableIntent.ts"
+import { parseJson, type Json } from "../internal/json.ts"
+import { syncDirectory, writeJsonAtomically } from "../internal/storage.ts"
+import { stagePermissions } from "../internal/files/executable.ts"
+import { recordLock } from "../internal/records/lock.ts"
 
 export const stateIO = <A>(key: InstallationKey, operation: () => Promise<A>): Effect.Effect<A, StateUnavailable> =>
   Effect.tryPromise({ try: operation, catch: (cause) => new StateUnavailable({ key, cause }) })
 
-const syncDirectory = async (path: string): Promise<void> => {
-  const directory = await open(path, constants.O_RDONLY | constants.O_DIRECTORY | constants.O_NOFOLLOW)
-  try { await directory.sync() } finally { await directory.close() }
-}
-
 const directoryTree = async (path: string): Promise<void> => {
   const created = await mkdir(path, { recursive: true, mode: 0o700 })
   if (await realpath(path) !== path) throw new Error("SDK storage must not contain symbolic links")
-  const stop = created === undefined ? path : dirname(created)
+  const stop = created === undefined ? path : dirname(await realpath(created))
   let current = path
   while (true) {
     await syncDirectory(current)
@@ -32,13 +31,7 @@ export const ensureDirectory = (key: InstallationKey, path: string) => stateIO(k
 
 export const durableWrite = (key: InstallationKey, path: string, value: Json) => stateIO(key, async () => {
   await directoryTree(dirname(path))
-  const temporary = `${path}.${process.pid}.${crypto.randomUUID()}.tmp`
-  try {
-    const file = await open(temporary, constants.O_WRONLY | constants.O_CREAT | constants.O_EXCL | constants.O_NOFOLLOW, 0o600)
-    try { await file.writeFile(canonicalJson(value)); await file.sync() } finally { await file.close() }
-    await rename(temporary, path)
-    await syncDirectory(dirname(path))
-  } finally { await rm(temporary, { force: true }) }
+  await writeJsonAtomically(path, value)
 }).pipe(Effect.uninterruptible)
 
 export const readRecord = <S extends Schema.ConstraintDecoder<unknown>>(key: InstallationKey, path: string, schema: S) => stateIO(key, async (): Promise<S["Type"] | null> => {
@@ -54,22 +47,24 @@ export const readRecord = <S extends Schema.ConstraintDecoder<unknown>>(key: Ins
   } finally { await file.close() }
 })
 
-export const installationLock = Effect.fnUntraced(function*(key: InstallationKey, directory: string) {
+export const installationLock = Effect.fn("Installer.installationLock")(function*(key: InstallationKey, directory: string) {
   yield* ensureDirectory(key, directory)
-  const file = yield* Effect.acquireRelease(
-    stateIO(key, () => open(join(directory, "writer.lock"), constants.O_RDWR | constants.O_CREAT | constants.O_NOFOLLOW, 0o600)),
-    (file) => Effect.promise(() => file.close())
+  return yield* recordLock(Directory.make(directory)).pipe(
+    Effect.mapError(({ cause }) => new StateUnavailable({ key, cause }))
   )
-  while (!(yield* Effect.try({ try: () => tryLock(file.fd), catch: (cause) => new StateUnavailable({ key, cause }) }))) {
-    yield* Effect.sleep("10 millis")
-  }
-  return file
 })
 
 export const stageFile = (key: InstallationKey, path: string, bytes: Uint8Array, executable: boolean) => stateIO(key, async () => {
   await directoryTree(dirname(path))
-  await writeFile(path, bytes, { mode: executable ? 0o755 : 0o644, flag: "wx" })
-  const file = await open(path, constants.O_RDONLY | constants.O_NOFOLLOW)
-  try { await file.sync() } finally { await file.close() }
+  const file = await open(path, constants.O_WRONLY | constants.O_CREAT | constants.O_EXCL | constants.O_NOFOLLOW, executable ? 0o755 : 0o644)
+  try {
+    await file.writeFile(bytes)
+    if (process.platform !== "win32") {
+      const current = PermissionBits.make(Number((await file.stat({ bigint: true })).mode & 0o777n))
+      const desired = stagePermissions({ current, executable })
+      if (desired !== current) await file.chmod(desired)
+    }
+    await file.sync()
+  } finally { await file.close() }
   await syncDirectory(dirname(path))
 }).pipe(Effect.uninterruptible)

@@ -22,21 +22,27 @@ export const ReleaseOrigin = Schema.Union([
 export type ReleaseOrigin = typeof ReleaseOrigin.Type
 
 export const FormatDigests = Schema.Struct({
-  agent_plugins_v1: Schema.optionalKey(BundleDigest),
-  claude_code_v1: Schema.optionalKey(BundleDigest),
-  agent_plugins_v2: Schema.optionalKey(BundleDigest),
-  claude_code_v2: Schema.optionalKey(BundleDigest)
+  claude_code: Schema.optionalKey(BundleDigest),
+  codex: Schema.optionalKey(BundleDigest)
 }).check(Schema.makeFilter((packages) => Object.keys(packages).length > 0, { expected: "at least one native package digest" }))
 export type FormatDigests = typeof FormatDigests.Type
 
+export const PluginReleaseContents = Schema.Struct({ type: Schema.Literal("plugin"), plugin: PluginId, packages: FormatDigests })
+export type PluginReleaseContents = typeof PluginReleaseContents.Type
+export const McpReleaseContents = Schema.Struct({ type: Schema.Literal("mcp"), service: ServiceId, contract: ContractDigest })
+export type McpReleaseContents = typeof McpReleaseContents.Type
 export const ReleaseContents = Schema.Union([
-  Schema.Struct({ type: Schema.Literal("plugin"), plugin: PluginId, packages: FormatDigests }),
-  Schema.Struct({ type: Schema.Literal("mcp"), service: ServiceId, contract: ContractDigest })
+  PluginReleaseContents,
+  McpReleaseContents
 ]).pipe(Schema.toTaggedUnion("type"))
 export type ReleaseContents = typeof ReleaseContents.Type
 
 export const Release = Schema.Struct({ key: ReleaseKey, version: Schema.NonEmptyString, origin: ReleaseOrigin, contents: ReleaseContents })
 export type Release = typeof Release.Type
+export const PluginRelease = Schema.Struct({ ...Release.fields, contents: PluginReleaseContents })
+export type PluginRelease = typeof PluginRelease.Type
+export const McpRelease = Schema.Struct({ ...Release.fields, contents: McpReleaseContents })
+export type McpRelease = typeof McpRelease.Type
 export const ReleaseLedger = Schema.Array(Release)
 export type ReleaseLedger = typeof ReleaseLedger.Type
 

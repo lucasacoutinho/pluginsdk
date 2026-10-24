@@ -1,0 +1,26 @@
+{
+  "id": "team-automation",
+  "version": "1.0.0",
+  "description": "Share a review skill, application tools and team prompt policy.",
+  "skills": ["skills/review"],
+  "assets": ["mcp/server", "automation"],
+  "mcp": {
+    "app": {
+      "type": "stdio",
+      "command": "node",
+      "args": [{ "file": "mcp/server/echo.mjs" }]
+    }
+  },
+  "hooks": {
+    "context": {
+      "event": "SessionStart",
+      "command": "node",
+      "args": [{ "file": "automation/policy.mjs" }]
+    },
+    "prompt-policy": {
+      "event": "UserPromptSubmit",
+      "command": "node",
+      "args": [{ "file": "automation/policy.mjs" }]
+    }
+  }
+}

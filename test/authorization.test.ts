@@ -4,7 +4,7 @@ import { fileURLToPath } from "node:url"
 import { expect, it } from "@effect/vitest"
 import { Schema } from "effect"
 import * as Authorization from "../contracts/Authorization.ts"
-import { authorize } from "../src/model/authorization.ts"
+import { authorize } from "../src/authorization.ts"
 
 type Case = { readonly name: string; readonly request: Authorization.OracleRequest }
 type VectorCase = Case & { readonly expected: Authorization.OracleResponse }

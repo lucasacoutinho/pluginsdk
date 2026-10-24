@@ -1,0 +1,82 @@
+[
+  {
+    "name": "unsupported-schema",
+    "text": "{\"schema\":2,\"type\":\"observe_local_slots\",\"input\":{\"owner\":\"engineering/service\",\"slots\":{\"live\":{\"type\":\"complete\",\"owner\":\"engineering/service\",\"identity\":{\"plan\":\"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\",\"bundle\":\"bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb\"},\"basis\":\"eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee\"},\"staged\":{\"type\":\"absent\"},\"retired\":{\"type\":\"absent\"}}}}"
+  },
+  {
+    "name": "unsupported-type",
+    "text": "{\"schema\":1,\"type\":\"observe_unknown_slots\",\"input\":{\"owner\":\"engineering/service\",\"slots\":{\"live\":{\"type\":\"complete\",\"owner\":\"engineering/service\",\"identity\":{\"plan\":\"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\",\"bundle\":\"bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb\"},\"basis\":\"eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee\"},\"staged\":{\"type\":\"absent\"},\"retired\":{\"type\":\"absent\"}}}}"
+  },
+  {
+    "name": "extra-envelope-field",
+    "text": "{\"schema\":1,\"type\":\"observe_local_slots\",\"input\":{\"owner\":\"engineering/service\",\"slots\":{\"live\":{\"type\":\"complete\",\"owner\":\"engineering/service\",\"identity\":{\"plan\":\"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\",\"bundle\":\"bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb\"},\"basis\":\"eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee\"},\"staged\":{\"type\":\"absent\"},\"retired\":{\"type\":\"absent\"}}},\"force\":true}"
+  },
+  {
+    "name": "extra-input-field",
+    "text": "{\"schema\":1,\"type\":\"observe_local_slots\",\"input\":{\"owner\":\"engineering/service\",\"slots\":{\"live\":{\"type\":\"complete\",\"owner\":\"engineering/service\",\"identity\":{\"plan\":\"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\",\"bundle\":\"bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb\"},\"basis\":\"eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee\"},\"staged\":{\"type\":\"absent\"},\"retired\":{\"type\":\"absent\"}},\"force\":true}}"
+  },
+  {
+    "name": "empty-expected-owner",
+    "text": "{\"schema\":1,\"type\":\"observe_local_slots\",\"input\":{\"owner\":\"\",\"slots\":{\"live\":{\"type\":\"complete\",\"owner\":\"engineering/service\",\"identity\":{\"plan\":\"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\",\"bundle\":\"bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb\"},\"basis\":\"eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee\"},\"staged\":{\"type\":\"absent\"},\"retired\":{\"type\":\"absent\"}}}}"
+  },
+  {
+    "name": "invalid-expected-unicode",
+    "text": "{\"schema\":1,\"type\":\"observe_local_slots\",\"input\":{\"owner\":\"\\ud800\",\"slots\":{\"live\":{\"type\":\"complete\",\"owner\":\"engineering/service\",\"identity\":{\"plan\":\"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\",\"bundle\":\"bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb\"},\"basis\":\"eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee\"},\"staged\":{\"type\":\"absent\"},\"retired\":{\"type\":\"absent\"}}}}"
+  },
+  {
+    "name": "extra-slots-field",
+    "text": "{\"schema\":1,\"type\":\"observe_local_slots\",\"input\":{\"owner\":\"engineering/service\",\"slots\":{\"live\":{\"type\":\"complete\",\"owner\":\"engineering/service\",\"identity\":{\"plan\":\"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\",\"bundle\":\"bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb\"},\"basis\":\"eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee\"},\"staged\":{\"type\":\"absent\"},\"retired\":{\"type\":\"absent\"},\"history\":{\"type\":\"absent\"}}}}"
+  },
+  {
+    "name": "unknown-slot-tag",
+    "text": "{\"schema\":1,\"type\":\"observe_local_slots\",\"input\":{\"owner\":\"engineering/service\",\"slots\":{\"live\":{\"type\":\"installed\",\"owner\":\"engineering/service\",\"identity\":{\"plan\":\"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\",\"bundle\":\"bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb\"},\"basis\":\"eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee\"},\"staged\":{\"type\":\"absent\"},\"retired\":{\"type\":\"absent\"}}}}"
+  },
+  {
+    "name": "extra-absent-field",
+    "text": "{\"schema\":1,\"type\":\"observe_local_slots\",\"input\":{\"owner\":\"engineering/service\",\"slots\":{\"live\":{\"type\":\"complete\",\"owner\":\"engineering/service\",\"identity\":{\"plan\":\"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\",\"bundle\":\"bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb\"},\"basis\":\"eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee\"},\"staged\":{\"type\":\"absent\",\"basis\":\"eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee\"},\"retired\":{\"type\":\"absent\"}}}}"
+  },
+  {
+    "name": "unknown-extra-field",
+    "text": "{\"schema\":1,\"type\":\"observe_local_slots\",\"input\":{\"owner\":\"engineering/service\",\"slots\":{\"live\":{\"type\":\"complete\",\"owner\":\"engineering/service\",\"identity\":{\"plan\":\"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\",\"bundle\":\"bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb\"},\"basis\":\"eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee\"},\"staged\":{\"type\":\"absent\"},\"retired\":{\"type\":\"unknown\",\"basis\":\"eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee\"}}}}"
+  },
+  {
+    "name": "empty-claim-owner",
+    "text": "{\"schema\":1,\"type\":\"observe_local_slots\",\"input\":{\"owner\":\"engineering/service\",\"slots\":{\"live\":{\"type\":\"complete\",\"owner\":\"\",\"identity\":{\"plan\":\"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\",\"bundle\":\"bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb\"},\"basis\":\"eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee\"},\"staged\":{\"type\":\"absent\"},\"retired\":{\"type\":\"absent\"}}}}"
+  },
+  {
+    "name": "unpaired-claim-surrogate",
+    "text": "{\"schema\":1,\"type\":\"observe_local_slots\",\"input\":{\"owner\":\"engineering/service\",\"slots\":{\"live\":{\"type\":\"complete\",\"owner\":\"\\udc00\",\"identity\":{\"plan\":\"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\",\"bundle\":\"bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb\"},\"basis\":\"eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee\"},\"staged\":{\"type\":\"absent\"},\"retired\":{\"type\":\"absent\"}}}}"
+  },
+  {
+    "name": "short-plan",
+    "text": "{\"schema\":1,\"type\":\"observe_local_slots\",\"input\":{\"owner\":\"engineering/service\",\"slots\":{\"live\":{\"type\":\"complete\",\"owner\":\"engineering/service\",\"identity\":{\"plan\":\"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\",\"bundle\":\"bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb\"},\"basis\":\"eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee\"},\"staged\":{\"type\":\"absent\"},\"retired\":{\"type\":\"absent\"}}}}"
+  },
+  {
+    "name": "uppercase-bundle",
+    "text": "{\"schema\":1,\"type\":\"observe_local_slots\",\"input\":{\"owner\":\"engineering/service\",\"slots\":{\"live\":{\"type\":\"complete\",\"owner\":\"engineering/service\",\"identity\":{\"plan\":\"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\",\"bundle\":\"BBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBB\"},\"basis\":\"eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee\"},\"staged\":{\"type\":\"absent\"},\"retired\":{\"type\":\"absent\"}}}}"
+  },
+  {
+    "name": "short-basis",
+    "text": "{\"schema\":1,\"type\":\"observe_local_slots\",\"input\":{\"owner\":\"engineering/service\",\"slots\":{\"live\":{\"type\":\"complete\",\"owner\":\"engineering/service\",\"identity\":{\"plan\":\"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\",\"bundle\":\"bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb\"},\"basis\":\"eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee\"},\"staged\":{\"type\":\"absent\"},\"retired\":{\"type\":\"absent\"}}}}"
+  },
+  {
+    "name": "extra-identity-field",
+    "text": "{\"schema\":1,\"type\":\"observe_local_slots\",\"input\":{\"owner\":\"engineering/service\",\"slots\":{\"live\":{\"type\":\"complete\",\"owner\":\"engineering/service\",\"identity\":{\"plan\":\"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\",\"bundle\":\"bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb\",\"version\":\"1\"},\"basis\":\"eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee\"},\"staged\":{\"type\":\"absent\"},\"retired\":{\"type\":\"absent\"}}}}"
+  },
+  {
+    "name": "null-live-role",
+    "text": "{\"schema\":1,\"type\":\"observe_local_slots\",\"input\":{\"owner\":\"engineering/service\",\"slots\":{\"live\":null,\"staged\":{\"type\":\"absent\"},\"retired\":{\"type\":\"absent\"}}}}"
+  },
+  {
+    "name": "extra-claim-field",
+    "text": "{\"schema\":1,\"type\":\"observe_local_slots\",\"input\":{\"owner\":\"engineering/service\",\"slots\":{\"live\":{\"type\":\"complete\",\"owner\":\"engineering/service\",\"identity\":{\"plan\":\"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\",\"bundle\":\"bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb\"},\"basis\":\"eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee\",\"root\":\"trusted\"},\"staged\":{\"type\":\"absent\"},\"retired\":{\"type\":\"absent\"}}}}"
+  },
+  {
+    "name": "missing-retired",
+    "text": "{\"schema\":1,\"type\":\"observe_local_slots\",\"input\":{\"owner\":\"engineering/service\",\"slots\":{\"live\":{\"type\":\"complete\",\"owner\":\"engineering/service\",\"identity\":{\"plan\":\"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\",\"bundle\":\"bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb\"},\"basis\":\"eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee\"},\"staged\":{\"type\":\"absent\"}}}}"
+  },
+  {
+    "name": "duplicate-schema",
+    "text": "{\"schema\":1,\"schema\":1,\"type\":\"observe_local_slots\",\"input\":{\"owner\":\"engineering/service\",\"slots\":{\"live\":{\"type\":\"complete\",\"owner\":\"engineering/service\",\"identity\":{\"plan\":\"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\",\"bundle\":\"bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb\"},\"basis\":\"eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee\"},\"staged\":{\"type\":\"absent\"},\"retired\":{\"type\":\"absent\"}}}}"
+  }
+]

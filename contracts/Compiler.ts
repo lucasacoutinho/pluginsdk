@@ -1,8 +1,12 @@
 import { Context, Effect, Schema } from "effect"
-import { Directory, HeaderName, PackagePath, Plugin, PluginId } from "./Plugin.ts"
+import { Directory, EnvironmentName, HeaderName, PackagePath, Plugin, PluginId } from "./Plugin.ts"
+import { PackageClient } from "./Clients.ts"
 
-export const Format = Schema.Literals(["agent_plugins_v1", "claude_code_v1", "agent_plugins_v2", "claude_code_v2"])
+export const Format = PackageClient
 export type Format = typeof Format.Type
+
+export const Capability = Schema.Literals(["stdio", "hooks", "agents"])
+export type Capability = typeof Capability.Type
 
 export const BundleDigest = Schema.String.check(
   Schema.isPattern(/^[a-f0-9]{64}$/)
@@ -40,13 +44,6 @@ export type PathCollision = typeof PathCollision.Type
 export const ReservedAsset = Schema.Struct({ type: Schema.Literal("reserved_asset"), path: PackagePath })
 export type ReservedAsset = typeof ReservedAsset.Type
 
-export const UnsupportedFeature = Schema.Struct({
-  type: Schema.Literal("unsupported_feature"),
-  feature: Schema.Literal("assets"),
-  format: Format
-})
-export type UnsupportedFeature = typeof UnsupportedFeature.Type
-
 export const BundleCheckIssue = Schema.Union([
   Schema.Struct({ type: Schema.Literal("digest_mismatch") }),
   Schema.Struct({ type: Schema.Literal("noncanonical_order") }),
@@ -78,6 +75,15 @@ export const UnsupportedMcp = Schema.Struct({
 })
 export type UnsupportedMcp = typeof UnsupportedMcp.Type
 
+export const LocalMcpProblem = Schema.Union([
+  Schema.Struct({ type: Schema.Literal("missing_file"), path: PackagePath }),
+  Schema.Struct({ type: Schema.Literal("not_executable"), path: PackagePath }),
+  Schema.Struct({ type: Schema.Literal("missing_directory"), path: PackagePath }),
+  Schema.Struct({ type: Schema.Literal("environment_reference_unsupported"), name: EnvironmentName }),
+  Schema.Struct({ type: Schema.Literal("environment_collision"), name: EnvironmentName })
+]).pipe(Schema.toTaggedUnion("type"))
+export type LocalMcpProblem = typeof LocalMcpProblem.Type
+
 export const BuildIssue = Schema.Union([
   Schema.Struct({
     type: Schema.Literal("invalid_metadata"),
@@ -94,10 +100,21 @@ export const BuildIssue = Schema.Union([
     path: PackagePath,
     detail: Schema.NonEmptyString
   }),
+  Schema.Struct({
+    type: Schema.Literal("invalid_agent"),
+    path: PackagePath,
+    detail: Schema.NonEmptyString
+  }),
+  Schema.Struct({
+    type: Schema.Literal("invalid_executable"),
+    path: PackagePath,
+    detail: Schema.NonEmptyString
+  }),
   PathCollision,
   ReservedAsset,
-  UnsupportedFeature,
   Schema.Struct({ type: Schema.Literal("source_escape"), path: PackagePath }),
+  Schema.Struct({ type: Schema.Literal("invalid_process"), server: Schema.NonEmptyString, reason: LocalMcpProblem }),
+  Schema.Struct({ type: Schema.Literal("invalid_hook_process"), hook: Schema.NonEmptyString, reason: LocalMcpProblem }),
   UnsupportedMcp
 ]).pipe(Schema.toTaggedUnion("type"))
 export type BuildIssue = typeof BuildIssue.Type

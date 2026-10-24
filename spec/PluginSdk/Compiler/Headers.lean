@@ -18,10 +18,10 @@ theorem hasExpansion_iff (text : String) : HasExpansion text ↔ ∃ before afte
 
 def valueProblems (format : Format) (header : String) : HeaderValue → List McpProblem
   | .literal text =>
-    if format = .claudeCodeV1 ∧ HasExpansion text then [.literalExpansion (asciiFold header)] else []
+    if format = .claudeCode ∧ HasExpansion text then [.literalExpansion (asciiFold header)] else []
   | .environment _ literalPrefix =>
-    (if format = .agentPluginsV1 then [.environmentReference (asciiFold header)] else []) ++
-    (if format = .claudeCodeV1 ∧ HasExpansion literalPrefix then [.literalExpansion (asciiFold header)] else [])
+    (if format ≠ .claudeCode then [.environmentReference (asciiFold header)] else []) ++
+    (if format = .claudeCode ∧ HasExpansion literalPrefix then [.literalExpansion (asciiFold header)] else [])
 
 def headerProblems (format : Format) (source : RemoteMcp) : List McpProblem :=
   source.headers.flatMap (fun (name, value) => valueProblems format name value) ++
@@ -41,14 +41,14 @@ theorem valueProblems_meaning (format : Format) (header : String) (value : Heade
 
 theorem mem_valueProblems_environment (format : Format) (name header : String) (value : HeaderValue) :
     .environmentReference header ∈ valueProblems format name value ↔
-      format = .agentPluginsV1 ∧ ∃ environmentName literalPrefix,
+      format ≠ .claudeCode ∧ ∃ environmentName literalPrefix,
         value = .environment environmentName literalPrefix ∧ header = asciiFold name := by
   cases format <;> cases value <;> simp [valueProblems, and_comm]
   all_goals split <;> simp_all
 
 theorem mem_valueProblems_expansion (format : Format) (name header : String) (value : HeaderValue) :
     .literalExpansion header ∈ valueProblems format name value ↔
-      format = .claudeCodeV1 ∧ header = asciiFold name ∧
+      format = .claudeCode ∧ header = asciiFold name ∧
         (match value with | .literal text => HasExpansion text | .environment _ text => HasExpansion text) := by
   cases format <;> cases value <;> simp [valueProblems, and_comm]
   all_goals split <;> simp_all

@@ -6,13 +6,11 @@ An author keeps one definition and runs `pluginsdk build`, `pluginsdk preview` a
 
 Lucas confirmed that PluginSDK has not launched and no installations exist. This explicitly supersedes the earlier requirement to retain prelaunch formats, legacy stores and exact-version qualification. Preserve historical evidence without keeping those representations executable in the product. The [launch plan](launch-plan.md) fixes the completion scope.
 
-This records the selected implementation design. Its open architecture steps and the launch backlog track acceptance of the resulting code.
+## Replaced prelaunch design
 
-## Existing flow and problem
+Before consolidation, `Project.build` chose among fourteen `Compiler.Format` tags using feature flags. `nativeLocations` lowered them to three base renderers and four process encodings. Compiler capture, rendering and validation branched on those selections. Catalog digest fields repeated the fourteen tags. Distribution selected a compatible family. Installer resolved an exact version/platform/scope/format row before reading native state. Preview had another exact-version identity for imported packages.
 
-`Project.build` chooses among fourteen `Compiler.Format` tags using feature flags. `nativeLocations` lowers them to three base renderers and four process encodings. Compiler capture, rendering and validation branch on those selections. Catalog digest fields repeat the fourteen tags. Distribution selects a compatible family. Installer resolves an exact version/platform/scope/format row before reading native state. Preview has another exact-version identity for imported packages.
-
-The current portable feature implementation already renders MCP and hooks with one shared runtime and preserves agents. The additional generations preserve development history. Exact binary allowlists also make a compatible app update block installation and stale a reviewed plan. In contrast, physical identity, complete observations, owned bytes, backend authorization and pending-operation quiescence remain actual requirements.
+The portable implementation already rendered MCP and hooks with one shared runtime and preserved agents. Additional generations retained development history in executable code. Exact binary allowlists could also make a compatible app update block installation and stale a reviewed plan. Physical identity, complete observations, owned bytes, backend authorization and pending-operation quiescence remain actual requirements.
 
 ## Compared designs
 
@@ -77,5 +75,5 @@ Use strict new-format oracle inputs and independent expected examples for both p
 - [x] Ground: main traced the project selector, compiler/materializer/validator, catalog, distribution, profile resolver and plan comparisons; Luna supplied a bounded read-only dependency inventory.
 - [x] Sketch: compared alias retention with one current representation and content requirements.
 - [x] Agree: Lucas explicitly authorized consolidation without migration and resumed the finite completion goal.
-- [ ] Implement: checked Lean construction, oracle, pure TypeScript, then I/O and native acceptance.
-- [ ] Scrap review: inspect the resulting module depth, deleted paths and counterexamples before accepting the slice.
+- [x] Implement: checked Lean construction, oracle, pure TypeScript and scoped I/O. Current native author and manager acceptance close L6/L7 in the launch plan.
+- [x] Scrap review: main reviewed the removed paths, current module boundaries and counterexamples; [scoped acceptance](prelaunch-consolidation-acceptance.md) records corrections and limits.

@@ -5,9 +5,10 @@ import { expect, it } from "@effect/vitest"
 import { Match, Schema } from "effect"
 import * as Catalog from "../contracts/Catalog.ts"
 import { Format } from "../contracts/Compiler.ts"
-import { register, resolve } from "../src/model/catalog.ts"
+import { register, resolve } from "../src/catalog/model.ts"
 
-const oraclePath = fileURLToPath(new URL("../spec/.lake/build/bin/oracle", import.meta.url))
+const oraclePath = process.env["PLUGINSDK_ORACLE"] ??
+  fileURLToPath(new URL("../spec/.lake/build/bin/oracle", import.meta.url))
 const vectorPath = fileURLToPath(new URL("../spec/vectors/catalog.ndjson", import.meta.url))
 const Fixture = Schema.Struct({
   name: Schema.NonEmptyString,
@@ -99,7 +100,7 @@ it("keeps an approved release unchanged when another release is promoted", () =>
   const promoted = register(first.ledger, next)
   if (promoted.type !== "registered") throw new Error("New release identity was not registered")
   expect(promoted.ledger).toHaveLength(2)
-  const formats: ReadonlyArray<Format> = ["claude_code_v2", "agent_plugins_v2"]
+  const formats: ReadonlyArray<Format> = Format.literals
   for (const release of [plugin, next]) {
     for (const format of formats) {
       const selected = resolve(promoted.ledger, release.key, { type: "plugin", format })
@@ -144,7 +145,7 @@ it("rejects incomplete or ambiguous release declarations at the schema seam", ()
     { ...plugin, origin: { type: "artifact", location: "registry:17", digest: "A".repeat(64) } },
     { ...plugin, contents: { type: "plugin", plugin: "tickets", packages: {} } },
     { ...plugin, contents: { type: "plugin", plugin: "tickets", packages: { another_format: "a".repeat(64) } } },
-    { ...plugin, contents: { type: "plugin", plugin: "tickets", packages: { claude_code_v2: "invalid" } } },
+    { ...plugin, contents: { type: "plugin", plugin: "tickets", packages: { unsupported_format: "invalid" } } },
     { ...plugin, contents: { type: "mcp", service: "payroll", contract: "c".repeat(64), url: "https://payroll.example/mcp" } }
   ]
   for (const release of invalid) expect(() => decodeStrict(Catalog.Release, release)).toThrow()

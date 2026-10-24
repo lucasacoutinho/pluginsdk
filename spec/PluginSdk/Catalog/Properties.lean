@@ -3,7 +3,7 @@ import PluginSdk.Catalog.Rules
 namespace PluginSdk.Catalog
 
 def C1_registration_adds_only_absent_key (model : Interface) : Prop :=
-  ∀ ledger release next, model.register ledger release = .registered next →
+  ∀ ledger release next, model.register ledger release = .registered next ↔
     next = ledger ++ [release] ∧ ∀ prior ∈ ledger, prior.key ≠ release.key
 
 def C2_conflicting_identity_rejected (model : Interface) : Prop :=

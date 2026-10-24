@@ -38,8 +38,11 @@ export const RepairBeginInput = Schema.Struct({
 })
 export type RepairBeginInput = typeof RepairBeginInput.Type
 
+export const RepairChange = Schema.Literals(["none", "remove_marketplace", "remove_companions", "remove_marketplace_and_companions", "archive_local"])
+export type RepairChange = typeof RepairChange.Type
+
 export const RepairBeginResult = Schema.Union([
-  Schema.Struct({ type: Schema.Literal("start"), state: RepairPending, change: Schema.Literals(["none", "remove_marketplace"]) }),
+  Schema.Struct({ type: Schema.Literal("start"), state: RepairPending, change: RepairChange }),
   Schema.Struct({ type: Schema.Literal("resume"), state: RepairPending }),
   Schema.Struct({ type: Schema.Literal("completed") }),
   Schema.Struct({ type: Schema.Literal("rejected"), reason: PlanRejection })

@@ -6,15 +6,11 @@ open Lean
 
 theorem manifest_native (input : RenderInput) : NativeManifest input (manifest input) := by
   have keys : ((manifestRows input).map Prod.fst).Nodup := by
-    cases format : input.format <;> simp [manifestRows, schemaRows, format]
-  refine ⟨?_, ?_, ?_, ?_, ?_, ?_⟩
+    simp [manifestRows]
+  refine ⟨?_, ?_, ?_, ?_, ?_⟩
   · exact manifestFile_value input.format
   · have shape := object_keys (manifestRows input)
-    cases format : input.format <;> simpa [manifestRows, schemaRows, format] using shape
-  · cases format : input.format
-    · apply object_field keys
-      simp [manifestRows, schemaRows, format]
-    · trivial
+    simpa [manifestRows] using shape
   all_goals apply object_field keys; simp [manifestRows]
 
 theorem headerRows_keys (source : RemoteMcp) :
@@ -22,20 +18,29 @@ theorem headerRows_keys (source : RemoteMcp) :
   simp [headerRows, List.map_map, Function.comp_def]
 
 theorem serverRows_keys (format : Format) (source : RemoteMcp) :
-    ((serverRows format source).map Prod.fst).Nodup := by simp [serverRows]
+    ((serverRows format source).map Prod.fst).Nodup := by
+  cases format <;> simp [serverRows, headerKey]
 
 theorem server_native (format : Format) (source : RemoteMcp) :
     NativeServer format source (object (serverRows format source)).value := by
   refine ⟨?_, ?_, ?_, (object (headerRows source)).value, ?_, ?_⟩
-  · simpa [serverRows] using object_keys (serverRows format source)
-  · apply object_field (serverRows_keys ..); simp [serverRows]
-  · apply object_field (serverRows_keys ..); simp [serverRows]
-  · apply object_field (serverRows_keys ..); simp [serverRows]
+  · have shape := object_keys (serverRows format source)
+    cases format <;> simpa [serverRows, serverKeys, headerKey] using shape
+  · intro notCodex
+    cases format with
+    | claudeCode =>
+        apply object_field (serverRows_keys ..)
+        simp [serverRows]
+    | codex => exact absurd rfl notCodex
+  · apply object_field (serverRows_keys ..)
+    cases format <;> simp [serverRows, headerKey]
+  · apply object_field (serverRows_keys ..)
+    cases format <;> simp [serverRows, headerKey]
   · rw [← headerRows_keys]
     exact object_keys _
 
 theorem mcpRows_keys (input : RenderInput) : ((mcpRows input).map Prod.fst).Nodup := by
-  cases format : input.format <;> simp [mcpRows, schemaRows, format]
+  simp [mcpRows]
 
 theorem server_object_keys (input : RenderInput) :
     ((input.mcp.map fun (name, source) => (name, (object (serverRows input.format source)).value)).map Prod.fst) =
@@ -43,14 +48,10 @@ theorem server_object_keys (input : RenderInput) :
 
 theorem mcp_native (input : RenderInput) (normalized : Normalized input) (present : input.mcp ≠ []) :
     NativeMcp input (mcp input) := by
-  refine ⟨present, ?_, ?_, ?_, ?_⟩
+  refine ⟨present, ?_, ?_, ?_⟩
   · exact mcpFile_value input.format
   · have shape := object_keys (mcpRows input)
-    cases format : input.format <;> simpa [mcpRows, schemaRows, format] using shape
-  · cases format : input.format
-    · apply object_field (mcpRows_keys _)
-      simp [mcpRows, schemaRows, format]
-    · trivial
+    simpa [mcpRows] using shape
   · refine ⟨(object (input.mcp.map fun (name, source) =>
       (name, (object (serverRows input.format source)).value))).value, ?_, ?_, ?_⟩
     · apply object_field (mcpRows_keys _); simp [mcpRows]
@@ -64,7 +65,7 @@ theorem mcp_native (input : RenderInput) (normalized : Normalized input) (presen
 theorem mcp_header (input : RenderInput) (normalized : Normalized input)
     {server : String} {source : RemoteMcp} (sourceMember : (server, source) ∈ input.mcp)
     {header : String} {value : HeaderValue} (headerMember : (header, value) ∈ source.headers) :
-    HeaderAt (mcp input) server header (headerText value) := by
+    HeaderAt input.format (mcp input) server header (headerText value) := by
   refine ⟨(object (input.mcp.map fun (name, source) =>
       (name, (object (serverRows input.format source)).value))).value,
     (object (serverRows input.format source)).value, (object (headerRows source)).value, ?_, ?_, ?_, ?_⟩

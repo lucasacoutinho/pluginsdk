@@ -1,0 +1,13 @@
+# Compiled Cursor CLI transport
+
+The compiled Windows CLI reports its version and reviews one real lstack installation through the existing transaction worker. The saved request and ready plan round-trip through authoritative schemas; the plan commitment matches. The package has 158 files and nine executable intents. This accepts the transport prerequisite. Native preview and managed distribution lifecycles remain unfinished.
+
+A private bootstrap preserves ordinary CLI arguments and the original SDK request. Before admission, its parent retains an image-checked process handle and creation identity. After the CLI closes, the parent waits for the same retained CLI and worker handles to signal termination. It closes all three query/wait handles. The counter covers two CLI processes and one transaction worker; nested command-owner and Node handles are separate.
+
+The first attempt completed the version command, then the observer failed when it queried that exited process's image path. Its 187 runtime files and marked root remain preserved. The correction keeps the image recorded while active and checks PID/creation plus termination through the retained handle. Windows documents that a [process handle remains valid after termination until closed](https://learn.microsoft.com/en-us/windows/win32/procthread/process-handles-and-identifiers), and [GetProcessTimes](https://learn.microsoft.com/en-us/windows/win32/api/processthreadsapi/nf-processthreadsapi-getprocesstimes) supplies creation and exit times. This host's image-query failure is directly recorded in the rejected attempt.
+
+The accepted second attempt retains all 195 runtime files before removing its marked root. All twelve Cursor client-file pins match. The owning Windows job closes with zero descendants. Three actual observation comparisons and one completion comparison match the checked Lean oracle. A separately bound reader correction fixes its uncurried decode call without rerunning or changing the native evidence.
+
+The [acceptance record](../../.audit/probes/cursor-callers/transport/acceptance.json) has SHA-256 `37931d15856a8560364355b767ea81663ad3c784a6df19c2bb0bbac09c7da8cb`. The seventeen protected leaves include the rejected attempt. Current product source bindings remain unchanged. A concurrent staged-index change from 904 to 932 entries is recorded and preserved.
+
+No package was installed in this premise. It adds no UI, authentication, default preview, managed distribution or formal TypeScript refinement claim. Existing CI, package-consumer, release, publication, macOS, native Grok and third-party authentication deferrals remain in force.

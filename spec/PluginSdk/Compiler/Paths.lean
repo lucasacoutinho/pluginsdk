@@ -24,16 +24,20 @@ def packageFile (name : String) (safe : SafeSegment name) (drive : NoDrive name)
   ⟨name, name, [], rfl, safe, by simp, drive⟩
 
 def manifestFile : Format → PackagePath
-  | .agentPluginsV1 => packageFile "plugin.json" (by unfold SafeSegment; decide) (by exact Or.inl (by decide))
-  | .claudeCodeV1 =>
+  | .claudeCode =>
     ⟨".claude-plugin/plugin.json", ".claude-plugin", ["plugin.json"], rfl,
       by unfold SafeSegment; decide,
       by simp; unfold SafeSegment; decide,
       by exact Or.inl (by decide)⟩
 
+  | .codex =>
+    ⟨".codex-plugin/plugin.json", ".codex-plugin", ["plugin.json"], rfl,
+      by unfold SafeSegment; decide,
+      by simp; unfold SafeSegment; decide,
+      by exact Or.inl (by decide)⟩
+
 def mcpFile : Format → PackagePath
-  | .agentPluginsV1 => packageFile "mcp.json" (by unfold SafeSegment; decide) (by exact Or.inl (by decide))
-  | .claudeCodeV1 => packageFile ".mcp.json" (by unfold SafeSegment; decide) (by exact Or.inl (by decide))
+  | .claudeCode | .codex => packageFile ".mcp.json" (by unfold SafeSegment; decide) (by exact Or.inl (by decide))
 
 theorem manifestFile_value (format : Format) : (manifestFile format).value = manifestPath format := by
   cases format <;> rfl

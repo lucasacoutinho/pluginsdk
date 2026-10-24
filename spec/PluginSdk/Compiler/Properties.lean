@@ -78,7 +78,7 @@ def B8_header_meaning_preserved (model : Interface) : Prop :=
     ∀ server source header requested, (server, source) ∈ input.mcp →
       (header, requested) ∈ source.headers →
       ∃ file ∈ files.toList, NativeMcp input file ∧
-        ∃ native, HeaderAt file server header native ∧ HeaderMeaning input.format requested native) ∧
+        ∃ native, HeaderAt input.format file server header native ∧ HeaderMeaning input.format requested native) ∧
   RejectionAccountsForRequests model
 
 end PluginSdk.Compiler

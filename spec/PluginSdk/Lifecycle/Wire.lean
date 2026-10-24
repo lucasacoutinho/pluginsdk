@@ -98,7 +98,7 @@ private def writeIdentity (identity : Identity) : Json :=
 private def writeReceipt (receipt : Receipt) : Json :=
   Json.mkObj [("identity", writeIdentity receipt.identity), ("fingerprint", .str receipt.fingerprint.value)]
 
-private def writeObservation : Observation → Json
+def writeObservation : Observation → Json
   | .absent => tagged "absent"
   | .unknown => tagged "unknown"
   | .present fingerprint identity => tagged "present"

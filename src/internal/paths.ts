@@ -1,8 +1,14 @@
+import { isAbsolute, relative } from "node:path"
 import { PackagePath } from "../../contracts/Plugin.ts"
+
+export const inside = (root: string, path: string): boolean => {
+  const segment = relative(root, path)
+  return segment !== ".." && !segment.startsWith("../") && !isAbsolute(segment)
+}
 
 const utf8Encoder = new TextEncoder()
 
-export const compareUtf8 = (left: string, right: string): number => {
+export const compareUtf8 = (left: string, right: string): -1 | 0 | 1 => {
   const leftBytes = utf8Encoder.encode(left)[Symbol.iterator]()
   const rightBytes = utf8Encoder.encode(right)[Symbol.iterator]()
   while (true) {

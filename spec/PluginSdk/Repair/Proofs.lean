@@ -114,6 +114,9 @@ theorem R6_completion_requires_qualified_absence :
       cases residual : snapshot.residual with
       | absent => simp_all [model, settle, QualifiedAbsence]
       | marketplace => simp [model, settle, residual] at completed
+      | companions => simp [model, settle, residual] at completed
+      | marketplaceAndCompanions => simp [model, settle, residual] at completed
+      | localPackage => simp [model, settle, residual] at completed
 
 theorem R7_other_settlement_preserves_pending_basis :
     R7_other_settlement_preserves_pending_basis model := by

@@ -11,8 +11,8 @@ import { discoverCodexSkills } from "./pilot/app-server.ts"
 
 type Client = { readonly host: Extract<Host, "claude_code" | "codex">; readonly format: Format }
 const clients: ReadonlyArray<Client> = [
-  { host: "claude_code", format: "claude_code_v2" },
-  { host: "codex", format: "agent_plugins_v2" }
+  { host: "claude_code", format: "claude_code" },
+  { host: "codex", format: "codex" }
 ]
 const sameFiles = Schema.toEquivalence(Schema.Array(PackageFile))
 const sameOutcome = Schema.toEquivalence(ApplyOutcome)
@@ -72,7 +72,7 @@ const program = Effect.scoped(Effect.gen(function*() {
   const fs = yield* FileSystem.FileSystem
   const compiler = yield* Compiler
   const installer = yield* Installer
-  const source = resolve("examples")
+  const source = resolve("examples/release-notes")
   const definition = yield* fs.readFileString(join(source, "definition.json"))
   const plugin = yield* Schema.decodeEffect(Schema.fromJsonString(Plugin), { onExcessProperty: "error" })(definition)
   const output = resolve(".pluginsdk/cross-client")
@@ -83,7 +83,7 @@ const program = Effect.scoped(Effect.gen(function*() {
   let sharedFiles: ReadonlyArray<PackageFile> | undefined
 
   for (const client of clients) {
-    yield* Console.log(`Building ${plugin.id} for ${client.host} from examples/definition.json`)
+    yield* Console.log(`Building ${plugin.id} for ${client.host} from examples/release-notes/definition.json`)
     const bundle = yield* compiler.build({ root: Directory.make(source), plugin, format: client.format })
     const skills = bundle.files.filter((file) => file.path.startsWith("skills/"))
     if (sharedFiles !== undefined) assert.ok(sameFiles(sharedFiles, skills), "Clients received different shared skill bytes")
@@ -110,12 +110,12 @@ const program = Effect.scoped(Effect.gen(function*() {
         assert.ok(row, "Claude did not discover the installed plugin")
         assert.equal(row.enabled, true)
         assert.equal(row.scope, "user")
-        assert.match(yield* claude(["plugin", "details", row.id], homeRoot, env), /Skills \(1\)\s+review/u)
-        return join(row.readFromFolder, "skills/review/SKILL.md")
+        assert.match(yield* claude(["plugin", "details", row.id], homeRoot, env), /Skills \(1\)\s+release-notes/u)
+        return join(row.readFromFolder, "skills/release-notes/SKILL.md")
       })),
       Match.when("codex", () => io("Discover the installed Codex skill", async () => {
         const skills = await discoverCodexSkills(homeRoot, env)
-        const skill = skills.find((entry) => entry.pluginId?.startsWith(`${plugin.id}@pluginsdk-`) && entry.name.endsWith(":review"))
+        const skill = skills.find((entry) => entry.pluginId?.startsWith(`${plugin.id}@pluginsdk-`) && entry.name.endsWith(":release-notes"))
         assert.ok(skill, "Codex did not discover the installed plugin skill")
         assert.equal(skill.enabled, true)
         return skill.path
@@ -123,10 +123,10 @@ const program = Effect.scoped(Effect.gen(function*() {
       Match.exhaustive
     )
     for (const file of skills) {
-      const installedPath = join(dirname(discovered), file.path.slice("skills/review/".length))
+      const installedPath = join(dirname(discovered), file.path.slice("skills/release-notes/".length))
       assert.ok(Buffer.from(yield* fs.readFile(installedPath)).equals(Buffer.from(file.content)), `Installed bytes differ at ${file.path}`)
     }
-    yield* Console.log(`${client.host}: discovered review; shared skill and checklist bytes match; replay passed`)
+    yield* Console.log(`${client.host}: discovered release-notes; shared skill bytes match; replay passed`)
 
     const removal = yield* ready(yield* installer.plan({ destination, intent: { type: "absent", plugin: plugin.id } }))
     const removed = yield* installer.apply(removal)
@@ -140,10 +140,10 @@ const program = Effect.scoped(Effect.gen(function*() {
       })),
       Match.exhaustive
     )
-    report.push({ host: client.host, version: install.target.version, format: client.format, digest: bundle.digest, discovered: "review", removed: true })
+    report.push({ host: client.host, version: install.target.version, format: client.format, digest: bundle.digest, discovered: "release-notes", removed: true })
     yield* Console.log(`${client.host}: removal verified`)
   }
-  yield* fs.writeFileString(join(output, "report.json"), JSON.stringify({ definition: "examples/definition.json", sharedSkillBytesEqual: true, clients: report }, null, 2) + "\n")
+  yield* fs.writeFileString(join(output, "report.json"), JSON.stringify({ definition: "examples/release-notes/definition.json", sharedSkillBytesEqual: true, clients: report }, null, 2) + "\n")
   yield* Console.log(`One maintained definition; both native clients verified. Bundles and report: ${output}`)
 })).pipe(Effect.provide(Layer.provideMerge(PluginSdkLive, NodeServices.layer)))
 

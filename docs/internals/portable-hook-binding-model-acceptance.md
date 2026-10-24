@@ -1,0 +1,9 @@
+# Portable hook binding model acceptance
+
+`contracts/HookBinding.ts` and `src/compiler/hooks/binding.ts` implement the selected pure host/ordinal binding contract. Claude receives the fixed executable and three separate arguments; Codex receives the qualified constant bootstrap and canonical descriptor path. The module uses a branded safe ordinal, schema-derived types and exhaustive Effect `Match`.
+
+HB1–HB4 are defined in [Properties.lean](../../spec/PluginSdk/Compiler/Hooks/Binding/Properties.lean) and proved in [Proofs.lean](../../spec/PluginSdk/Compiler/Hooks/Binding/Proofs.lean). The shared generated-path module proves JSON descriptor containment, expansion-marker absence and ordinal injectivity. The exact-type and permitted-axiom audit passes **294/294 properties**.
+
+All fourteen [authored vectors](../../spec/vectors/hook-binding.ndjson) agree with Lean and TypeScript. Their expected binding bytes derive from the [native premise fixture](portable-hook-binding-acceptance.md), before the new TypeScript model was written. Another 54 host/ordinal requests agree with Lean, and both decoders reject 31 malformed requests. The three focused tests, strict TypeScript compilation, Effect diagnostics and scoped lint pass. [Check outputs](../../.audit/probes/portable-hook-binding-model/checks.json) retain their actual results.
+
+The order was properties, Lean model/proofs and audit, authored vectors and Lean comparison, then TypeScript and oracle conformance. Compiler and installer I/O, the portable runtime, automatic format selection and qualified profiles remain unchanged. The next portable hook renderer still needs event grouping, ordering, reference rejection and file-layout contracts, including sharing the runtime with MCP output. Complete native hook and Windows agent-storage qualification remain separate gates. macOS remains deferred without a host.

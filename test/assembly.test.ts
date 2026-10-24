@@ -6,7 +6,7 @@ import { Schema } from "effect"
 import * as Assembly from "../contracts/Assembly.ts"
 import * as CompilerModel from "../contracts/CompilerModel.ts"
 import { PackagePath } from "../contracts/Plugin.ts"
-import { assemble, reservedAssetPath } from "../src/model/assembly.ts"
+import { assemble, reservedAssetPath } from "../src/compiler/package/assembly.ts"
 
 type AssemblyRequest = Assembly.OracleRequest
 type AssemblyResponse = Assembly.OracleResponse

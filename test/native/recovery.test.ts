@@ -5,12 +5,12 @@ import { tmpdir } from "node:os"
 import { join } from "node:path"
 import { setTimeout } from "node:timers/promises"
 import { fileURLToPath } from "node:url"
-import { Effect, Schema } from "effect"
-import { BuildRequest, Compiler, type Bundle } from "../../contracts/Compiler.ts"
+import { Effect, Match, Schema } from "effect"
+import { BuildRequest, Compiler, type Bundle, type Format } from "../../contracts/Compiler.ts"
 import { ApplyOutcome, Destination, Installer, ReadyPlan, type Host } from "../../contracts/Installer.ts"
 import { parseJson } from "../../src/internal/json.ts"
-import { StoredState } from "../../src/installer/records.ts"
-import { targetPaths } from "../../src/installer/target.ts"
+import { StoredState } from "../../src/installer/lifecycle/records.ts"
+import { targetPaths } from "../../src/installer/target/resolve.ts"
 import { PluginSdkLive } from "../../src/node.ts"
 
 const cli = fileURLToPath(new URL("../../src/cli.ts", import.meta.url))
@@ -18,6 +18,12 @@ const checkpointModule = fileURLToPath(new URL("./io-checkpoint.mjs", import.met
 const wrapper = fileURLToPath(new URL("./host-wrapper.mjs", import.meta.url))
 type QualifiedHost = Extract<Host, "claude_code" | "codex">
 type ProcessResult = { code: number | null; signal: NodeJS.Signals | null; stdout: string; stderr: string }
+
+const formatFor = (host: QualifiedHost): Format => Match.value(host).pipe(
+  Match.when("claude_code", (): Format => "claude_code"),
+  Match.when("codex", (): Format => "codex"),
+  Match.exhaustive
+)
 
 const run = <A, E>(effect: Effect.Effect<A, E, Compiler | Installer>) => Effect.runPromise(effect.pipe(Effect.provide(PluginSdkLive)))
 
@@ -64,7 +70,7 @@ const fixture = async (host: QualifiedHost) => {
   const realBinary = execFileSync("which", [binary], { encoding: "utf8" }).trim()
   await copyFile(wrapper, join(bin, binary))
   await chmod(join(bin, binary), 0o755)
-  const request = Schema.decodeSync(BuildRequest)({ root: source, format: host === "codex" ? "agent_plugins_v1" : "claude_code_v1", plugin: { id: "recovery-fixture", version: "1.0.0", description: "Native recovery fixture", skills: ["skills/recover"], mcp: {} } })
+  const request = Schema.decodeSync(BuildRequest)({ root: source, format: formatFor(host), plugin: { id: "recovery-fixture", version: "1.0.0", description: "Native recovery fixture", skills: ["skills/recover"], mcp: {} } })
   const destination = Schema.decodeSync(Destination)({ type: "user", host, home })
   const bundle = await run(Compiler.use((compiler) => compiler.build(request)))
   const preview = async (desired: Bundle | null) => {

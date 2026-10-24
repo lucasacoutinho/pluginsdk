@@ -4,7 +4,7 @@ import { join } from "node:path"
 import { Match, Schema } from "effect"
 import { parse as parseToml } from "smol-toml"
 import { ApplyOutcome, Planning, type ApplyOutcome as ApplyOutcomeValue, type Planning as PlanningValue, type ReadyPlan, type RepairPlan as RepairPlanValue, type Target } from "../../contracts/Installer.ts"
-import { targetPaths } from "../../src/installer/target.ts"
+import { targetPaths } from "../../src/installer/target/resolve.ts"
 import {
   catalogPath,
   executionGroupAt,

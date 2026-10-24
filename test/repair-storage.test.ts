@@ -26,16 +26,15 @@ import type {
 } from "../contracts/Installer.ts"
 import { Directory, PackagePath, PluginId } from "../contracts/Plugin.ts"
 import { bundleDigest, planId } from "../src/internal/identity.ts"
-import { validateBundle } from "../src/compiler/native.ts"
-import { loadState, savePlan, saveState, snapshotPlan } from "../src/installer/plan.ts"
-import { StoredState, type StoredState as StoredStateValue } from "../src/installer/records.ts"
-import { targetPaths } from "../src/installer/target.ts"
+import { validateBundle } from "../src/compiler/package/native.ts"
+import { loadPlan, loadState, savePlan, saveState, snapshotPlan } from "../src/installer/lifecycle/plans.ts"
+import { StoredState, type StoredState as StoredStateValue } from "../src/installer/lifecycle/records.ts"
+import { targetPaths } from "../src/installer/target/resolve.ts"
 
 const readyGoldenId = "fd8544b98f5b64e1c18aca96110e48bdddaa328815a3d83c954dd3a75945d52d"
 const repairGoldenId = "23ff7f3bd3292e9ae04d5102c244328b480f9ac222b0f471b633c63a28c742fe"
 const readyGoldenCanonical = "{\"before\":{\"observed\":{\"type\":\"absent\"},\"receipt\":null,\"revision\":null},\"change\":{\"type\":\"remove\"},\"schema\":1,\"target\":{\"destination\":{\"home\":\"/home/pluginsdk-golden\",\"host\":\"codex\",\"type\":\"user\"},\"key\":\"golden-key\",\"plugin\":\"golden-plugin\",\"profile\":\"codex-profile-v1\",\"version\":\"0.1.0\"},\"type\":\"ready\"}"
 const repairGoldenCanonical = `{"before":{"interrupted":"${"a".repeat(64)}","observed":{"fingerprint":"${"1".repeat(64)}","residual":"marketplace"},"pending":"${"b".repeat(64)}"},"schema":1,"target":{"destination":{"home":"/home/pluginsdk-golden","host":"codex","type":"user"},"key":"golden-key","plugin":"golden-plugin","profile":"codex-profile-v1","version":"0.1.0"},"type":"repair_ready"}`
-const manifestSchema = "https://agent-plugins.org/schemas/1.0.0/plugin.schema.json"
 
 const hashPlanPreimage = (canonicalBody: string): string =>
   createHash("sha256").update("pluginsdk:plan:1\0").update(canonicalBody).digest("hex")
@@ -63,7 +62,6 @@ const makeTarget = (
 
 const makeBundle = (plugin: TargetValue["plugin"]): Bundle => {
   const content = new TextEncoder().encode(JSON.stringify({
-    $schema: manifestSchema,
     name: plugin,
     version: "1.0.0",
     description: "Durable repair storage fixture"
@@ -71,8 +69,8 @@ const makeBundle = (plugin: TargetValue["plugin"]): Bundle => {
   const body = Schema.decodeSync(Schema.toType(BundleBody))({
     schema: 1,
     plugin,
-    format: "agent_plugins_v1",
-    files: [{ path: PackagePath.make("plugin.json"), content, executable: false }]
+    format: "codex",
+    files: [{ path: PackagePath.make(".codex-plugin/plugin.json"), content, executable: false }]
   })
   const bundle = Schema.decodeSync(Schema.toType(BundleSchema))({ ...body, digest: bundleDigest(body) })
   validateBundle(bundle)
@@ -230,6 +228,46 @@ it("durably reloads the full repair state after the caller mutates its bundle by
     expect(retainedBundle.files[0].content).toEqual(originalBytes)
     expect(bundleDigest(retainedBundle)).toBe(retainedBundle.digest)
     expect(await readdir(home)).toEqual([".pluginsdk"])
+  })
+})
+
+it("reloads intact pending records after an observed version change without rewriting them", async () => {
+  await withHome(async (home, target) => {
+    const bundle = makeBundle(target.plugin)
+    const original = makeReadyPlan(target, bundle)
+    const upgraded: TargetValue = { ...target, version: "99.0.0" }
+    const pending: StoredStateValue = {
+      schema: 1,
+      type: "pending",
+      plan: original,
+      journal: {
+        type: "pending", previous: { type: "empty", last: null }, observed: { type: "absent" },
+        plan: original.id, change: { type: "install", bundle: bundle.digest }
+      },
+      execution: { type: "prepared" }
+    }
+    await Effect.runPromise(savePlan(original))
+    await Effect.runPromise(saveState(target, pending))
+    const statePath = targetPaths(target).state
+    const before = await readFile(statePath)
+    expect(await Effect.runPromise(loadPlan(upgraded, original.id))).toEqual(original)
+    expect(await Effect.runPromise(loadState(upgraded))).toEqual(pending)
+    expect(await readFile(statePath)).toEqual(before)
+    await expect(Effect.runPromise(loadPlan({ ...upgraded, profile: "different-adapter" }, original.id)))
+      .rejects.toBeInstanceOf(StateUnavailable)
+
+    const cleanup = makeRepairPlan(upgraded, original.id, original.id)
+    await saveRepairRecord(upgraded, original, cleanup)
+    const repairBefore = await readFile(statePath)
+    expect(await Effect.runPromise(loadState(upgraded))).toEqual(pendingRepairState(original, cleanup))
+    expect(await readFile(statePath)).toEqual(repairBefore)
+
+    await Effect.runPromise(saveState(target, {
+      ...pending,
+      plan: { ...original, target: { ...target, version: "tampered" } }
+    }))
+    await expect(Effect.runPromise(loadState(upgraded))).rejects.toBeInstanceOf(StateUnavailable)
+    await expectNoNativeConfig(home)
   })
 })
 

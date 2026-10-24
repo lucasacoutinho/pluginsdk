@@ -1,13 +1,13 @@
 # Implementation rules
 
-Use the selected two-module design in `docs/design.md` and the Effect conventions in `docs/effect.md`. Preserve `.references`.
+Use the selected Compiler, Installer, ReleaseCatalog and Distribution modules in `docs/internals/design.md` and the Effect conventions in `docs/internals/effect.md`. Preserve `.references`.
 
-Use `docs/organization-design.md` for the organization direction: central catalog, releases, distribution and access policies over existing integration repositories and deployment infrastructure. Keep the interfaces compatible with possible future plugin/MCP code management. Preserve release provenance and keep backend tool authorization separate from client installation preferences.
+Use `docs/internals/organization-design.md` for the organization direction: central catalog, releases, distribution and access policies over existing integration repositories and deployment infrastructure. Keep the interfaces compatible with possible future plugin/MCP code management. Preserve release provenance and keep backend tool authorization separate from client installation preferences.
 
 Use Effect `Match` with exhaustive handlers for domain variants. Do not introduce `switch` statements or catch-all handlers for a closed union. Derive types and equivalence from authoritative Effect schemas. Keep pure model functions total. Use scoped Effect layers for I/O and `Effect.fn` for traced operations.
 
-Follow LDD: property, Lean proof, oracle or vector, conforming TypeScript, host checks. A native installation claim needs evidence from an isolated real host. Worker output requires main-thread review and acceptance.
+Follow LDD: property, Lean proof, oracle or vector, conforming TypeScript, host checks. Finish the pure TypeScript oracle-conformance checks before editing its I/O implementation. A native installation claim needs evidence from an isolated real host. Worker output requires main-thread review and acceptance.
 
-Run `npm run check` for the full acceptance gate. `npm run lint` rejects switch statements. Native verification is a separate gate because it requires the pinned host binaries.
+CI, package-consumer and release-wide checks are deferred at the user's request. Use checks scoped to the feature in progress. `npm run check` defines the full acceptance gate for when release work resumes. `npm run lint` rejects switch statements. Native verification is a separate gate because it requires the pinned host binaries.
 
 Delegate bounded execution only to `gpt-6-luna` with max reasoning and `fork_turns: "none"`. Main owns design, judgment, quality and acceptance. Workers must receive exact scope, writable paths, checks and a stopping condition; they never spawn agents.

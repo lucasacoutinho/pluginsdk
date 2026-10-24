@@ -22,7 +22,7 @@
       "diagnostics": true,
       "ignoreEffectWarningsInTscExitCode": false,
       "ignoreEffectErrorsInTscExitCode": false,
-      "allowedUnstableApis": ["effect/FileSystem", "effect/PlatformError", "effect/ByteSize", "effect/process", "@effect/platform-node", "@effect/vitest", "effect/cli", "effect/devtools"],
+      "allowedUnstableApis": ["effect/FileSystem", "effect/PlatformError", "effect/ByteSize", "effect/process", "effect/http", "@effect/platform-node", "@effect/vitest", "effect/cli", "effect/devtools"],
       "diagnosticSeverity": {
         "anyUnknownInErrorContext": "error",
         "duplicatePackage": "error",

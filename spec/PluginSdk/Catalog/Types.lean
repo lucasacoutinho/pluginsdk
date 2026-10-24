@@ -1,4 +1,5 @@
 import PluginSdk.Authorization.Types
+import PluginSdk.Domain
 
 namespace PluginSdk.Catalog
 
@@ -19,18 +20,11 @@ inductive ReleaseOrigin where
   | artifact (location digest : String)
   deriving DecidableEq, Repr
 
-inductive PackageFormat where
-  | agentPluginsV1
-  | claudeCodeV1
-  | agentPluginsV2
-  | claudeCodeV2
-  deriving DecidableEq, Repr
+abbrev PackageFormat := PluginSdk.Format
 
 structure FormatDigests where
-  agentPluginsV1 : Option String
-  claudeCodeV1 : Option String
-  agentPluginsV2 : Option String
-  claudeCodeV2 : Option String
+  claudeCode : Option String
+  codex : Option String
   deriving DecidableEq, Repr
 
 inductive ReleaseContents where

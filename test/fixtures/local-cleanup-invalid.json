@@ -1,0 +1,54 @@
+[
+  {
+    "name": "schema-version",
+    "raw": "{\"schema\":2,\"type\":\"cleanup_local_slots\",\"input\":{\"owner\":\"installation-\\u03b1\",\"operation\":{\"type\":\"install\",\"next\":{\"plan\":\"2222222222222222222222222222222222222222222222222222222222222222\",\"bundle\":\"bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb\"}},\"slots\":{\"live\":{\"type\":\"absent\"},\"staged\":{\"type\":\"absent\"},\"retired\":{\"type\":\"absent\"}}}}"
+  },
+  {
+    "name": "request-tag",
+    "raw": "{\"schema\":1,\"type\":\"unknown_local_cleanup\",\"input\":{\"owner\":\"installation-\\u03b1\",\"operation\":{\"type\":\"install\",\"next\":{\"plan\":\"2222222222222222222222222222222222222222222222222222222222222222\",\"bundle\":\"bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb\"}},\"slots\":{\"live\":{\"type\":\"absent\"},\"staged\":{\"type\":\"absent\"},\"retired\":{\"type\":\"absent\"}}}}"
+  },
+  {
+    "name": "root-excess",
+    "raw": "{\"schema\":1,\"type\":\"cleanup_local_slots\",\"input\":{\"owner\":\"installation-\\u03b1\",\"operation\":{\"type\":\"install\",\"next\":{\"plan\":\"2222222222222222222222222222222222222222222222222222222222222222\",\"bundle\":\"bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb\"}},\"slots\":{\"live\":{\"type\":\"absent\"},\"staged\":{\"type\":\"absent\"},\"retired\":{\"type\":\"absent\"}}},\"allowForeign\":true}"
+  },
+  {
+    "name": "empty-owner",
+    "raw": "{\"schema\":1,\"type\":\"cleanup_local_slots\",\"input\":{\"owner\":\"\",\"operation\":{\"type\":\"install\",\"next\":{\"plan\":\"2222222222222222222222222222222222222222222222222222222222222222\",\"bundle\":\"bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb\"}},\"slots\":{\"live\":{\"type\":\"absent\"},\"staged\":{\"type\":\"absent\"},\"retired\":{\"type\":\"absent\"}}}}"
+  },
+  {
+    "name": "ill-formed-owner",
+    "raw": "{\"schema\":1,\"type\":\"cleanup_local_slots\",\"input\":{\"owner\":\"\\ud800\",\"operation\":{\"type\":\"install\",\"next\":{\"plan\":\"2222222222222222222222222222222222222222222222222222222222222222\",\"bundle\":\"bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb\"}},\"slots\":{\"live\":{\"type\":\"absent\"},\"staged\":{\"type\":\"absent\"},\"retired\":{\"type\":\"absent\"}}}}"
+  },
+  {
+    "name": "noncanonical-plan-id",
+    "raw": "{\"schema\":1,\"type\":\"cleanup_local_slots\",\"input\":{\"owner\":\"installation-\\u03b1\",\"operation\":{\"type\":\"install\",\"next\":{\"plan\":\"AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA\",\"bundle\":\"bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb\"}},\"slots\":{\"live\":{\"type\":\"absent\"},\"staged\":{\"type\":\"absent\"},\"retired\":{\"type\":\"absent\"}}}}"
+  },
+  {
+    "name": "slot-excess",
+    "raw": "{\"schema\":1,\"type\":\"cleanup_local_slots\",\"input\":{\"owner\":\"installation-\\u03b1\",\"operation\":{\"type\":\"install\",\"next\":{\"plan\":\"2222222222222222222222222222222222222222222222222222222222222222\",\"bundle\":\"bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb\"}},\"slots\":{\"live\":{\"type\":\"absent\"},\"staged\":{\"type\":\"absent\"},\"retired\":{\"type\":\"absent\"},\"history\":{\"type\":\"absent\"}}}}"
+  },
+  {
+    "name": "unknown-observation",
+    "raw": "{\"schema\":1,\"type\":\"cleanup_local_slots\",\"input\":{\"owner\":\"installation-\\u03b1\",\"operation\":{\"type\":\"install\",\"next\":{\"plan\":\"2222222222222222222222222222222222222222222222222222222222222222\",\"bundle\":\"bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb\"}},\"slots\":{\"live\":{\"type\":\"directory\"},\"staged\":{\"type\":\"absent\"},\"retired\":{\"type\":\"absent\"}}}}"
+  },
+  {
+    "name": "complete-without-basis",
+    "raw": "{\"schema\":1,\"type\":\"cleanup_local_slots\",\"input\":{\"owner\":\"installation-\\u03b1\",\"operation\":{\"type\":\"install\",\"next\":{\"plan\":\"2222222222222222222222222222222222222222222222222222222222222222\",\"bundle\":\"bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb\"}},\"slots\":{\"live\":{\"type\":\"complete\",\"owner\":\"installation-\\u03b1\",\"identity\":{\"plan\":\"2222222222222222222222222222222222222222222222222222222222222222\",\"bundle\":\"bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb\"}},\"staged\":{\"type\":\"absent\"},\"retired\":{\"type\":\"absent\"}}}}"
+  },
+  {
+    "name": "partial-invalid-basis",
+    "raw": "{\"schema\":1,\"type\":\"cleanup_local_slots\",\"input\":{\"owner\":\"installation-\\u03b1\",\"operation\":{\"type\":\"install\",\"next\":{\"plan\":\"2222222222222222222222222222222222222222222222222222222222222222\",\"bundle\":\"bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb\"}},\"slots\":{\"live\":{\"type\":\"absent\"},\"staged\":{\"type\":\"partial\",\"owner\":\"installation-\\u03b1\",\"identity\":{\"plan\":\"2222222222222222222222222222222222222222222222222222222222222222\",\"bundle\":\"bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb\"},\"basis\":\"invalid\"},\"retired\":{\"type\":\"absent\"}}}}"
+  },
+  {
+    "name": "unknown-with-excess",
+    "raw": "{\"schema\":1,\"type\":\"cleanup_local_slots\",\"input\":{\"owner\":\"installation-\\u03b1\",\"operation\":{\"type\":\"install\",\"next\":{\"plan\":\"2222222222222222222222222222222222222222222222222222222222222222\",\"bundle\":\"bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb\"}},\"slots\":{\"live\":{\"type\":\"absent\"},\"staged\":{\"type\":\"absent\"},\"retired\":{\"type\":\"unknown\",\"basis\":\"0000000000000000000000000000000000000000000000000000000000000000\"}}}}"
+  },
+  {
+    "name": "missing-role",
+    "raw": "{\"schema\":1,\"type\":\"cleanup_local_slots\",\"input\":{\"owner\":\"installation-\\u03b1\",\"operation\":{\"type\":\"install\",\"next\":{\"plan\":\"2222222222222222222222222222222222222222222222222222222222222222\",\"bundle\":\"bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb\"}},\"slots\":{\"live\":{\"type\":\"absent\"},\"staged\":{\"type\":\"absent\"}}}}"
+  },
+  {
+    "name": "duplicate-schema",
+    "raw": "{\"schema\":1,\"schema\":1,\"type\":\"cleanup_local_slots\",\"input\":{\"owner\":\"installation-\\u03b1\",\"operation\":{\"type\":\"install\",\"next\":{\"plan\":\"2222222222222222222222222222222222222222222222222222222222222222\",\"bundle\":\"bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb\"}},\"slots\":{\"live\":{\"type\":\"absent\"},\"staged\":{\"type\":\"absent\"},\"retired\":{\"type\":\"absent\"}}}}"
+  }
+]

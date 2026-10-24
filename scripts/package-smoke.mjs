@@ -17,11 +17,9 @@ try {
   assert.equal(typeof packed.filename, "string")
   const archive = join(artifacts, packed.filename)
   const metadata = JSON.parse(await readFile(join(root, "package.json"), "utf8"))
-  assert(packed.files.some((file) => file.path === "dist/src/installer/native-worker.js"))
-  assert(packed.files.some((file) => file.path === "dist/schemas/plugin.schema.json"))
-  assert(packed.files.some((file) => file.path === "schemas/LICENSE-APACHE-2.0.txt"))
+  assert(packed.files.some((file) => file.path === "dist/src/installer/execution/native-worker.js"))
   assert(packed.files.some((file) => file.path === "spec/PluginSdk/Lifecycle/Proofs.lean"))
-  assert(packed.files.some((file) => file.path === "docs/design.md"))
+  assert(packed.files.some((file) => file.path === "docs/README.md"))
   assert(packed.files.every((file) => !file.path.includes(".lake/")))
   assert(packed.files.every((file) => !file.path.includes(".references") && !file.path.includes(".audit")))
   await writeFile(join(consumer, "package.json"), JSON.stringify({ name: "pluginsdk-consumer", private: true, type: "module" }))
@@ -32,9 +30,13 @@ try {
   await writeFile(join(consumer, "definition.json"), JSON.stringify({ id: "consumer-fixture", version: "1.0.0", description: "External package consumer", skills: ["skills/consumer-skill"], mcp: {} }))
   const cli = join(consumer, "node_modules/.bin/pluginsdk")
   assert(run(cli, ["--version"]).includes(metadata.version))
-  run(cli, ["build", "definition.json", "--root", consumer, "--out", "bundle.json"])
-  const bundle = JSON.parse(await readFile(join(consumer, "bundle.json"), "utf8"))
+  const buildDirectory = join(consumer, "build-output")
+  run(cli, ["build", "definition.json", "--root", consumer, "--target", "codex", "--out", buildDirectory])
+  const bundle = JSON.parse(await readFile(join(buildDirectory, "codex.bundle.json"), "utf8"))
+  const snapshot = JSON.parse(await readFile(join(buildDirectory, "build.json"), "utf8"))
+  assert.deepEqual(snapshot.bundles.map((item) => item.format), ["codex"])
   assert.equal(bundle.plugin, "consumer-fixture")
+  assert.equal(bundle.format, "codex")
   assert.deepEqual(Buffer.from(bundle.files.find((file) => file.path === "skills/consumer-skill/fixture.bin").content, "base64"), Buffer.from([0, 255, 1, 128]))
   await writeFile(join(consumer, "consumer.mjs"), `
 import assert from "node:assert/strict"
@@ -49,7 +51,7 @@ assert.equal(Installer, RootInstaller)
 const author = Schema.decodeSync(Plugin)({ id: "consumer-fixture", version: "1.0.0", description: "External package consumer", skills: ["skills/consumer-skill"], mcp: {} })
 assert.equal(author.id, "consumer-fixture")
 assert.equal(typeof devtools, "function")
-const request = Schema.decodeSync(BuildRequest)({ root: process.cwd(), format: "agent_plugins_v1", plugin: Schema.encodeSync(Plugin)(author) })
+const request = Schema.decodeSync(BuildRequest)({ root: process.cwd(), format: "codex", plugin: Schema.encodeSync(Plugin)(author) })
 const built = await Effect.runPromise(Compiler.use((service) => service.build(request)).pipe(Effect.provide(PluginSdkLive)))
 assert.equal(built.plugin, "consumer-fixture")
 `)
@@ -59,7 +61,7 @@ import { Effect, Schema } from "effect"
 import { Compiler, BuildRequest } from "pluginsdk/Compiler"
 import { Installer, type Planning, type ReadyPlan, type ReviewedPlan } from "pluginsdk/Installer"
 import { PluginSdkLive } from "pluginsdk/node"
-const request = Schema.decodeSync(BuildRequest)({ root: ".", format: "agent_plugins_v1", plugin: { id: "consumer-fixture", version: "1", description: "Types", skills: [], mcp: {} } })
+const request = Schema.decodeSync(BuildRequest)({ root: ".", format: "codex", plugin: { id: "consumer-fixture", version: "1", description: "Types", skills: [], mcp: {} } })
 export const build = Compiler.use((service) => service.build(request)).pipe(Effect.provide(PluginSdkLive))
 export const apply = (reviewed: ReviewedPlan) => Installer.use((service) => service.apply(reviewed)).pipe(Effect.provide(PluginSdkLive))
 export const applyReady = (reviewed: ReadyPlan) => apply(reviewed)
@@ -77,9 +79,10 @@ export const invalid = (planning: Planning) => Installer.use((service) => {
     for (const host of ["claude_code", "codex"]) {
       const home = join(consumer, "native", host, host === "codex" ? ".codex" : ".claude")
       await mkdir(home, { recursive: true })
-      const bundleFile = `${host}.bundle.json`
+      const buildDirectory = `${host}.build`
+      const bundleFile = join(buildDirectory, `${host}.bundle.json`)
       const planFile = `${host}.plan.json`
-      run(cli, ["build", "definition.json", "--root", consumer, "--format", host === "codex" ? "agent_plugins_v1" : "claude_code_v1", "--out", bundleFile])
+      run(cli, ["build", "definition.json", "--root", consumer, "--target", host, "--out", buildDirectory])
       const ready = JSON.parse(run(cli, ["plan", bundleFile, "--host", host, "--home", home, "--out", planFile, "--json"]))
       assert.equal(ready.type, "ready")
       assert.match(run(cli, ["show", planFile]), /skills\/consumer-skill\/fixture.bin/)

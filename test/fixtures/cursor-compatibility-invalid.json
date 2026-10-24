@@ -1,0 +1,123 @@
+[
+  {
+    "name": "separate_agent_product",
+    "request": {
+      "schema": 1,
+      "type": "select_native_profile",
+      "input": {
+        "query": {
+          "host": "cursor_agent",
+          "platform": "win32",
+          "scope": "user",
+          "format": "claude_code",
+          "requirements": ["stdio"]
+        },
+        "profiles": [
+          {
+            "host": "cursor",
+            "platform": "win32",
+            "scope": "user",
+            "revision": "cursor-local-directory:1",
+            "format": "claude_code",
+            "capabilities": ["stdio"]
+          }
+        ]
+      }
+    }
+  },
+  {
+    "name": "host_object",
+    "request": {
+      "schema": 1,
+      "type": "select_native_profile",
+      "input": {
+        "query": {
+          "host": {"name": "cursor"},
+          "platform": "win32",
+          "scope": "user",
+          "format": "claude_code",
+          "requirements": ["stdio"]
+        },
+        "profiles": []
+      }
+    }
+  },
+  {
+    "name": "unknown_capability",
+    "request": {
+      "schema": 1,
+      "type": "select_native_profile",
+      "input": {
+        "query": {
+          "host": "cursor",
+          "platform": "win32",
+          "scope": "user",
+          "format": "claude_code",
+          "requirements": ["skills"]
+        },
+        "profiles": []
+      }
+    }
+  },
+  {
+    "name": "observed_version_is_not_profile_identity",
+    "request": {
+      "schema": 1,
+      "type": "select_native_profile",
+      "input": {
+        "query": {
+          "host": "cursor",
+          "platform": "win32",
+          "scope": "user",
+          "version": "3.26.16",
+          "format": "claude_code",
+          "requirements": ["stdio"]
+        },
+        "profiles": []
+      }
+    }
+  },
+  {
+    "name": "legacy_multi_format_profile",
+    "request": {
+      "schema": 1,
+      "type": "select_native_profile",
+      "input": {
+        "query": {
+          "host": "cursor",
+          "platform": "win32",
+          "scope": "user",
+          "format": "claude_code",
+          "requirements": ["stdio"]
+        },
+        "profiles": [
+          {
+            "host": "cursor",
+            "platform": "win32",
+            "scope": "user",
+            "revision": "cursor-local-directory:1",
+            "formats": ["claude_code"],
+            "capabilities": ["stdio"]
+          }
+        ]
+      }
+    }
+  },
+  {
+    "name": "bad_schema",
+    "request": {
+      "schema": 2,
+      "type": "select_native_profile",
+      "input": {
+        "query": {
+          "host": "cursor",
+          "platform": "win32",
+          "scope": "user",
+          "format": "claude_code",
+          "requirements": ["stdio"]
+        },
+        "profiles": []
+      }
+    }
+  }
+]

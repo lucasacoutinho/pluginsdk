@@ -20,11 +20,10 @@ import {
 import { PackagePath } from "../contracts/Plugin.ts"
 import { bundleDigest, fileDigest } from "../src/internal/identity.ts"
 import { CompilerLive } from "../src/compiler/index.ts"
-import { validateBundle } from "../src/compiler/native.ts"
+import { validateBundle } from "../src/compiler/package/native.ts"
 
 const CompilerTest = Layer.provideMerge(CompilerLive, NodeServices.layer)
-const v1Formats: ReadonlyArray<Format> = ["agent_plugins_v1", "claude_code_v1"]
-const v2Formats: ReadonlyArray<Format> = ["agent_plugins_v2", "claude_code_v2"]
+const clientFormats: ReadonlyArray<Format> = ["claude_code", "codex"]
 
 type RequestOptions = {
   readonly format?: Format
@@ -40,7 +39,7 @@ type BuildOutcome =
 const makeRequest = (root: string, options: RequestOptions = {}) =>
   Schema.decodeSync(BuildRequest)({
     root,
-    format: options.format ?? "agent_plugins_v1",
+    format: options.format ?? "codex",
     plugin: {
       id: "demo",
       version: "1.0.0",
@@ -116,10 +115,10 @@ const validationIssues = (bundle: Bundle): ReadonlyArray<BundleIssue> => {
 const hasIssueAt = (issues: ReadonlyArray<BuildIssue>, type: BuildIssue["type"], path: string): boolean =>
   issues.some((issue) => issue.type === type && "path" in issue && issue.path === path)
 
-it.effect("preserves legal root assets and recursive byte-complete trees in both v2 formats", () =>
+it.effect("preserves legal root assets and recursive byte-complete trees for both clients", () =>
   Effect.gen(function*() {
     const fs = yield* FileSystem.FileSystem
-    const root = yield* fs.makeTempDirectoryScoped({ prefix: "pluginsdk-v2-assets-" })
+    const root = yield* fs.makeTempDirectoryScoped({ prefix: "pluginsdk-client-assets-" })
     const binary = new Uint8Array([0, 255, 4, 0, 128, 10])
     yield* writeSourceFile(fs, root, "LICENSE", "MIT License\n")
     yield* writeSourceFile(fs, root, "NOTICE.md", "Package notices\n")
@@ -128,7 +127,7 @@ it.effect("preserves legal root assets and recursive byte-complete trees in both
     yield* writeSourceFile(fs, root, "third_party/tools/run.sh", binary)
     yield* fs.chmod(join(root, "third_party/tools/run.sh"), 0o755)
 
-    for (const format of v2Formats) {
+    for (const format of clientFormats) {
       const request = makeRequest(root, { format, assets: ["LICENSE", "NOTICE.md", "third_party"] })
       const first = bundleFrom(yield* buildOutcome(request))
       const second = bundleFrom(yield* buildOutcome(request))
@@ -161,7 +160,7 @@ it.effect("captures contained file and directory symlinks and rejects escapes an
     yield* fs.symlink(join(root, "tree"), join(root, "tree-link"))
 
     const linked = bundleFrom(yield* buildOutcome(makeRequest(root, {
-      format: "agent_plugins_v2",
+      format: "codex",
       assets: ["file-link.bin", "tree-link"]
     })))
     expect(Array.from(bundleFile(linked, "file-link.bin").content)).toEqual(Array.from(payload))
@@ -173,12 +172,12 @@ it.effect("captures contained file and directory symlinks and rejects escapes an
     yield* fs.symlink(join(outside, "secret.bin"), join(root, "escape.bin"))
     yield* fs.symlink(join(outside, "external-tree"), join(root, "escape-tree"))
     const fileEscape = issuesFrom(yield* buildOutcome(makeRequest(root, {
-      format: "agent_plugins_v2",
+      format: "codex",
       assets: ["escape.bin"]
     })))
     expect(hasIssueAt(fileEscape, "source_escape", "escape.bin")).toBe(true)
     const directoryEscape = issuesFrom(yield* buildOutcome(makeRequest(root, {
-      format: "agent_plugins_v2",
+      format: "codex",
       assets: ["escape-tree"]
     })))
     expect(hasIssueAt(directoryEscape, "source_escape", "escape-tree")).toBe(true)
@@ -186,7 +185,7 @@ it.effect("captures contained file and directory symlinks and rejects escapes an
     yield* fs.makeDirectory(join(root, "cycle"))
     yield* fs.symlink(join(root, "cycle"), join(root, "cycle", "back"))
     const cycle = issuesFrom(yield* buildOutcome(makeRequest(root, {
-      format: "agent_plugins_v2",
+      format: "codex",
       assets: ["cycle"]
     })))
     expect(hasIssueAt(cycle, "invalid_asset", "cycle/back")).toBe(true)
@@ -205,7 +204,7 @@ it.effect("does not let assets introduce native manifests, skills, agents, comma
     for (const path of paths) yield* writeSourceFile(fs, root, path, "reserved asset fixture\n")
 
     const issues = issuesFrom(yield* buildOutcome(makeRequest(root, {
-      format: "agent_plugins_v2",
+      format: "codex",
       assets: paths
     })))
     for (const path of paths) expect(hasIssueAt(issues, "reserved_asset", path), `${path} is reserved`).toBe(true)
@@ -220,7 +219,7 @@ it.effect("rejects repeated, case-folded and ancestor asset collisions even when
     yield* fs.makeDirectory(repeatedRoot)
     yield* writeSourceFile(fs, repeatedRoot, "same.bin", new Uint8Array([1, 0, 2]))
     const repeated = issuesFrom(yield* buildOutcome(makeRequest(repeatedRoot, {
-      format: "agent_plugins_v2",
+      format: "codex",
       assets: ["same.bin", "same.bin"]
     })))
     expect(hasIssueAt(repeated, "path_collision", "same.bin")).toBe(true)
@@ -231,7 +230,7 @@ it.effect("rejects repeated, case-folded and ancestor asset collisions even when
     yield* writeSourceFile(fs, caseRoot, "Case.bin", sameContent)
     yield* writeSourceFile(fs, caseRoot, "case.bin", sameContent)
     const folded = issuesFrom(yield* buildOutcome(makeRequest(caseRoot, {
-      format: "agent_plugins_v2",
+      format: "codex",
       assets: ["Case.bin", "case.bin"]
     })))
     expect(hasIssueAt(folded, "path_collision", "case.bin")).toBe(true)
@@ -242,7 +241,7 @@ it.effect("rejects repeated, case-folded and ancestor asset collisions even when
     yield* writeSourceFile(fs, ancestorRoot, "tree", ancestorContent)
     yield* writeSourceFile(fs, ancestorRoot, "TREE/child.bin", ancestorContent)
     const ancestor = issuesFrom(yield* buildOutcome(makeRequest(ancestorRoot, {
-      format: "agent_plugins_v2",
+      format: "codex",
       assets: ["tree", "TREE/child.bin"]
     })))
     expect(hasIssueAt(ancestor, "path_collision", "tree")).toBe(true)
@@ -258,7 +257,7 @@ it.effect("keeps captured assets independent of caller path and source byte edit
     yield* writeSourceFile(fs, root, "LICENSE", originalBytes)
     const request = yield* Schema.decodeEffect(BuildRequest)({
       root,
-      format: "agent_plugins_v2",
+      format: "codex",
       plugin: {
         id: "demo",
         version: "1.0.0",
@@ -282,79 +281,30 @@ it.effect("keeps captured assets independent of caller path and source byte edit
   }).pipe(Effect.provide(CompilerTest))
 )
 
-it.effect("rejects v1 assets before reading the source and leaves valid v1 output unchanged", () =>
-  Effect.gen(function*() {
-    const fs = yield* FileSystem.FileSystem
-    const workspace = yield* fs.makeTempDirectoryScoped({ prefix: "pluginsdk-v1-assets-" })
-    const missingRoot = join(workspace, "does-not-exist")
-    for (const format of v1Formats) {
-      const unsupported = issuesFrom(yield* buildOutcome(makeRequest(missingRoot, {
-        format,
-        assets: ["missing.txt"]
-      })))
-      expect(unsupported).toContainEqual({ type: "unsupported_feature", feature: "assets", format })
-    }
-
-    const root = yield* fs.makeTempDirectoryScoped({ prefix: "pluginsdk-v1-legacy-" })
-    type LegacyFormat = Extract<Format, "agent_plugins_v1" | "claude_code_v1">
-    const expectations: ReadonlyArray<{
-      readonly format: LegacyFormat
-      readonly path: string
-      readonly contents: string
-      readonly digest: string
-    }> = [
-      {
-        format: "agent_plugins_v1",
-        path: "plugin.json",
-        contents: "{\"$schema\":\"https://agent-plugins.org/schemas/1.0.0/plugin.schema.json\",\"description\":\"Compiler test\",\"name\":\"demo\",\"version\":\"1.0.0\"}",
-        digest: "e871b35e306e59b0df30d6aba14143c6b56841c007586863ba4e2dae3ce9ae63"
-      },
-      {
-        format: "claude_code_v1",
-        path: ".claude-plugin/plugin.json",
-        contents: "{\"description\":\"Compiler test\",\"name\":\"demo\",\"version\":\"1.0.0\"}",
-        digest: "75da30db13cdd58be926e2adba4e693a0dba1227eecc3503ea11182b6678faec"
-      }
-    ]
-    for (const expected of expectations) {
-      const legacy = bundleFrom(yield* buildOutcome(makeRequest(root, { format: expected.format })))
-      const explicitEmptyAssets = bundleFrom(yield* buildOutcome(makeRequest(root, { format: expected.format, assets: [] })))
-      expect(legacy).toStrictEqual(explicitEmptyAssets)
-      expect(legacy.files.map((file) => file.path)).toEqual([PackagePath.make(expected.path)])
-      expect(new TextDecoder().decode(bundleFile(legacy, expected.path).content)).toBe(expected.contents)
-      expect(legacy.digest).toBe(expected.digest)
-    }
-  }).pipe(Effect.provide(CompilerTest))
-)
-
-it.effect("preserves nested skill metadata in v2 while retaining v1 validation", () =>
+it.effect("validates nested skill metadata and rejects mismatched skill identity for both clients", () =>
   Effect.gen(function*() {
     const fs = yield* FileSystem.FileSystem
     const root = yield* fs.makeTempDirectoryScoped({ prefix: "pluginsdk-skill-metadata-" })
     const entry = "---\nname: demo\ndescription: Metadata extension\nmetadata:\n  lstack:\n    mode: true\n    icon: crown\n---\n\n# Demo\n"
     yield* writeSourceFile(fs, root, "skills/demo/SKILL.md", entry)
-    for (const format of v1Formats) {
-      const issues = issuesFrom(yield* buildOutcome(makeRequest(root, { format, skills: ["skills/demo"] })))
-      expect(hasIssueAt(issues, "invalid_skill", "skills/demo/SKILL.md")).toBe(true)
-    }
-    for (const format of v2Formats) {
+    for (const format of clientFormats) {
       const bundle = bundleFrom(yield* buildOutcome(makeRequest(root, { format, skills: ["skills/demo"] })))
       expect(new TextDecoder().decode(bundleFile(bundle, "skills/demo/SKILL.md").content)).toBe(entry)
       expect(validationIssues(bundle)).toEqual([])
     }
     yield* writeSourceFile(fs, root, "skills/demo/SKILL.md", entry.replace("name: demo", "name: different"))
-    for (const format of v2Formats) {
+    for (const format of clientFormats) {
       const issues = issuesFrom(yield* buildOutcome(makeRequest(root, { format, skills: ["skills/demo"] })))
       expect(hasIssueAt(issues, "invalid_skill", "skills/demo/SKILL.md")).toBe(true)
     }
   }).pipe(Effect.provide(CompilerTest))
 )
 
-it.effect("rejects imported v2 bundles with reserved features after their digest is recomputed", () =>
+it.effect("rejects imported bundles with invalid native agent documents after resealing", () =>
   Effect.gen(function*() {
     const fs = yield* FileSystem.FileSystem
-    const root = yield* fs.makeTempDirectoryScoped({ prefix: "pluginsdk-import-v2-" })
-    for (const format of v2Formats) {
+    const root = yield* fs.makeTempDirectoryScoped({ prefix: "pluginsdk-import-agents-" })
+    for (const format of clientFormats) {
       const valid = bundleFrom(yield* buildOutcome(makeRequest(root, { format })))
       const injected = yield* Schema.decodeEffect(Schema.toType(PackageFileSchema))({
         path: PackagePath.make("agents/reviewer.md"),
@@ -376,7 +326,7 @@ it.effect("returns typed invalid-asset failures for missing and non-regular supp
     const fs = yield* FileSystem.FileSystem
     const root = yield* fs.makeTempDirectoryScoped({ prefix: "pluginsdk-invalid-assets-" })
     const missingOutcome = yield* buildOutcome(makeRequest(root, {
-      format: "agent_plugins_v2",
+      format: "codex",
       assets: ["missing.bin"]
     }))
     const missingHasTypedFailure = Match.value(missingOutcome).pipe(
@@ -393,7 +343,7 @@ it.effect("returns typed invalid-asset failures for missing and non-regular supp
     if (pipe.error !== undefined) throw pipe.error
     if (pipe.status !== 0) throw new Error(`mkfifo failed with status ${String(pipe.status)}: ${pipe.stderr}`)
     const nonRegular = issuesFrom(yield* buildOutcome(makeRequest(root, {
-      format: "agent_plugins_v2",
+      format: "codex",
       assets: ["pipe"]
     })))
     expect(hasIssueAt(nonRegular, "invalid_asset", "pipe")).toBe(true)
