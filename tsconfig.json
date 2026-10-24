@@ -34,5 +34,5 @@
       }
     }]
   },
-  "include": ["contracts/**/*.ts", "src/**/*.ts", "test/**/*.ts", "scripts/**/*.ts", "examples/**/*.ts", "vitest*.config.ts"]
+  "include": ["contracts/**/*.ts", "src/**/*.ts", "test/**/*.ts", "scripts/**/*.ts", "vitest*.config.ts"]
 }

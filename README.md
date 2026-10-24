@@ -16,17 +16,18 @@ A platform team can maintain one plugin for its service catalog and deployment t
 
 ## Try it
 
-From this checkout, with Node 24+ on Linux:
+Clone the [examples repository](https://github.com/lucasacoutinho/pluginsdk-examples), with Node 24+ on Linux:
 
 ```sh
+git clone git@github.com:lucasacoutinho/pluginsdk-examples.git
+cd pluginsdk-examples
 npm ci
-npm run build
-cd examples/release-notes
+cd release-notes
 npx pluginsdk build
 npx pluginsdk preview
 ```
 
-This builds and previews the [release notes plugin](examples/release-notes/) in both supported clients. The captured production packages are:
+`npm ci` installs and builds PluginSDK from this repository. The commands build and preview the [release notes plugin](https://github.com/lucasacoutinho/pluginsdk-examples/tree/main/release-notes) in both supported clients. The captured production packages are:
 
 ```text
 .pluginsdk/build/claude_code.bundle.json
@@ -49,7 +50,7 @@ Claude Code and Codex support user and project installations, including bundled 
 
 ## Connect your internal applications
 
-The [platform tools example](examples/platform-tools/) connects two existing MCP services and adds shared workflows:
+The [platform tools example](https://github.com/lucasacoutinho/pluginsdk-examples/tree/main/platform-tools) connects two existing MCP services and adds shared workflows:
 
 ```json
 {
@@ -67,7 +68,7 @@ The [platform tools example](examples/platform-tools/) connects two existing MCP
 Replace the URLs with your organization's endpoints. In the example directory, build both client packages:
 
 ```sh
-cd examples/platform-tools
+cd platform-tools
 npx pluginsdk build
 npx pluginsdk preview
 ```
@@ -82,7 +83,7 @@ The example also includes a Git `publish` destination. Replace its repository UR
 - [Install, update and remove](docs/usage.md): manage client installations.
 - [Manage plugins for a team](docs/teams.md): maintain integrations across applications.
 - [Supported clients](docs/compatibility.md): platforms, scopes and feature limits.
-- [Examples](examples/README.md): runnable release notes and an internal operations plugin.
+- [Examples](https://github.com/lucasacoutinho/pluginsdk-examples): release notes, internal operations, an open-source tool plugin, and public and private marketplaces.
 
 PluginSDK is a private MIT-licensed alpha. These commands work from this checkout or an environment where the CLI is installed. Public npm distribution remains deferred. Installation support follows the [documented client contracts and platforms](docs/compatibility.md). ChatGPT, Grok Bot and Muse adapters are not available.
 

@@ -22,7 +22,6 @@
     "README.md",
     "LICENSE",
     "docs",
-    "examples",
     "test",
     "scripts",
     ".oxlintrc.json",
@@ -54,7 +53,7 @@
     "./node": "./dist/src/node.js"
   },
   "scripts": {
-    "lint": "oxlint --deny-warnings contracts src test scripts examples",
+    "lint": "oxlint --deny-warnings contracts src test scripts",
     "typecheck": "tsc --noEmit",
     "diagnostics": "effect-tsgo diagnostics --strict --project tsconfig.json",
     "proof": "bash spec/scripts/gate.sh",
@@ -63,13 +62,13 @@
     "test:native": "vitest run --config vitest.native.config.ts && npm run build && node scripts/package-smoke.mjs --native",
     "test:package": "npm run build && node scripts/package-smoke.mjs",
     "pilot:lstack": "npm run build && node dist/scripts/pilot-lstack.js",
-    "example:build": "npm run build && node dist/src/cli.js build examples/release-notes/definition.json",
+    "example:build": "npm run build && node dist/src/cli.js build test/fixtures/release-notes/definition.json",
     "example:cross-client": "npm run build && node dist/scripts/verify-cross-client.js",
     "build:runtime": "node scripts/build-runtime.mjs",
     "build": "npm run build:runtime && tsc --project tsconfig.build.json",
     "check": "npm run proof && npm run typecheck && npm run diagnostics && npm run lint && npm test && npm run test:package",
     "prepack": "npm run build",
-    "prepare": "effect-tsgo patch --typescript --no-oxlint"
+    "prepare": "effect-tsgo patch --typescript --no-oxlint && npm run build"
   },
   "dependencies": {
     "@effect/platform-node": "4.0.5",

@@ -28,7 +28,7 @@ The home is the client's configuration directory, such as `$HOME/.codex`, rather
 Edit your definition or content, then build again:
 
 ```sh
-npx pluginsdk build examples/release-notes/definition.json
+npx pluginsdk build release-notes/definition.json
 ```
 
 Create a fresh plan with the installation command above. Review the replacement and apply it. PluginSDK uses the captured package bytes, so later source edits cannot alter that plan.

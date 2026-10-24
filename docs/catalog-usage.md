@@ -2,14 +2,14 @@
 
 Retain the exact Claude Code and Codex packages under one release ID. Use the catalog when a plugin team approves a version before distributing it.
 
-This guide uses the [platform tools example](../examples/platform-tools/). Its MCP addresses are placeholders for your existing services. Building and retaining its packages does not contact those services.
+This guide uses the [platform tools example](https://github.com/lucasacoutinho/pluginsdk-examples/tree/main/platform-tools). Run the commands from the root of a [pluginsdk-examples](https://github.com/lucasacoutinho/pluginsdk-examples) checkout after `npm ci`. Its MCP addresses are placeholders for your existing services. Building and retaining its packages does not contact those services.
 
 ## Package a release
 
 Build both packages and prepare a release directory:
 
 ```sh
-node dist/src/cli.js build examples/platform-tools/definition.json \
+npx pluginsdk build platform-tools/definition.json \
 	--out .pluginsdk/platform-tools/build
 mkdir -p .pluginsdk/releases
 ```
@@ -17,7 +17,7 @@ mkdir -p .pluginsdk/releases
 Package them under your organization and integration name:
 
 ```sh
-node dist/src/cli.js catalog pack \
+npx pluginsdk catalog pack \
 	.pluginsdk/platform-tools/build/claude_code.bundle.json \
 	.pluginsdk/platform-tools/build/codex.bundle.json \
 	--organization acme --integration platform-tools --release 1.0.0 \
@@ -33,13 +33,13 @@ The artifact contains both complete packages. The release file records their ide
 Initialize a catalog under an existing physical parent directory:
 
 ```sh
-node dist/src/cli.js catalog init --directory .pluginsdk/catalog
+npx pluginsdk catalog init --directory .pluginsdk/catalog
 ```
 
 Admit the approved release with its local packages:
 
 ```sh
-node dist/src/cli.js catalog admit .pluginsdk/releases/platform-tools-1.0.0.release.json \
+npx pluginsdk catalog admit .pluginsdk/releases/platform-tools-1.0.0.release.json \
 	--bundle .pluginsdk/platform-tools/build/claude_code.bundle.json \
 	--bundle .pluginsdk/platform-tools/build/codex.bundle.json \
 	--directory .pluginsdk/catalog
@@ -50,7 +50,7 @@ node dist/src/cli.js catalog admit .pluginsdk/releases/platform-tools-1.0.0.rele
 ## Retrieve one client package
 
 ```sh
-node dist/src/cli.js catalog acquire acme platform-tools 1.0.0 \
+npx pluginsdk catalog acquire acme platform-tools 1.0.0 \
 	--format codex --directory .pluginsdk/catalog \
 	--out .pluginsdk/approved-codex.bundle.json
 ```
@@ -64,7 +64,7 @@ To manage both clients together, continue with [Distribute a release](distributi
 Publish the exact artifact file at the recorded URL using your existing infrastructure. Give the approved release file to another machine, then import it:
 
 ```sh
-node dist/src/cli.js catalog import .pluginsdk/releases/platform-tools-1.0.0.release.json \
+npx pluginsdk catalog import .pluginsdk/releases/platform-tools-1.0.0.release.json \
 	--directory .pluginsdk/catalog
 ```
 

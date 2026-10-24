@@ -72,7 +72,7 @@ const program = Effect.scoped(Effect.gen(function*() {
   const fs = yield* FileSystem.FileSystem
   const compiler = yield* Compiler
   const installer = yield* Installer
-  const source = resolve("examples/release-notes")
+  const source = resolve("test/fixtures/release-notes")
   const definition = yield* fs.readFileString(join(source, "definition.json"))
   const plugin = yield* Schema.decodeEffect(Schema.fromJsonString(Plugin), { onExcessProperty: "error" })(definition)
   const output = resolve(".pluginsdk/cross-client")
@@ -83,7 +83,7 @@ const program = Effect.scoped(Effect.gen(function*() {
   let sharedFiles: ReadonlyArray<PackageFile> | undefined
 
   for (const client of clients) {
-    yield* Console.log(`Building ${plugin.id} for ${client.host} from examples/release-notes/definition.json`)
+    yield* Console.log(`Building ${plugin.id} for ${client.host} from test/fixtures/release-notes/definition.json`)
     const bundle = yield* compiler.build({ root: Directory.make(source), plugin, format: client.format })
     const skills = bundle.files.filter((file) => file.path.startsWith("skills/"))
     if (sharedFiles !== undefined) assert.ok(sameFiles(sharedFiles, skills), "Clients received different shared skill bytes")
@@ -143,7 +143,7 @@ const program = Effect.scoped(Effect.gen(function*() {
     report.push({ host: client.host, version: install.target.version, format: client.format, digest: bundle.digest, discovered: "release-notes", removed: true })
     yield* Console.log(`${client.host}: removal verified`)
   }
-  yield* fs.writeFileString(join(output, "report.json"), JSON.stringify({ definition: "examples/release-notes/definition.json", sharedSkillBytesEqual: true, clients: report }, null, 2) + "\n")
+  yield* fs.writeFileString(join(output, "report.json"), JSON.stringify({ definition: "test/fixtures/release-notes/definition.json", sharedSkillBytesEqual: true, clients: report }, null, 2) + "\n")
   yield* Console.log(`One maintained definition; both native clients verified. Bundles and report: ${output}`)
 })).pipe(Effect.provide(Layer.provideMerge(PluginSdkLive, NodeServices.layer)))
 

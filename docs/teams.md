@@ -4,7 +4,7 @@ A central integration team can maintain workflows and MCP connections for applic
 
 ## A shared operations plugin
 
-The [platform tools example](../examples/platform-tools/) brings together a service catalog and a deployment application. Each application already exposes an MCP endpoint.
+The [platform tools example](https://github.com/lucasacoutinho/pluginsdk-examples/tree/main/platform-tools) brings together a service catalog and a deployment application. Each application already exposes an MCP endpoint.
 
 The plugin team maintains one definition and two workflows:
 
