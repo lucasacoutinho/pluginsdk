@@ -51,11 +51,11 @@ node dist/src/cli.js catalog admit .pluginsdk/releases/platform-tools-1.0.0.rele
 
 ```sh
 node dist/src/cli.js catalog acquire acme platform-tools 1.0.0 \
-	--format agent_plugins_v2 --directory .pluginsdk/catalog \
+	--format codex --directory .pluginsdk/catalog \
 	--out .pluginsdk/approved-codex.bundle.json
 ```
 
-Use `claude_code_v2` for this example's Claude package. The retrieved bundle contains the approved bytes and can enter the [installation review](usage.md). Acquisition uses retained content, so it does not need the source repository or artifact server.
+Use `claude_code` for this example's Claude package, including Cursor destinations. The retrieved bundle contains the approved bytes and can enter the [installation review](usage.md). Acquisition uses retained content, so it does not need the source repository or artifact server.
 
 To manage both clients together, continue with [Distribute a release](distribution-usage.md).
 

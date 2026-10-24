@@ -67,16 +67,9 @@ theorem object_eq_of_perm {left right : List (String × Json)} (permutation : le
   simp only [object, JsonObject.mk.injEq]
   exact congrArg Json.mkObj equal
 
-def schemaRows (format : Format) (name : String) : List (String × Json) :=
-  match format with
-  | .agentPluginsV1 => [("$schema", .str ("https://agent-plugins.org/schemas/1.0.0/" ++ name ++ ".schema.json"))]
-  | .claudeCodeV1 => []
-  | .codexPluginV1 => []
-
 def manifestRows (input : RenderInput) : List (String × Json) :=
-  schemaRows input.format "plugin" ++
-    [("name", .str input.metadata.id), ("version", .str input.metadata.version),
-      ("description", .str input.metadata.description)]
+  [("name", .str input.metadata.id), ("version", .str input.metadata.version),
+    ("description", .str input.metadata.description)]
 
 def manifest (input : RenderInput) : RenderedFile :=
   .json (manifestFile input.format) (object (manifestRows input))
@@ -89,11 +82,11 @@ def headerRows (source : RemoteMcp) : List (String × Json) :=
   source.headers.map fun (name, value) => (name, .str (headerText value))
 
 def serverRows (format : Format) (source : RemoteMcp) : List (String × Json) :=
-  (if format = .codexPluginV1 then [] else [("type", .str (transport format))]) ++
+  (if format = .codex then [] else [("type", .str (transport format))]) ++
     [("url", .str source.url), (headerKey format, (object (headerRows source)).value)]
 
 def mcpRows (input : RenderInput) : List (String × Json) :=
-  schemaRows input.format "mcp" ++ [("mcpServers", (object (input.mcp.map fun (name, source) =>
+  [("mcpServers", (object (input.mcp.map fun (name, source) =>
     (name, (object (serverRows input.format source)).value))).value)]
 
 def mcp (input : RenderInput) : RenderedFile :=

@@ -1,4 +1,5 @@
 import PluginSdk.Compiler.Mcp.Portable.Types
+import PluginSdk.Compiler.Mcp.Paths
 import PluginSdk.Compiler.Hooks.Portable.Types
 
 namespace PluginSdk.Compiler.Portable

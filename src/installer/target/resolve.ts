@@ -6,7 +6,7 @@ import { RuntimePlatform, RuntimeVersion } from "../../../contracts/Compatibilit
 import { LocalClient } from "../../../contracts/Clients.ts"
 import { Directory, type PluginId } from "../../../contracts/Plugin.ts"
 import { commitment } from "../../internal/identity.ts"
-import { nativeLocations } from "../../compiler/package/native.ts"
+import { validateBundle } from "../../compiler/package/native.ts"
 import { runHost } from "../hosts/commands.ts"
 import { inspectCursorVersion } from "../hosts/cursor.ts"
 import { nativeProfiles } from "./profiles.ts"
@@ -15,7 +15,7 @@ import { packageClient } from "./packages.ts"
 import { NativePathInput } from "../../../contracts/WindowsPath.ts"
 import { matchesNativePath } from "../../internal/windows-files/path.ts"
 import { checkLauncherRuntime } from "../runtime/launcher.ts"
-import type { Format } from "../../../contracts/Compiler.ts"
+import type { Bundle } from "../../../contracts/Compiler.ts"
 import type { ChildProcessSpawner } from "effect/process/ChildProcessSpawner"
 
 export const matchesTargetPath = (expected: string, reported: string): boolean =>
@@ -73,14 +73,25 @@ const checkNativePaths = (target: Target) => Effect.tryPromise({
   catch: (cause) => new HostUnavailable({ host: target.destination.host, cause })
 })
 
-export const resolveTarget = Effect.fnUntraced(function*(destination: Destination, plugin: PluginId, format?: Format): Effect.fn.Return<Target, DestinationUnsupported | HostUnavailable, FileSystem.FileSystem | ChildProcessSpawner> {
+export const resolveTarget = Effect.fnUntraced(function*(destination: Destination, plugin: PluginId, bundle?: Bundle): Effect.fn.Return<Target, DestinationUnsupported | HostUnavailable, FileSystem.FileSystem | ChildProcessSpawner> {
   const host = destination.host
   if (!Schema.is(LocalClient)(host)) return yield* new DestinationUnsupported({ destination, detail: "No qualified native installation and inspection contract is available; see docs/compatibility.md" })
-  if (host === "cursor" && process.arch !== "x64") return yield* new DestinationUnsupported({ destination, detail: "Cursor IDE requires a qualified Windows x64 installation" })
-  if (format !== undefined && nativeLocations(format).host !== packageClient(host)) return yield* new DestinationUnsupported({ destination, detail: `Package format ${format} does not target ${host}` })
-  if (!nativeProfiles.some((profile) => profile.host === host && profile.platform === process.platform && profile.scope === destination.type && (format === undefined || profile.formats.includes(format)))) {
-    return yield* new DestinationUnsupported({ destination, detail: `No qualified profile admits ${host}, ${process.platform}, ${destination.type}${format === undefined ? "" : `, ${format}`}` })
-  }
+  if (process.platform === "win32" && process.arch !== "x64") return yield* new DestinationUnsupported({ destination, detail: "Windows installation requires x64 process and filesystem bindings" })
+  const format = bundle?.format
+  if (format !== undefined && format !== packageClient(host)) return yield* new DestinationUnsupported({ destination, detail: `Package format ${format} does not target ${host}` })
+  const metadata = bundle === undefined ? null : yield* Effect.try({
+    try: () => validateBundle(bundle),
+    catch: (cause) => new HostUnavailable({ host, cause })
+  })
+  const profile = yield* Match.value(selectNativeProfile({
+    query: { host, platform: RuntimePlatform.make(process.platform), scope: destination.type, format: format ?? null, requirements: metadata?.requirements ?? [] },
+    profiles: nativeProfiles
+  })).pipe(Match.discriminatorsExhaustive("type")({
+    selected: ({ profile }) => Effect.succeed(profile),
+    blocked: ({ reason }) => Effect.fail(new DestinationUnsupported({
+      destination, detail: `Native contract is ${reason} for ${host}, ${process.platform}, ${destination.type}${format === undefined ? "" : `, ${format}`}; check package requirements and supported capabilities`
+    }))
+  }))
   const fs = yield* FileSystem.FileSystem
   const canonical = yield* Effect.gen(function*() {
     const home = Directory.make(yield* fs.realPath(destination.home))
@@ -105,16 +116,7 @@ export const resolveTarget = Effect.fnUntraced(function*(destination: Destinatio
     )))),
     Match.exhaustive
   )
-  const profile = yield* Match.value(selectNativeProfile({
-    query: { host, platform: RuntimePlatform.make(process.platform), version, scope: canonical.type, format: format ?? null },
-    profiles: nativeProfiles
-  })).pipe(Match.discriminatorsExhaustive("type")({
-    selected: ({ profile }) => Effect.succeed(profile),
-    blocked: ({ reason }) => Effect.fail(new DestinationUnsupported({
-      destination: canonical, detail: `Native profile is ${reason} for ${host} ${version}, ${process.platform}, ${canonical.type}${format === undefined ? "" : `, ${format}`}`
-    }))
-  }))
-  if (format !== undefined) yield* checkLauncherRuntime(canonical, format)
+  if (metadata !== null) yield* checkLauncherRuntime(canonical, metadata.processes)
   const physicalId = Effect.fnUntraced(function*(path: string) {
     const info = yield* fs.stat(path).pipe(Effect.catchTag("PlatformError", (cause) => new HostUnavailable({ host, cause })))
     if (Option.isNone(info.ino)) return yield* new DestinationUnsupported({ destination: canonical, detail: "Native profile requires filesystem inode identity" })
@@ -123,7 +125,7 @@ export const resolveTarget = Effect.fnUntraced(function*(destination: Destinatio
   const homeId = yield* physicalId(canonical.home)
   const rootId = canonical.type === "project" ? yield* physicalId(canonical.root) : null
   const key = InstallationKey.make(commitment("target", { host, home: homeId, scope: canonical.type, root: rootId, plugin }))
-  const target: Target = { key, destination: canonical, plugin, profile: profile.revision, version: profile.version }
+  const target: Target = { key, destination: canonical, plugin, profile: profile.revision, version }
   yield* checkNativePaths(target)
   return target
 })

@@ -5,10 +5,6 @@ namespace PluginSdk.Installer.LauncherRuntime
 def NR1_absent_requires_nothing (model : Interface) : Prop :=
   ∀ platform, model.requirements ⟨platform, .absent⟩ = some []
 
-def NR2_posix_checks_exact (model : Interface) : Prop :=
-  ∀ cwdRoot, model.requirements ⟨"linux", .posix cwdRoot⟩ =
-    some ([.shell, .env] ++ if cwdRoot then [.pwd] else [])
-
 def NR3_portable_checks_exact (model : Interface) : Prop :=
   model.requirements ⟨"linux", .portable⟩ = some [.node, .shell, .env] ∧
   model.requirements ⟨"win32", .portable⟩ = some [.node]

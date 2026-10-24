@@ -7,10 +7,6 @@ theorem NR1_absent_requires_nothing : NR1_absent_requires_nothing model := by
   intro platform
   rfl
 
-theorem NR2_posix_checks_exact : NR2_posix_checks_exact model := by
-  intro cwdRoot
-  rfl
-
 theorem NR3_portable_checks_exact : NR3_portable_checks_exact model := by
   exact ⟨rfl, rfl⟩
 
@@ -20,8 +16,6 @@ theorem NR4_unsupported_exact : NR4_unsupported_exact model := by
   | mk platform kind =>
     cases kind with
     | absent => simp [model, requirements]
-    | posix cwdRoot =>
-      by_cases linux : platform = "linux" <;> simp [model, requirements, linux]
     | portable =>
       by_cases linux : platform = "linux" <;>
         by_cases windows : platform = "win32" <;>

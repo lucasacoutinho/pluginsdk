@@ -102,7 +102,7 @@ const buildBundles = async (directory: string): Promise<ReadonlyArray<{ readonly
   const result = await runCli(directory, ["build", definitionPath, "--out", output, "--json"])
   expect(result.status, result.stderr).toBe(0)
   const bundles = result.stdout.trim().split("\n").map((line) => Schema.decodeUnknownSync(Bundle)(parseJson(line)))
-  expect(bundles.map((bundle) => bundle.format)).toEqual(["claude_code_v4", "codex_plugin_v1"])
+  expect(bundles.map((bundle) => bundle.format)).toEqual(["claude_code", "codex"])
   return bundles.map((bundle, index) => ({
     bundle,
     path: join(output, index === 0 ? "claude_code.bundle.json" : "codex.bundle.json")
@@ -171,7 +171,7 @@ it("packs canonical bundles, admits local packages, acquires exact outputs, and 
     const packageArchive = Schema.decodeUnknownSync(PackageArchive, { onExcessProperty: "error" })(
       parseJson(new TextDecoder("utf-8", { fatal: true }).decode(firstBytes))
     )
-    expect(packageArchive.bundles.map((bundle) => bundle.format)).toEqual(["claude_code_v4", "codex_plugin_v1"])
+    expect(packageArchive.bundles.map((bundle) => bundle.format)).toEqual(["claude_code", "codex"])
     expect(packageArchive.bundles).toEqual(bundles.map(({ bundle }) => bundle))
 
     const rejectedArchive = join(directory, "invalid.archive.json")
@@ -234,6 +234,8 @@ it("packs canonical bundles, admits local packages, acquires exact outputs, and 
 it("imports over loopback HTTP, rejects a wrong pin and malformed metadata, and leaves blocked acquisition output absent", async () => {
   await withTempDirectory(async (directory) => {
     const bundles = await buildBundles(directory)
+    const claudeBundle = bundles.find(({ bundle }) => bundle.format === "claude_code")
+    if (claudeBundle === undefined) throw new Error("Compiler fixture has no Claude package")
     let archiveBytes: Uint8Array | undefined
     const server = createServer((request, response) => {
       if (request.url !== "/artifact.json" || archiveBytes === undefined) {
@@ -247,7 +249,7 @@ it("imports over loopback HTTP, rejects a wrong pin and malformed metadata, and 
 
     await withListeningServer(server, async (port) => {
       const location = `http://127.0.0.1:${port}/artifact.json`
-      const packed = await pack(directory, bundles, location, "http")
+      const packed = await pack(directory, [claudeBundle], location, "http")
       archiveBytes = await readFile(packed.archive)
       const store = join(directory, "http-catalog")
       const initialized = await runCli(directory, ["catalog", "init", "--directory", store])
@@ -262,6 +264,14 @@ it("imports over loopback HTTP, rejects a wrong pin and malformed metadata, and 
       const replayed = await runCli(directory, ["catalog", "import", releasePath, "--directory", store, "--json"])
       expect(replayed.status, replayed.stderr).toBe(0)
       expect(Schema.decodeUnknownSync(Admission)(parseJson(replayed.stdout))).toEqual({ type: "unchanged" })
+
+      const availableOutput = join(directory, "available.bundle.json")
+      const available = await runCli(directory, [
+        "catalog", "acquire", "acme", "internal-app", "approved-1", "--format", "claude_code",
+        "--directory", store, "--out", availableOutput, "--json"
+      ])
+      expect(available.status, available.stderr).toBe(0)
+      expect(Schema.decodeUnknownSync(Bundle)(parseJson(available.stdout))).toEqual(claudeBundle.bundle)
 
       const catalogPath = join(store, "catalog.json")
       const retainedBeforeRejection = await readFile(catalogPath)
@@ -285,7 +295,7 @@ it("imports over loopback HTTP, rejects a wrong pin and malformed metadata, and 
 
       const blockedOutput = join(directory, "blocked.bundle.json")
       const blocked = await runCli(directory, [
-        "catalog", "acquire", "acme", "internal-app", "approved-1", "--format", "claude_code_v2",
+        "catalog", "acquire", "acme", "internal-app", "approved-1", "--format", "codex",
         "--directory", store, "--out", blockedOutput, "--json"
       ])
       expect(blocked.status).not.toBe(0)
@@ -367,7 +377,7 @@ it("packs, admits, imports, and acquires reviewed MCP contracts while rejecting 
 
       const mixedAcquirePath = join(directory, "mixed-acquire.json")
       const mixedAcquire = await runCli(directory, [
-        "catalog", "acquire", "acme", "notes-app", "approved-1", "--format", "codex_plugin_v1", "--contract",
+        "catalog", "acquire", "acme", "notes-app", "approved-1", "--format", "codex", "--contract",
         "--directory", localStore, "--out", mixedAcquirePath
       ])
       expect(mixedAcquire.status).not.toBe(0)

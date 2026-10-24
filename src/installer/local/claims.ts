@@ -11,7 +11,7 @@ import { classifyLocalPackage } from "./package.ts"
 import { bindLocalApproval } from "./approval.ts"
 import { commitment, fileDigest } from "../../internal/identity.ts"
 import { savePlan, validatePlan } from "../lifecycle/plans.ts"
-import { qualifiedFormat, sameOwnedTarget } from "../target/profiles.ts"
+import { qualifiedBundle, sameOwnedTarget } from "../target/profiles.ts"
 import { durableWrite, readRecord } from "../storage.ts"
 import { targetPaths } from "../target/resolve.ts"
 
@@ -36,7 +36,7 @@ const verifiedBundle = (target: Target, plan: ReadyPlan, expectedId: PlanId): Bu
   if (plan.id !== expectedId) throw new Error("Retained plan ID differs from the physical claim")
   if (!sameOwnedTarget(target, plan.target)) throw new Error("Retained plan target is not ownership-compatible")
   const bundle = changedBundle(plan)
-  if (!qualifiedFormat(target, bundle.format)) throw new Error("Retained bundle format is not qualified for the target")
+  if (!qualifiedBundle(target, bundle)) throw new Error("Retained package requirements are unsupported by the target")
   return bundle
 }
 

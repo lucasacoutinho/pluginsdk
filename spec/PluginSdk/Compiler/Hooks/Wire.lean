@@ -1,4 +1,4 @@
-import PluginSdk.Compiler.Hooks.Model
+import PluginSdk.Compiler.Hooks.Types
 import PluginSdk.Compiler.Process.Wire
 
 namespace PluginSdk.Compiler.Hooks.Wire
@@ -35,27 +35,5 @@ def readInput (json : Json) : Except String Input := do
   checkFields json ["host", "hooks"]
   return ⟨← Process.Wire.readHost (← json.getObjVal? "host"),
     ← readHooks (← json.getObjVal? "hooks")⟩
-
-private def writeFile (file : GeneratedFile) : Json := Json.mkObj [
-  ("path", .str file.path.value), ("content", .str file.content), ("executable", .bool file.executable)]
-
-private def writeIssue : Issue → Json
-  | .environmentReferenceUnsupported hook name => tagged "environment_reference_unsupported" [
-      ("hook", .str hook), ("name", .str name.value)]
-
-private def writeOutput : Result → Json
-  | .rendered output => tagged "rendered" [
-      ("document", output.document.elim .null (fun document => document.value)),
-      ("files", .arr (output.files.map writeFile).toArray)]
-  | .rejected issues => tagged "rejected" [("issues", .arr (issues.toList.map writeIssue).toArray)]
-
-def evaluate (request : Json) : Except String Json := do
-  checkFields request ["schema", "type", "input"]
-  unless (← (← request.getObjVal? "schema").getNum?).toFloat == (1.0 : Float) do
-    throw "unsupported schema version"
-  unless (← (← request.getObjVal? "type").getStr?) == "render_hooks" do
-    throw "expected a hook render request"
-  let output := writeOutput (model.render (← readInput (← request.getObjVal? "input")))
-  return Json.mkObj [("schema", 1), ("type", .str "render_hooks"), ("output", output)]
 
 end PluginSdk.Compiler.Hooks.Wire

@@ -196,8 +196,8 @@ it("retains both home and project locks in the worker after its caller dies", as
 
 it("rejects the second concurrent review instead of overwriting another plugin's project block", async () => {
   await withProjectFixture(async (fixture) => {
-    const first = await fixture.bundle("first writer", "agent_plugins_v2", "project-writer-one")
-    const second = await fixture.bundle("second writer", "agent_plugins_v2", "project-writer-two")
+    const first = await fixture.bundle("first writer", "project-writer-one")
+    const second = await fixture.bundle("second writer", "project-writer-two")
     const a = await fixture.plan(first.bundlePath)
     const b = await fixture.plan(second.bundlePath)
     requireReady(a.planning)

@@ -6,21 +6,7 @@ import PluginSdk.Compiler.Canonical
 namespace PluginSdk.Catalog.Artifacts
 
 def allFormats : List PackageFormat :=
-  [ .agentPluginsV1
-  , .claudeCodeV1
-  , .agentPluginsV2
-  , .claudeCodeV2
-  , .agentPluginsV3
-  , .claudeCodeV3
-  , .claudeCodeV4
-  , .codexPluginV1
-  , .claudeCodeV5
-  , .codexPluginV2
-  , .claudeCodePortableV1
-  , .codexPluginPortableV1
-  , .claudeCodePortableV2
-  , .codexPluginPortableV2
-  ]
+  [.claudeCode, .codex]
 
 def formatIssues (input : Input) (format : PackageFormat) : List Issue :=
   let count := countFormat input.artifacts format

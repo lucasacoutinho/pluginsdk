@@ -65,7 +65,6 @@ const buildIssueText = (issue: BuildIssue): string => Match.value(issue).pipe(
     invalid_executable: (value) => `invalid executable declaration at ${value.path}: ${value.detail}`,
     path_collision: (value) => `path collision at ${value.path}`,
     reserved_asset: (value) => `asset uses a native component path at ${value.path}`,
-    unsupported_feature: (value) => `${value.format} cannot preserve ${value.feature}`,
     source_escape: (value) => `source path escapes at ${value.path}`,
     invalid_process: (value) => `invalid MCP process for ${value.server}: ${processProblemText(value.reason)}`,
     invalid_hook_process: (value) => `invalid hook process for ${value.hook}: ${processProblemText(value.reason)}`,

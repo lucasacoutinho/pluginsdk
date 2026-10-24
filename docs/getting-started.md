@@ -4,7 +4,7 @@ Build a plugin that drafts release notes from Git history, then preview the same
 
 ## Prepare the CLI
 
-Use Node 24+ on Linux and a [supported Claude Code or Codex version](compatibility.md). From the PluginSDK checkout:
+Use Node 24+ on Linux and a [supported Claude Code or Codex installation](compatibility.md). From the PluginSDK checkout:
 
 ```sh
 npm ci

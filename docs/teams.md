@@ -44,4 +44,4 @@ The [release catalog](catalog-usage.md) retains the exact Claude Code and Codex 
 
 [Distribution](distribution-usage.md) reviews that release against named local destinations and tracks each installation separately. A retry skips completed destinations and resumes incomplete work.
 
-The current CLI manages configuration homes available on the machine where it runs. Fleet rollout still uses your deployment infrastructure. ChatGPT workspace administration, Cursor, Grok Bot and Muse need client adapters before PluginSDK can manage them.
+The current CLI manages configuration homes available on the machine where it runs, including Cursor user installations on Windows x64. Fleet rollout still uses your deployment infrastructure. ChatGPT workspace administration, Grok Bot and Muse need client adapters before PluginSDK can manage them.

@@ -10,6 +10,10 @@ inductive Scope where
   | user | project
   deriving DecidableEq, Repr
 
+inductive Capability where
+  | stdio | hooks | agents
+  deriving DecidableEq, Repr
+
 structure RuntimePlatform where
   value : String
   deriving DecidableEq, Repr
@@ -25,27 +29,30 @@ structure AdapterRevision where
 structure ProfileIdentity where
   host : Host
   platform : RuntimePlatform
-  version : RuntimeVersion
   scope : Scope
   revision : AdapterRevision
   deriving DecidableEq, Repr
 
 structure NativeProfile where
   identity : ProfileIdentity
-  formats : List Catalog.PackageFormat
+  format : Catalog.PackageFormat
+  capabilities : List Capability
   deriving DecidableEq, Repr
 
 structure ProfileQuery where
   host : Host
   platform : RuntimePlatform
-  version : RuntimeVersion
   scope : Scope
   format : Option Catalog.PackageFormat
+  requirements : List Capability
   deriving DecidableEq, Repr
 
 structure SelectionInput where
   query : ProfileQuery
   profiles : List NativeProfile
+
+def requirementsInput (input : SelectionInput) (requirements : List Capability) : SelectionInput :=
+  { input with query := { input.query with requirements := requirements } }
 
 inductive Selection where
   | selected (profile : NativeProfile)
@@ -63,13 +70,15 @@ structure Interface where
   ownershipCompatible : OwnershipInput → Bool
 
 def Eligible (query : ProfileQuery) (profile : NativeProfile) : Prop :=
-  profile.identity.host = query.host ∧ profile.identity.platform = query.platform ∧
-  profile.identity.version = query.version ∧ profile.identity.scope = query.scope ∧
-  (match query.format with | none => True | some format => format ∈ profile.formats)
+  profile.identity.host = query.host ∧
+  profile.identity.platform = query.platform ∧
+  profile.identity.scope = query.scope ∧
+  (match query.format with | none => True | some format => profile.format = format) ∧
+  query.requirements.all (fun capability => profile.capabilities.contains capability) = true
 
 instance (query : ProfileQuery) (profile : NativeProfile) : Decidable (Eligible query profile) := by
   cases query with
-  | mk host platform version scope format =>
+  | mk host platform scope format requirements =>
     cases format <;> dsimp [Eligible] <;> infer_instance
 
 def EligibleProfiles (input : SelectionInput) : List NativeProfile :=
@@ -87,5 +96,8 @@ def SameAdapter (current retained : ProfileIdentity) : Prop :=
 
 instance (current retained : ProfileIdentity) : Decidable (SameAdapter current retained) :=
   inferInstanceAs (Decidable (_ ∧ _ ∧ _ ∧ _))
+
+def RequirementsIncluded (weaker stronger : List Capability) : Prop :=
+  ∀ capability, capability ∈ weaker → capability ∈ stronger
 
 end PluginSdk.Compatibility

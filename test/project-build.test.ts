@@ -3,12 +3,12 @@ import { expect, it } from "@effect/vitest"
 import { Effect, FileSystem, Layer, Schema } from "effect"
 import { join } from "node:path"
 import { Bundle, type Bundle as BundleType } from "../contracts/Compiler.ts"
-import { Directory, Plugin } from "../contracts/Plugin.ts"
+import { Directory } from "../contracts/Plugin.ts"
 import { BuildSnapshot, GitBranch, GitRepository, ProjectDefinition, ProjectError } from "../contracts/Project.ts"
 import type { BuildSnapshot as BuildSnapshotType, ProjectDefinition as ProjectDefinitionType } from "../contracts/Project.ts"
 import { CompilerLive } from "../src/compiler/index.ts"
 import { jsonBytes } from "../src/internal/json.ts"
-import { compileProject, readBuild, readDefinition, recommendedFormat, writeBuild } from "../src/project/build.ts"
+import { compileProject, readBuild, readDefinition, writeBuild } from "../src/project/build.ts"
 import { capturedPublication } from "../src/project/marketplace.ts"
 
 const ProjectTest = Layer.provideMerge(CompilerLive, NodeServices.layer)
@@ -32,17 +32,6 @@ const makeDefinition = (options: DefinitionOptions = {}) => Schema.decodeSync(Pr
   mcp: {},
   ...(options.publish === undefined ? {} : { publish: options.publish })
 })
-
-const makeFormatPlugin = (features: { readonly stdio?: boolean; readonly hooks?: boolean; readonly agents?: boolean }) =>
-  Schema.decodeSync(Plugin)({
-    id: "format-fixture",
-    version: "1.0.0",
-    description: "Format selection fixture",
-    skills: [],
-    mcp: features.stdio ? { local: { type: "stdio", command: "node" } } : {},
-    ...(features.hooks ? { hooks: { startup: { event: "SessionStart", command: "node" } } } : {}),
-    ...(features.agents ? { agents: { reviewer: { description: "Review changes", prompt: "agents/reviewer.md" } } } : {})
-  })
 
 const writeSkill = (fs: FileSystem.FileSystem, root: string, bytes: Uint8Array) => Effect.gen(function*() {
   const directory = join(root, "skills", "review")
@@ -86,46 +75,6 @@ it("accepts configured Git locations and rejects helper commands, credentials an
   for (const branch of ["--bad", "main.lock", "a/../b", "a//b", "a/"]) expect(() => Schema.decodeSync(GitBranch)(branch)).toThrow()
 })
 
-it("selects portable packages for hooks and agents", () => {
-  const base = makeFormatPlugin({})
-  const stdio = makeFormatPlugin({ stdio: true })
-  const hooks = makeFormatPlugin({ stdio: true, hooks: true })
-  const agents = makeFormatPlugin({ stdio: true, hooks: true, agents: true })
-
-  expect(recommendedFormat(base, "claude_code")).toBe("claude_code_v2")
-  expect(recommendedFormat(stdio, "claude_code")).toBe("claude_code_portable_v1")
-  expect(recommendedFormat(hooks, "claude_code")).toBe("claude_code_portable_v2")
-  expect(recommendedFormat(agents, "claude_code")).toBe("claude_code_portable_v2")
-  expect(recommendedFormat(base, "codex")).toBe("agent_plugins_v2")
-  expect(recommendedFormat(stdio, "codex")).toBe("codex_plugin_portable_v1")
-  expect(recommendedFormat(hooks, "codex")).toBe("codex_plugin_portable_v2")
-  expect(recommendedFormat(agents, "codex")).toBe("codex_plugin_portable_v2")
-})
-
-it("derives feature facts from nonempty plugin declarations", () => {
-  const remote = Schema.decodeSync(Plugin)({
-    ...makeFormatPlugin({}),
-    hooks: {},
-    agents: {},
-    mcp: { service: { url: "https://service.example/mcp", headers: {} } }
-  })
-  const mixed: Plugin = {
-    ...remote,
-    mcp: { ...remote.mcp, ...makeFormatPlugin({ stdio: true }).mcp }
-  }
-  const hooks = makeFormatPlugin({ hooks: true })
-  const agents = makeFormatPlugin({ agents: true })
-
-  expect(recommendedFormat(remote, "claude_code")).toBe("claude_code_v2")
-  expect(recommendedFormat(remote, "codex")).toBe("agent_plugins_v2")
-  expect(recommendedFormat(mixed, "claude_code")).toBe("claude_code_portable_v1")
-  expect(recommendedFormat(mixed, "codex")).toBe("codex_plugin_portable_v1")
-  expect(recommendedFormat(hooks, "claude_code")).toBe("claude_code_portable_v2")
-  expect(recommendedFormat(hooks, "codex")).toBe("codex_plugin_portable_v2")
-  expect(recommendedFormat(agents, "claude_code")).toBe("claude_code_portable_v2")
-  expect(recommendedFormat(agents, "codex")).toBe("codex_plugin_portable_v2")
-})
-
 it.effect("captures canonical default packages and retains source bytes after edits", () =>
   Effect.gen(function*() {
     const fs = yield* FileSystem.FileSystem
@@ -140,7 +89,7 @@ it.effect("captures canonical default packages and retains source bytes after ed
     expect(yield* readDefinition(definitionPath)).toStrictEqual(definition)
 
     const bundles = yield* compileProject(definition, Directory.make(root), ["codex", "claude_code"])
-    expect(bundles.map((bundle) => bundle.format)).toEqual(["claude_code_v2", "agent_plugins_v2"])
+    expect(bundles.map((bundle) => bundle.format)).toEqual(["claude_code", "codex"])
     for (const bundle of bundles) expect(Array.from(skillFile(bundle).content)).toEqual(Array.from(originalBytes))
 
     const cursorBundles = yield* compileProject(definition, Directory.make(root), ["cursor", "codex", "claude_code", "cursor"])
@@ -148,7 +97,7 @@ it.effect("captures canonical default packages and retains source bytes after ed
 
     const directory = join(root, ".pluginsdk", "build")
     const written = yield* writeBuild(directory, definition, bundles)
-    expect(written.bundles.map((bundle) => bundle.format)).toEqual(["claude_code_v2", "agent_plugins_v2"])
+    expect(written.bundles.map((bundle) => bundle.format)).toEqual(["claude_code", "codex"])
     const cursorBuild = yield* writeBuild(join(root, ".pluginsdk", "cursor-build"), definition, cursorBundles)
     expect(capturedPublication(cursorBuild)).toEqual(capturedPublication(written))
     yield* fs.writeFile(skillPath, new TextEncoder().encode("edited after build"))

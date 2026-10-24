@@ -2,11 +2,14 @@ import { Schema, Struct } from "effect"
 import * as Compatibility from "../../../contracts/Compatibility.ts"
 
 const equivalentIdentity = Schema.toEquivalence(Compatibility.ProfileIdentity)
-const equivalentQuery = Schema.toEquivalence(Schema.Struct(Struct.omit(Compatibility.ProfileQuery.fields, ["format"])))
+const equivalentTarget = Schema.toEquivalence(Schema.Struct(
+  Struct.omit(Compatibility.ProfileQuery.fields, ["format", "requirements"])
+))
 
 function eligible(profile: Compatibility.NativeProfile, query: Compatibility.ProfileQuery): boolean {
-  return equivalentQuery(profile, query) &&
-    (query.format === null || profile.formats.includes(query.format))
+  return equivalentTarget(profile, query) &&
+    (query.format === null || profile.format === query.format) &&
+    query.requirements.every((requirement) => profile.capabilities.includes(requirement))
 }
 
 export function selectNativeProfile(input: Compatibility.SelectionInput): Compatibility.Selection {
@@ -29,8 +32,5 @@ export function nativeOwnershipCompatible(input: Compatibility.OwnershipInput): 
   const { current, retained, profiles } = input
   return hasUniqueRegistration(profiles, current) &&
     hasUniqueRegistration(profiles, retained) &&
-    current.host === retained.host &&
-    current.platform === retained.platform &&
-    current.scope === retained.scope &&
-    current.revision === retained.revision
+    equivalentIdentity(current, retained)
 }

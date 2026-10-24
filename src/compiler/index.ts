@@ -7,12 +7,12 @@ import type { PlannedHook } from "../../contracts/Hooks.ts"
 import { bundleDigest, fileDigest } from "../internal/identity.ts"
 import { jsonBytes } from "../internal/json.ts"
 import { compareUtf8 } from "../internal/paths.ts"
-import { render } from "./package/model.ts"
+import { nativeLocations, render } from "./package/model.ts"
 import { assemble } from "./package/assembly.ts"
 import { lowerProcess } from "./process/model.ts"
 import { renderAgents } from "./agents/model.ts"
 import { capture } from "./source/capture.ts"
-import { isNativeVersion, nativeLocations, validateBundle } from "./package/native.ts"
+import { isNativeVersion, validateBundle } from "./package/native.ts"
 import { materializeAgentEntry } from "./agents/native.ts"
 import { materializeProcesses } from "./process/materialize.ts"
 
@@ -23,21 +23,6 @@ const checkedMetadata = (request: BuildRequest): void => {
     if (!value.isWellFormed()) issues.push({ type: "invalid_metadata", field, detail: "Metadata must contain valid Unicode" })
   }
   if (!isNativeVersion(request.plugin.version)) issues.push({ type: "invalid_metadata", field: "version", detail: "Version must be a single native cache path component" })
-  if (!nativeLocations(request.format).assets && (request.plugin.assets?.length ?? 0) > 0) {
-    issues.push({ type: "unsupported_feature", feature: "assets", format: request.format })
-  }
-  const hasProcesses = Object.values(request.plugin.mcp).some((server) => Match.value(server).pipe(
-    Match.when({ type: "stdio" }, () => true),
-    Match.when({ url: Match.defined }, () => false),
-    Match.exhaustive
-  ))
-  if (!nativeLocations(request.format).processes && hasProcesses) issues.push({ type: "unsupported_feature", feature: "stdio", format: request.format })
-  if (!nativeLocations(request.format).hooks && Object.keys(request.plugin.hooks ?? {}).length > 0) {
-    issues.push({ type: "unsupported_feature", feature: "hooks", format: request.format })
-  }
-  if (!nativeLocations(request.format).agents && Object.keys(request.plugin.agents ?? {}).length > 0) {
-    issues.push({ type: "unsupported_feature", feature: "agents", format: request.format })
-  }
   const [head, ...tail] = issues
   if (head !== undefined) throw new BuildRejected({ issues: [head, ...tail] })
 }
@@ -95,7 +80,7 @@ export const CompilerLive = Layer.effect(Compiler, Effect.gen(function*() {
     }
     const remote = Object.fromEntries(remoteRows)
     const rendered = yield* Match.value(render({
-      format: locations.base,
+      format: request.format,
       metadata: { id: request.plugin.id, version: request.plugin.version, description: request.plugin.description },
       skills: captured.skills,
       mcp: remote
@@ -132,8 +117,8 @@ export const CompilerLive = Layer.effect(Compiler, Effect.gen(function*() {
     const [firstProcessIssue, ...otherProcessIssues] = processIssues
     if (firstProcessIssue !== undefined) return yield* new BuildRejected({ issues: [firstProcessIssue, ...otherProcessIssues] })
     const processes = yield* materializeProcesses({
-      mcp: { format: locations.base, remote, local: Object.fromEntries(plans) }, hooks: Object.fromEntries(hooks)
-    }, locations.processes, request).pipe(
+      mcp: { format: request.format, remote, local: Object.fromEntries(plans) }, hooks: Object.fromEntries(hooks)
+    }, request).pipe(
       Effect.provideService(FileSystem.FileSystem, fs)
     )
     const renderedAgents = yield* Match.value(renderAgents({
@@ -177,27 +162,25 @@ export const CompilerLive = Layer.effect(Compiler, Effect.gen(function*() {
       files.push({ path: PackagePath.make("hooks/hooks.json"), content: jsonBytes(processes.hooksDocument), executable: false })
     }
     files.push(...renderedAgents.entries.map((entry) => materializeAgentEntry(locations.host, entry)))
-    if (locations.assets) {
-      const identify = (file: PackageFile) => {
-        const digest = fileDigest(file.content)
-        captured.contents.set(digest, file.content)
-        return { path: file.path, digest, executable: file.executable }
-      }
-      const [first, ...rest] = files
-      const assembled = yield* Match.value(assemble({ base: [identify(first), ...rest.map(identify)], assets: captured.assets })).pipe(
-        Match.discriminatorsExhaustive("type")({
-          rejected: (result) => Effect.fail(new BuildRejected({ issues: result.issues })),
-          assembled: (result) => Effect.succeed(result.files)
-        })
-      )
-      const resolveCopy = (file: typeof assembled[number]): PackageFile => {
-        const content = captured.contents.get(file.digest)
-        if (content === undefined) throw new Error("Assembled content table is inconsistent")
-        return { path: file.path, content, executable: file.executable }
-      }
-      const [assembledHead, ...assembledTail] = assembled
-      files = [resolveCopy(assembledHead), ...assembledTail.map(resolveCopy)]
+    const identify = (file: PackageFile) => {
+      const digest = fileDigest(file.content)
+      captured.contents.set(digest, file.content)
+      return { path: file.path, digest, executable: file.executable }
     }
+    const [first, ...rest] = files
+    const assembled = yield* Match.value(assemble({ base: [identify(first), ...rest.map(identify)], assets: captured.assets })).pipe(
+      Match.discriminatorsExhaustive("type")({
+        rejected: (result) => Effect.fail(new BuildRejected({ issues: result.issues })),
+        assembled: (result) => Effect.succeed(result.files)
+      })
+    )
+    const resolveCopy = (file: typeof assembled[number]): PackageFile => {
+      const content = captured.contents.get(file.digest)
+      if (content === undefined) throw new Error("Assembled content table is inconsistent")
+      return { path: file.path, content, executable: file.executable }
+    }
+    const [assembledHead, ...assembledTail] = assembled
+    files = [resolveCopy(assembledHead), ...assembledTail.map(resolveCopy)]
     const body = { schema: 1, plugin: request.plugin.id, format: request.format, files } satisfies Omit<Bundle, "digest">
     const bundle: Bundle = { ...body, digest: bundleDigest(body) }
     yield* Effect.try({

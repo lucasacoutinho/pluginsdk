@@ -4,7 +4,7 @@ import { GitPublication, ProjectError, type BuildSnapshot } from "../../contract
 import { PackageClient } from "../../contracts/Clients.ts"
 import { PackagePath } from "../../contracts/Plugin.ts"
 import { Publication, ReleaseDigest } from "../../contracts/Publication.ts"
-import { nativeLocations, validateBundle } from "../compiler/package/native.ts"
+import { validateBundle } from "../compiler/package/native.ts"
 import { commitment } from "../internal/identity.ts"
 import { canonicalJson, jsonBytes, parseJsonBytes, type Json } from "../internal/json.ts"
 import { compareUtf8 } from "../internal/paths.ts"
@@ -40,7 +40,7 @@ const invalid = (detail: string): never => { throw new ProjectError({ detail }) 
 
 export function capturedPublication(build: BuildSnapshot): Release {
   const record = (bundle: Bundle): PackageRecord => ({
-    client: nativeLocations(bundle.format).host, format: bundle.format, digest: bundle.digest
+    client: bundle.format, format: bundle.format, digest: bundle.digest
   })
   const [first, ...rest] = build.bundles
   const body: typeof ReleaseBody.Type = {
@@ -54,7 +54,7 @@ function checkRecord(release: Release): void {
   if (release.digest !== releaseDigest(release)) invalid("Published release metadata changed")
   const seen = new Set<PackageClient>()
   for (const pkg of release.packages) {
-    if (nativeLocations(pkg.format).host !== pkg.client || seen.has(pkg.client)) invalid("Published package selection is invalid")
+    if (pkg.format !== pkg.client || seen.has(pkg.client)) invalid("Published package selection is invalid")
     seen.add(pkg.client)
   }
   if (release.packages.map((pkg) => pkg.client).join(",") !== clients.filter((client) => seen.has(client)).join(",")) {
@@ -196,7 +196,7 @@ export const preparePublication = (destination: GitPublication, build: BuildSnap
     }
     if (!changed) return files
     for (const bundle of build.bundles) {
-      const root = packageRoot(release, nativeLocations(bundle.format).host)
+      const root = packageRoot(release, bundle.format)
       assertWritable(snapshot, root, false)
       for (const file of bundle.files) files.push({ ...file, path: PackagePath.make(`${root}/${file.path}`) })
     }

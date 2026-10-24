@@ -22,20 +22,8 @@ export const ReleaseOrigin = Schema.Union([
 export type ReleaseOrigin = typeof ReleaseOrigin.Type
 
 export const FormatDigests = Schema.Struct({
-  agent_plugins_v1: Schema.optionalKey(BundleDigest),
-  claude_code_v1: Schema.optionalKey(BundleDigest),
-  agent_plugins_v2: Schema.optionalKey(BundleDigest),
-  claude_code_v2: Schema.optionalKey(BundleDigest),
-  agent_plugins_v3: Schema.optionalKey(BundleDigest),
-  claude_code_v3: Schema.optionalKey(BundleDigest),
-  claude_code_v4: Schema.optionalKey(BundleDigest),
-  codex_plugin_v1: Schema.optionalKey(BundleDigest),
-  claude_code_v5: Schema.optionalKey(BundleDigest),
-  codex_plugin_v2: Schema.optionalKey(BundleDigest),
-  claude_code_portable_v1: Schema.optionalKey(BundleDigest),
-  codex_plugin_portable_v1: Schema.optionalKey(BundleDigest),
-  claude_code_portable_v2: Schema.optionalKey(BundleDigest),
-  codex_plugin_portable_v2: Schema.optionalKey(BundleDigest)
+  claude_code: Schema.optionalKey(BundleDigest),
+  codex: Schema.optionalKey(BundleDigest)
 }).check(Schema.makeFilter((packages) => Object.keys(packages).length > 0, { expected: "at least one native package digest" }))
 export type FormatDigests = typeof FormatDigests.Type
 

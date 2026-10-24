@@ -2,7 +2,14 @@
 
 This directory holds maintainer-facing design records and acceptance evidence.
 
+The [first-release plan](launch-plan.md) and [current package and client contracts](prelaunch-consolidation.md) supersede the prelaunch format generations and exact app-version admission described in older records. Acceptance records retain the binaries, source and artifacts actually exercised; they do not qualify a later implementation automatically.
+
 - [Architecture and module ownership](design.md)
+- [Current compiler contract](compiler.md)
+- [Current compatibility contract](compatibility-design.md)
+- [Current-contract consolidation acceptance](prelaunch-consolidation-acceptance.md)
+- [Current Cursor author workflow acceptance](cursor-author-current-acceptance.md)
+- [Current Windows manager workflow acceptance](windows-manager-current-acceptance.md)
 - [Build, preview and publish design](author-workflow-design.md)
 - [Author workflow acceptance](author-workflow-acceptance.md)
 - [Codex project design](codex-project-design.md)

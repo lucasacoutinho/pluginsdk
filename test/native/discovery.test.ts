@@ -150,9 +150,9 @@ const preserveEnvironment = Effect.acquireRelease(
 	})
 )
 
-const destinationFormat = (host: NativeHost): "agent_plugins_v1" | "claude_code_v1" => Match.value(host).pipe(
-	Match.when("claude_code", () => "claude_code_v1" as const),
-	Match.when("codex", () => "agent_plugins_v1" as const),
+const destinationFormat = (host: NativeHost): Format => Match.value(host).pipe(
+	Match.when("claude_code", (): Format => "claude_code"),
+	Match.when("codex", (): Format => "codex"),
 	Match.exhaustive
 )
 
@@ -503,12 +503,6 @@ const bundledStdioArguments: ReadonlyArray<string> = [
   "argument-10"
 ]
 
-const bundledStdioFormat = (host: NativeHost): Format => Match.value(host).pipe(
-  Match.when("claude_code", (): Format => "claude_code_v3"),
-  Match.when("codex", (): Format => "agent_plugins_v3"),
-  Match.exhaustive
-)
-
 const bundledStdioShutdownSignal = (host: NativeHost): ProbeSignal["signal"] => Match.value(host).pipe(
   Match.when("claude_code", (): ProbeSignal["signal"] => "SIGINT"),
   Match.when("codex", (): ProbeSignal["signal"] => "SIGTERM"),
@@ -675,7 +669,7 @@ const bundledStdioRequest = (source: string, version: string, logPath: string, h
       }
     }
   }
-  return yield* Schema.decodeEffect(BuildRequest)({ root: source, format: bundledStdioFormat(host), plugin })
+  return yield* Schema.decodeEffect(BuildRequest)({ root: source, format: destinationFormat(host), plugin })
 })
 
 const bundledStdioPackageRoot = (host: NativeHost, home: string, cwd: string, version: string, pluginId: string) => Match.value(host).pipe(
@@ -808,7 +802,7 @@ const registerBundledStdio = (host: NativeHost): void => {
       if (version === "1.0.0") expect(beforeBuild).toBeNull()
       const request = yield* bundledStdioRequest(source, version, logPath, host)
       const bundle = yield* Compiler.use((compiler) => compiler.build(request))
-      expect(bundle.format).toBe(bundledStdioFormat(host))
+      expect(bundle.format).toBe(destinationFormat(host))
       expect(yield* readOptionalProbeLog(logPath)).toBe(beforeBuild)
 
       const ready = yield* takeReadyPlan(yield* installer.plan({ destination, intent: { type: "present", bundle } }))

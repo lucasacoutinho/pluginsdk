@@ -15,7 +15,7 @@ import {
 import { checkContractBinding, normalizeTools } from "../src/catalog/tools/model.ts"
 
 const vectorPath = fileURLToPath(new URL("../spec/vectors/tool-contracts.ndjson", import.meta.url))
-const oraclePath = fileURLToPath(new URL("../spec/.lake/build/bin/oracle", import.meta.url))
+const oraclePath = process.env["PLUGINSDK_ORACLE"] ?? fileURLToPath(new URL("../spec/.lake/build/bin/oracle", import.meta.url))
 const Vector = Schema.Struct({
   name: Schema.NonEmptyString,
   properties: Schema.Array(Schema.NonEmptyString),

@@ -20,7 +20,7 @@ import { CompilerLive } from "../src/compiler/index.ts"
 import { validateBundle } from "../src/compiler/package/native.ts"
 
 const CompilerTest = Layer.provideMerge(CompilerLive, NodeServices.layer)
-const hookFormats = ["claude_code_v4", "codex_plugin_v1"] as const
+const hookFormats = ["claude_code", "codex"] as const
 
 type RequestOptions = { readonly assets?: ReadonlyArray<string>; readonly mcp?: unknown; readonly hooks?: unknown }
 
@@ -88,15 +88,16 @@ const expectInvalidNativePackage = (bundle: Bundle): void => {
   expect(issues[0]?.type).toBe("invalid_native_package")
 }
 
-const expectedHookCommand = (format: typeof hookFormats[number], ordinal: number): string =>
-  format === "claude_code_v4"
-    ? `/bin/sh "$CLAUDE_PLUGIN_ROOT/.psdk/hooks/${ordinal}.sh" "$CLAUDE_PLUGIN_ROOT"`
-    : `/bin/sh "$PLUGIN_ROOT/.psdk/hooks/${ordinal}.sh" "$PLUGIN_ROOT"`
-
-const expectedHookHandler = (format: typeof hookFormats[number], ordinal: number, timeout = 30) => ({
-  type: "command", command: expectedHookCommand(format, ordinal), timeout, async: false,
-  ...(format === "codex_plugin_v1" ? { additionalContextLimit: 0 } : {})
-})
+const expectedHookHandler = (format: typeof hookFormats[number], ordinal: number, timeout = 30) =>
+  Match.value(format).pipe(Match.when("claude_code", () => ({
+    type: "command", command: "node",
+    args: ["${CLAUDE_PLUGIN_ROOT}/.psdk/runtime/process.mjs", "${CLAUDE_PLUGIN_ROOT}", `.psdk/hooks/${ordinal}.json`],
+    timeout, async: false
+  })), Match.when("codex", () => ({
+    type: "command",
+    command: `node --input-type=commonjs -e "const p=require('node:path'),u=require('node:url'),r=process.env.PLUGIN_ROOT,e=p.join(r,'.psdk/runtime/process.mjs');process.argv.splice(1,0,e,r);import(u.pathToFileURL(e).href)" -- .psdk/hooks/${ordinal}.json`,
+    additionalContextLimit: 0, timeout, async: false
+  })), Match.exhaustive)
 
 const addExecutable = (bundle: Bundle, path: string, contents: Uint8Array): Bundle => repackage(
   bundle,
@@ -140,7 +141,7 @@ it.effect("builds mixed MCP and two-event hook packages for both hosts without s
       const bundle = yield* compiler.build(makeRequest(root, format, input))
       expect(yield* fs.exists(marker)).toBe(false)
 
-      const codex = format === "codex_plugin_v1"
+      const codex = format === "codex"
       const variable = codex ? "${PLUGIN_ROOT}" : "${CLAUDE_PLUGIN_ROOT}"
       expect(parseJsonBytes(fileAt(bundle, "hooks/hooks.json").content)).toEqual({
         hooks: {
@@ -151,9 +152,10 @@ it.effect("builds mixed MCP and two-event hook packages for both hosts without s
       expect(parseJsonBytes(fileAt(bundle, ".mcp.json").content)).toEqual({
         mcpServers: {
           shared: codex
-            ? { command: "/bin/sh", args: [".psdk/mcp/0.sh"], env: {}, cwd: "." }
+            ? { command: "node", args: [".psdk/runtime/process.mjs", ".", ".psdk/mcp/0.json"], env: {}, cwd: "." }
             : {
-              type: "stdio", command: `${variable}/.psdk/mcp/0.sh`, args: [variable], env: {}
+              type: "stdio", command: "node",
+              args: [`${variable}/.psdk/runtime/process.mjs`, variable, ".psdk/mcp/0.json"], env: {}
             },
           remote: codex
             ? { url: "https://api.example.test/mcp", http_headers: { "X-Source": "literal" } }
@@ -176,32 +178,22 @@ it.effect("builds mixed MCP and two-event hook packages for both hosts without s
   }).pipe(Effect.provide(CompilerTest))
 )
 
-it.effect("keeps old formats hook-free and preserves ordinary v2 hook-adjacent assets", () =>
+it.effect("preserves empty hooks and ordinary hook-adjacent assets for both clients", () =>
   Effect.gen(function*() {
     const fs = yield* FileSystem.FileSystem
-    const root = yield* fs.makeTempDirectoryScoped({ prefix: "pluginsdk-hooks-legacy-" })
+    const root = yield* fs.makeTempDirectoryScoped({ prefix: "pluginsdk-hooks-empty-" })
     yield* writeSourceFile(fs, root, ".psdk/hooks/readme.txt", "Ordinary package asset.\n")
     const compiler = yield* Compiler
-    const oldFormats: ReadonlyArray<Format> = [
-      "agent_plugins_v1", "claude_code_v1", "agent_plugins_v2", "claude_code_v2", "agent_plugins_v3", "claude_code_v3"
-    ]
 
-    for (const format of oldFormats) {
-      expect(yield* buildIssues(makeRequest(root, format, {
-        hooks: { task: { event: "SessionStart", command: "node" } }
-      }))).toEqual([{ type: "unsupported_feature", feature: "hooks", format }])
-
+    for (const format of hookFormats) {
       const withoutHooks = yield* compiler.build(makeRequest(root, format))
       const emptyHooks = yield* compiler.build(makeRequest(root, format, { hooks: {} }))
       expect(emptyHooks.files).toEqual(withoutHooks.files)
       expect(emptyHooks.digest).toBe(withoutHooks.digest)
-    }
-
-    for (const format of ["agent_plugins_v2", "claude_code_v2"] as const) {
-      const bundle = yield* compiler.build(makeRequest(root, format, {
+      const asset = yield* compiler.build(makeRequest(root, format, {
         assets: [".psdk/hooks/readme.txt"], hooks: {}
       }))
-      expect(fileAt(bundle, ".psdk/hooks/readme.txt").content).toEqual(
+      expect(fileAt(asset, ".psdk/hooks/readme.txt").content).toEqual(
         new TextEncoder().encode("Ordinary package asset.\n")
       )
     }
@@ -216,7 +208,7 @@ it.effect("reports hook process failures by hook and rejects references on both 
     const nonExecutable = join(root, "tools/run.sh")
     yield* fs.chmod(nonExecutable, 0o644)
 
-    const processIssues = yield* buildIssues(makeRequest(root, "claude_code_v4", {
+    const processIssues = yield* buildIssues(makeRequest(root, "claude_code", {
       assets: ["tools/run.sh"],
       hooks: {
         "missing-cwd": { event: "SessionStart", command: "node", cwd: "missing-work" },
@@ -254,12 +246,12 @@ it.effect("rejects generated hook path collisions and reserved native hook asset
     yield* writeSourceFile(fs, root, "hooks/hooks.json", "asset bytes\n")
     const hooks = { job: { event: "SessionStart", command: "node" } }
 
-    const launcherCollision = yield* buildIssues(makeRequest(root, "claude_code_v4", {
+    const launcherCollision = yield* buildIssues(makeRequest(root, "claude_code", {
       assets: [".psdk/hooks/0.sh"], hooks
     }))
     expect(launcherCollision).toContainEqual({ type: "path_collision", path: ".psdk/hooks/0.sh" })
 
-    const reservedDocument = yield* buildIssues(makeRequest(root, "codex_plugin_v1", {
+    const reservedDocument = yield* buildIssues(makeRequest(root, "codex", {
       assets: ["hooks/hooks.json"], hooks
     }))
     expect(reservedDocument).toContainEqual({ type: "reserved_asset", path: "hooks/hooks.json" })
@@ -277,9 +269,9 @@ it.effect("rejects resealed tampered native hook documents for both hosts", () =
         second: { event: "UserPromptSubmit", command: "node" }
       }
       const bundle = yield* compiler.build(makeRequest(root, format, { hooks }))
-      const codex = format === "codex_plugin_v1"
-      const firstHandler = { type: "command", command: expectedHookCommand(format, 0), timeout: 30, async: false, ...(codex ? { additionalContextLimit: 0 } : {}) }
-      const secondHandler = { type: "command", command: expectedHookCommand(format, 1), timeout: 30, async: false, ...(codex ? { additionalContextLimit: 0 } : {}) }
+      const codex = format === "codex"
+      const firstHandler = expectedHookHandler(format, 0)
+      const secondHandler = expectedHookHandler(format, 1)
       const baseline = {
         hooks: {
           SessionStart: [{ hooks: [firstHandler] }],
@@ -289,16 +281,15 @@ it.effect("rejects resealed tampered native hook documents for both hosts", () =
       expect(parseJsonBytes(fileAt(bundle, "hooks/hooks.json").content)).toEqual(baseline)
       expect(validationIssues(bundle)).toEqual([])
 
-      const wrongHost = format === "claude_code_v4" ? "codex_plugin_v1" : "claude_code_v4"
-      const bracedRoot = "${" + (codex ? "PLUGIN_ROOT" : "CLAUDE_PLUGIN_ROOT") + "}"
-      const gap = { hooks: { ...baseline.hooks, UserPromptSubmit: [{ hooks: [{ ...secondHandler, command: expectedHookCommand(format, 2) }] }] } }
+      const wrongHost = format === "claude_code" ? "codex" : "claude_code"
+      const gap = { hooks: { ...baseline.hooks, UserPromptSubmit: [{ hooks: [expectedHookHandler(format, 2)] }] } }
       const malformedGroups: ReadonlyArray<unknown> = [
         { matcher: "startup", hooks: [firstHandler] },
         { hooks: [{ ...firstHandler, async: true }] },
         { hooks: [{ ...firstHandler, timeout: 0 }] },
         { hooks: [firstHandler, firstHandler] },
         { hooks: [] },
-        { hooks: [{ ...firstHandler, command: `/bin/sh "${bracedRoot}/.psdk/hooks/0.sh" "${bracedRoot}"` }] },
+        { hooks: [expectedHookHandler(wrongHost, 0)] },
         codex
           ? { hooks: [{ type: "command", command: firstHandler.command, timeout: 30, async: false }] }
           : { hooks: [{ ...firstHandler, additionalContextLimit: 0 }] }
@@ -306,9 +297,9 @@ it.effect("rejects resealed tampered native hook documents for both hosts", () =
       const malformedDocuments: ReadonlyArray<unknown> = [
         { hooks: { ...baseline.hooks, PostToolUse: [] } },
         ...malformedGroups.map((group) => ({ hooks: { ...baseline.hooks, SessionStart: [group] } })),
-        { hooks: { ...baseline.hooks, UserPromptSubmit: [{ hooks: [{ ...secondHandler, command: expectedHookCommand(format, 0) }] }] } },
+        { hooks: { ...baseline.hooks, UserPromptSubmit: [{ hooks: [expectedHookHandler(format, 0)] }] } },
         gap,
-        { hooks: { ...baseline.hooks, SessionStart: [{ hooks: [{ ...firstHandler, command: expectedHookCommand(wrongHost, 0) }] }] } }
+        { hooks: { ...baseline.hooks, SessionStart: [{ hooks: [expectedHookHandler(wrongHost, 0)] }] } }
       ]
 
       for (const document of malformedDocuments) {
@@ -344,10 +335,10 @@ it.effect("rejects resealed Codex MCP records with non-native fields", () =>
         remote: { url: "https://api.example.test/mcp", headers: { "X-Source": "literal" } }
       }
     }
-    const bundle = yield* compiler.build(makeRequest(root, "codex_plugin_v1", input))
+    const bundle = yield* compiler.build(makeRequest(root, "codex", input))
     const baseline = {
       mcpServers: {
-        local: { command: "/bin/sh", args: [".psdk/mcp/0.sh"], env: {}, cwd: "." },
+        local: { command: "node", args: [".psdk/runtime/process.mjs", ".", ".psdk/mcp/0.json"], env: {}, cwd: "." },
         remote: { url: "https://api.example.test/mcp", http_headers: { "X-Source": "literal" } }
       }
     }

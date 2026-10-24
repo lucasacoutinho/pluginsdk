@@ -5,7 +5,7 @@ import { RoleName } from "../../../contracts/Agents.ts"
 import { CompanionCapture, RoleFile, type ReviewResult } from "../../../contracts/Companions.ts"
 import { Conflict, DestinationUnsupported, ReadyPlan, ReviewedPlan, StateUnavailable, Target, type HostUnavailable, type PlanChange, type PlanId, type Receipt, type Snapshot } from "../../../contracts/Installer.ts"
 import type { Bundle } from "../../../contracts/Compiler.ts"
-import { nativeLocations, validateBundle } from "../../compiler/package/native.ts"
+import { validateBundle } from "../../compiler/package/native.ts"
 import { fileDigest, planId } from "../../internal/identity.ts"
 import { compareUtf8 } from "../../internal/paths.ts"
 import { reviewCompanions } from "./model.ts"
@@ -23,8 +23,7 @@ const sameTarget = Schema.toEquivalence(Target)
 const sameBundle = Schema.toEquivalence(Installed.fields.bundle)
 
 export const bundleRoles = (bundle: Bundle): ReadonlyArray<RoleFile> => {
-  const locations = nativeLocations(bundle.format)
-  if (locations.host !== "codex" || !locations.agents) return []
+  if (bundle.format !== "codex") return []
   return bundle.files.filter((file) => file.path.startsWith("agents/")).map((file) => {
     const name = AgentName.make(file.path.slice("agents/".length, -".toml".length))
     return { name: RoleName.make(`${bundle.plugin}:${name}`), content: file.content }

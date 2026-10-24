@@ -22,10 +22,8 @@ import { bundleDigest } from "../src/internal/identity.ts"
 import { jsonBytes, parseJsonBytes } from "../src/internal/json.ts"
 import { serializeLauncher } from "../src/compiler/process/posix.ts"
 
-type PortableFormat = Extract<CompilerFormat, "claude_code_portable_v1" | "codex_plugin_portable_v1">
-type PreviousFormat = Extract<CompilerFormat, "claude_code_v5" | "codex_plugin_v2">
 type Host = "claude_code" | "codex"
-type FormatCase = { readonly format: PortableFormat; readonly previous: PreviousFormat; readonly host: Host }
+type FormatCase = { readonly format: CompilerFormat; readonly host: Host }
 type RequestOptions = {
   readonly assets?: ReadonlyArray<string>
   readonly hooks?: unknown
@@ -42,8 +40,8 @@ type CapturedProcess = {
 
 const CompilerTest = Layer.provideMerge(CompilerLive, NodeServices.layer)
 const formats: ReadonlyArray<FormatCase> = [
-  { format: "claude_code_portable_v1", previous: "claude_code_v5", host: "claude_code" },
-  { format: "codex_plugin_portable_v1", previous: "codex_plugin_v2", host: "codex" }
+  { format: "claude_code", host: "claude_code" },
+  { format: "codex", host: "codex" }
 ]
 const runtimeAsset = new Uint8Array(readFileSync(fileURLToPath(new URL("../runtime/process.mjs", import.meta.url))))
 const literalArgument = "literal $" + "{UNEXPANDED}; $(touch SHOULD_NOT_EXIST) '雪\n"
@@ -329,17 +327,15 @@ it.effect("builds deterministic host packages with canonical local ordinals and 
   }
 }).pipe(Effect.provide(CompilerTest)))
 
-it.effect("omits runtime files for remote-only and empty MCP and preserves old remote packages", () => Effect.gen(function*() {
+it.effect("omits runtime files for remote-only and empty MCP packages", () => Effect.gen(function*() {
   const { root } = yield* prepare()
   const compiler = yield* Compiler
   for (const format of formats) {
     const empty = yield* compiler.build(request(root, format.format, {}))
     expect(empty.files.some(({ path }) => path === ".psdk/runtime/process.mjs")).toBe(false)
     const remote = { remote: remoteMcp() }
-    const previous = yield* compiler.build(request(root, format.previous, remote))
-    const portable = yield* compiler.build(request(root, format.format, remote))
-    expect(portable.files).toEqual(previous.files)
-    expect(portable.files.some(({ path }) => path.startsWith(".psdk/"))).toBe(false)
+    const remoteOnly = yield* compiler.build(request(root, format.format, remote))
+    expect(remoteOnly.files.some(({ path }) => path.startsWith(".psdk/"))).toBe(false)
   }
 }).pipe(Effect.provide(CompilerTest)))
 
@@ -381,7 +377,7 @@ it.live.runIf(process.platform === "linux")("captures Claude environment before 
       SNAPSHOT: { type: "environment", name: "ORIGINAL" }
     }
   })
-  const bundle = yield* compiler.build(request(root, "claude_code_portable_v1", mcp, { assets: ["mcp"] }))
+  const bundle = yield* compiler.build(request(root, "claude_code", mcp, { assets: ["mcp"] }))
   const data = processData(bundle, ".psdk/mcp/0.json")
   const packageRoot = join(root, "capture-package")
   yield* writeBundle(fs, packageRoot, bundle)
@@ -398,28 +394,21 @@ it.live.runIf(process.platform === "linux")("captures Claude environment before 
   expect(missing.stderr).toContain("Missing environment source")
 }).pipe(Effect.provide(CompilerTest)))
 
-it.effect("rejects unsupported Codex references, environment collisions, hooks, agents and generated asset paths", () => Effect.gen(function*() {
+it.effect("rejects unsupported Codex references, environment collisions and generated asset paths", () => Effect.gen(function*() {
   const { fs, root } = yield* prepare()
-  expect(yield* issues(request(root, "codex_plugin_portable_v1", localMcp({
+  expect(yield* issues(request(root, "codex", localMcp({
     args: [{ file: "mcp/server.mjs" }], env: { TOKEN: { type: "environment", name: "SOURCE" } }
   }), { assets: ["mcp"] }))).toContainEqual({
     type: "invalid_process", server: "fixture", reason: { type: "environment_reference_unsupported", name: "SOURCE" }
   })
-  expect(yield* issues(request(root, "codex_plugin_portable_v1", localMcp({
+  expect(yield* issues(request(root, "codex", localMcp({
     args: [{ file: "mcp/server.mjs" }], env: { PATH: "one", Path: "two" }
   }), { assets: ["mcp"] }))).toContainEqual({
     type: "invalid_process", server: "fixture", reason: { type: "environment_collision", name: "path" }
   })
-  expect(yield* issues(request(root, "claude_code_portable_v1", {}, {
-    hooks: { startup: { command: "node", event: "SessionStart" } }
-  }))).toContainEqual({ type: "unsupported_feature", feature: "hooks", format: "claude_code_portable_v1" })
-  expect(yield* issues(request(root, "codex_plugin_portable_v1", {}, {
-    agents: { helper: { description: "A helper", prompt: "agents/helper.md" } }
-  }))).toContainEqual({ type: "unsupported_feature", feature: "agents", format: "codex_plugin_portable_v1" })
-
   yield* fs.makeDirectory(join(root, ".psdk/runtime"), { recursive: true })
   yield* fs.writeFileString(join(root, ".psdk/runtime/process.mjs"), "source asset")
-  expect(yield* issues(request(root, "claude_code_portable_v1", localMcp({ args: [{ file: "mcp/server.mjs" }] }), {
+  expect(yield* issues(request(root, "claude_code", localMcp({ args: [{ file: "mcp/server.mjs" }] }), {
     assets: ["mcp", ".psdk/runtime/process.mjs"]
   }))).toContainEqual({ type: "path_collision", path: ".psdk/runtime/process.mjs" })
 }).pipe(Effect.provide(CompilerTest)))
@@ -427,7 +416,7 @@ it.effect("rejects unsupported Codex references, environment collisions, hooks, 
 it.effect("detects changed runtime, data and sidecar bytes before semantic validation", () => Effect.gen(function*() {
   const { root } = yield* prepare()
   const bundle = yield* Compiler.use((compiler) => compiler.build(request(
-    root, "claude_code_portable_v1", localMcp({ args: [{ file: "mcp/server.mjs" }] }), { assets: ["mcp"] }
+    root, "claude_code", localMcp({ args: [{ file: "mcp/server.mjs" }] }), { assets: ["mcp"] }
   )))
   for (const path of [".psdk/runtime/process.mjs", ".psdk/mcp/0.json", ".psdk/mcp/0.sh"]) {
     const mutate = (file: PackageFile) => file.path === path
@@ -442,7 +431,7 @@ it.effect("detects changed runtime, data and sidecar bytes before semantic valid
 it.effect("rejects recomputed bundles with noncanonical portable declarations or package plans", () => Effect.gen(function*() {
   const { root } = yield* prepare()
   const compiler = yield* Compiler
-  const bundle = yield* compiler.build(request(root, "claude_code_portable_v1", localMcp({
+  const bundle = yield* compiler.build(request(root, "claude_code", localMcp({
     args: [{ file: "mcp/server.mjs" }], env: { OUTPUT: { type: "environment", name: "SOURCE" } }
   }), { assets: ["mcp"] }))
   const document = claudeDocument(bundle)

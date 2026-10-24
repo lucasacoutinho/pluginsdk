@@ -3,7 +3,6 @@ import { RuntimePlatform } from "./Compatibility.ts"
 
 export const Kind = Schema.Union([
   Schema.Struct({ type: Schema.Literal("absent") }),
-  Schema.Struct({ type: Schema.Literal("posix"), cwdRoot: Schema.Boolean }),
   Schema.Struct({ type: Schema.Literal("portable") })
 ]).pipe(Schema.toTaggedUnion("type"))
 export type Kind = typeof Kind.Type
@@ -11,7 +10,7 @@ export type Kind = typeof Kind.Type
 export const Input = Schema.Struct({ platform: RuntimePlatform, kind: Kind })
 export type Input = typeof Input.Type
 
-export const Check = Schema.Literals(["node", "shell", "env", "pwd"])
+export const Check = Schema.Literals(["node", "shell", "env"])
 export type Check = typeof Check.Type
 export const Requirements = Schema.NullOr(Schema.Array(Check))
 export type Requirements = typeof Requirements.Type

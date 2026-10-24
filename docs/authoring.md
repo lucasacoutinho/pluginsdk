@@ -35,9 +35,7 @@ npx pluginsdk build
 
 The command finds `definition.json` in the current directory. You can also pass its path explicitly. Use `preview` to try current changes locally and `publish` to release the captured build through the configured destination.
 
-Use `--target claude_code`, `--target codex`, or `--target cursor` for one build target. Cursor uses the Claude-compatible package. Preview supports the clients and versions listed in [compatibility](compatibility.md).
-
-`--format` selects an explicit native format; with that flag, `--out` names one bundle file. Normal authoring can use the client names.
+Use `--target claude_code`, `--target codex`, or `--target cursor` for one build target. Cursor uses the Claude-compatible package. Every build writes its packages and a publication snapshot into the output directory. See [Supported clients](compatibility.md) for platform and feature limits.
 
 ## Skills and supporting files
 
@@ -131,7 +129,7 @@ A bare `command` names a runtime on the client's `PATH`. `{ "file": "..." }` nam
 
 The client starts the server when needed. PluginSDK packages the files and generates the native launchers. It does not install the server's runtime or fetch undeclared dependencies.
 
-`build` automatically selects portable packages for bundled stdio servers. They support user installations on the listed Linux and Windows clients, Claude Code 2.1.304 projects on Linux and Windows, and Codex 0.163.0 projects on Linux and Windows, with Node 24.18+ on the client's `PATH`. Hooks and agents use the same workflow in those scopes. See [Supported clients](compatibility.md) for exact versions and runtime requirements.
+Bundled stdio servers use the same build and preview commands. They need Node 24.18+ on the client's `PATH`. Claude Code and Codex support them in user and project scope; Cursor supports user scope. See [Supported clients](compatibility.md) for runtime requirements.
 
 ## Command hooks
 

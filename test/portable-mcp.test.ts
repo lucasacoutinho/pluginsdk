@@ -3,6 +3,7 @@ import { readFileSync } from "node:fs"
 import { fileURLToPath } from "node:url"
 import { expect, it } from "@effect/vitest"
 import { Match, Schema } from "effect"
+import { Format } from "../contracts/Compiler.ts"
 import { ProcessPlan } from "../contracts/Process.ts"
 import * as PortableMcp from "../contracts/PortableMcp.ts"
 import { parseJson } from "../src/internal/json.ts"
@@ -21,7 +22,8 @@ type EnumerationPair = {
   readonly cases: readonly [NamedRequest, NamedRequest]
 }
 
-const oraclePath = fileURLToPath(new URL("../spec/.lake/build/bin/oracle", import.meta.url))
+const oraclePath = process.env["PLUGINSDK_ORACLE"] ??
+  fileURLToPath(new URL("../spec/.lake/build/bin/oracle", import.meta.url))
 const vectorPath = fileURLToPath(new URL("../spec/vectors/portable-mcp.ndjson", import.meta.url))
 const equivalent = Schema.toEquivalence(PortableMcp.OracleResponse)
 const VectorRow = Schema.Struct({
@@ -163,11 +165,7 @@ const literalPlan: Plan = strict(ProcessPlan, {
 })
 
 function generatedMatrix(): ReadonlyArray<MatrixRequest> {
-  const formats: ReadonlyArray<PortableMcp.Input["format"]> = [
-    "claude_code_v1",
-    "agent_plugins_v1",
-    "codex_plugin_v1"
-  ]
+  const formats: ReadonlyArray<PortableMcp.Input["format"]> = Format.literals
   const cases: Array<MatrixRequest> = []
   for (const format of formats) {
     for (const withRemote of [false, true]) {
@@ -192,11 +190,7 @@ function generatedMatrix(): ReadonlyArray<MatrixRequest> {
 }
 
 function enumerationPairs(): ReadonlyArray<EnumerationPair> {
-  const formats: ReadonlyArray<PortableMcp.Input["format"]> = [
-    "claude_code_v1",
-    "agent_plugins_v1",
-    "codex_plugin_v1"
-  ]
+  const formats: ReadonlyArray<PortableMcp.Input["format"]> = Format.literals
   const pairs: Array<EnumerationPair> = []
   for (const format of formats) {
     const acceptedLocals: ReadonlyArray<LocalEntry> = [
@@ -275,8 +269,8 @@ function expectLeanReject(request: unknown, name: string): void {
 
 const vectors = readVectors()
 
-it("matches all 14 committed portable MCP expectations against strict Lean and TypeScript", () => {
-  expect(vectors).toHaveLength(14)
+it("matches committed portable MCP expectations against strict Lean and TypeScript", () => {
+  expect(new Set(vectors.map(({ request }) => request.input.format))).toEqual(new Set(Format.literals))
   const responses = compare(vectors.map(({ request }) => request))
   for (const [index, vector] of vectors.entries()) {
     const response = responses[index]
@@ -287,7 +281,10 @@ it("matches all 14 committed portable MCP expectations against strict Lean and T
 
 it("matches a bounded format, remote, canonical-local, process-word, capture, and diagnostic matrix", () => {
   const cases = generatedMatrix()
-  expect(cases).toHaveLength(24)
+  expect(new Set(cases.map(({ request }) => request.input.format))).toEqual(new Set(Format.literals))
+  expect(new Set(cases.map(({ variant }) => variant))).toEqual(
+    new Set<MatrixVariant>(["zero", "single", "valid-three", "invalid-three"])
+  )
   const responses = compare(cases.map(({ request }) => request))
   for (const [index, current] of cases.entries()) {
     const response = responses[index]
@@ -299,7 +296,9 @@ it("matches a bounded format, remote, canonical-local, process-word, capture, an
 
 it("preserves results when remote maps, local maps, and remote header maps are enumerated differently", () => {
   const pairs = enumerationPairs()
-  expect(pairs).toHaveLength(6)
+  expect(new Set(pairs.flatMap(({ cases: pairCases }) => pairCases.map(({ request }) => request.input.format))))
+    .toEqual(new Set(Format.literals))
+  expect(new Set(pairs.map(({ acceptance }) => acceptance))).toEqual(new Set(["accepted", "rejected"]))
   const cases = pairs.flatMap(({ cases: pairCases }) => pairCases)
   const responses = compare(cases.map(({ request }) => request))
   for (const [pairIndex, pair] of pairs.entries()) {
@@ -321,7 +320,7 @@ it("preserves results when remote maps, local maps, and remote header maps are e
 })
 
 it("strictly rejects malformed requests in Effect and Lean", () => {
-  const baseline = makeRequest(makeInput("claude_code_v1", [], [["alpha", wordPlan]]))
+  const baseline = makeRequest(makeInput("claude_code", [], [["alpha", wordPlan]]))
   const overlapRemote: Remote = { url: "https://alpha.example/mcp", headers: {} }
   const invalidRequests: ReadonlyArray<{ readonly name: string; readonly request: unknown }> = [
     {
@@ -379,7 +378,7 @@ it("strictly rejects malformed requests in Effect and Lean", () => {
 })
 
 it("strictly rejects malformed portable process data, file plans, and results in Effect", () => {
-  const singleLocal = vectors.find((vector) => vector.name === "claude_code_v1_single_local")
+  const singleLocal = vectors.find((vector) => vector.name === "claude_code_single_local")
   if (singleLocal === undefined) throw new Error("The single-local authored vector is missing")
   const processFile = Match.value(singleLocal.expected.output).pipe(
     Match.discriminatorsExhaustive("type")({

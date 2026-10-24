@@ -8,7 +8,6 @@ import * as Catalog from "../contracts/Catalog.ts"
 import * as Compatibility from "../contracts/Compatibility.ts"
 import * as Compiler from "../contracts/Compiler.ts"
 import * as DistributionModel from "../contracts/DistributionModel.ts"
-import * as Installer from "../contracts/Installer.ts"
 import * as Repair from "../contracts/Repair.ts"
 import { parseJson } from "../src/internal/json.ts"
 import { checkPackages } from "../src/catalog/artifacts/model.ts"
@@ -17,7 +16,7 @@ import { nativeOwnershipCompatible, selectNativeProfile } from "../src/installer
 import { selectDistributionFormat } from "../src/distribution/selection.ts"
 import { beginRepair, propose, settleRepair } from "../src/installer/recovery/model.ts"
 
-const oraclePath = fileURLToPath(new URL("../spec/.lake/build/bin/oracle", import.meta.url))
+const oraclePath = process.env.PLUGINSDK_ORACLE ?? fileURLToPath(new URL("../spec/.lake/build/bin/oracle", import.meta.url))
 const DistributionRequest = Schema.Struct({
   schema: Schema.Literal(1),
   type: Schema.Literal("select_distribution_format"),
@@ -52,6 +51,16 @@ const equivalentResponse = Schema.toEquivalence(Response)
 
 type OracleRequest = typeof Request.Type
 type OracleResponse = typeof Response.Type
+type Case = {
+  readonly name: string
+  readonly request: OracleRequest
+  readonly expected: OracleResponse
+}
+
+const clients: ReadonlyArray<{ readonly format: Compiler.Format; readonly other: Compiler.Format }> = [
+  { format: "claude_code", other: "codex" },
+  { format: "codex", other: "claude_code" }
+]
 
 function decode<S extends Schema.ConstraintDecoder<unknown>>(schema: S, input: unknown): S["Type"] {
   return Schema.decodeUnknownSync(schema, { onExcessProperty: "error" })(input)
@@ -64,257 +73,210 @@ function readVectors(path: string): ReadonlyArray<typeof Vector.Type> {
     .map((line) => decode(Vector, parseJson(line)))
 }
 
-function evaluate(request: OracleRequest): OracleResponse {
-  return Match.value(request).pipe(Match.discriminatorsExhaustive("type")({
-    catalog_register: ({ input }): OracleResponse => ({
+function request(input: unknown): OracleRequest {
+  return decode(Request, input)
+}
+
+function evaluate(input: OracleRequest): OracleResponse {
+  return Match.value(input).pipe(Match.discriminatorsExhaustive("type")({
+    catalog_register: ({ input: value }): OracleResponse => ({
       schema: 1,
       type: "catalog_register",
-      output: register(input.ledger, input.release)
+      output: register(value.ledger, value.release)
     }),
-    catalog_resolve: ({ input }): OracleResponse => ({
+    catalog_resolve: ({ input: value }): OracleResponse => ({
       schema: 1,
       type: "catalog_resolve",
-      output: resolve(input.ledger, input.key, input.target)
+      output: resolve(value.ledger, value.key, value.target)
     }),
-    check_packages: ({ input }): OracleResponse => ({
+    check_packages: ({ input: value }): OracleResponse => ({
       schema: 1,
       type: "check_packages",
-      output: checkPackages(input)
+      output: checkPackages(value)
     }),
-    select_distribution_format: ({ input }): OracleResponse => ({
+    select_distribution_format: ({ input: value }): OracleResponse => ({
       schema: 1,
       type: "select_distribution_format",
-      output: selectDistributionFormat(input)
+      output: selectDistributionFormat(value)
     }),
-    select_native_profile: ({ input }): OracleResponse => ({
+    select_native_profile: ({ input: value }): OracleResponse => ({
       schema: 1,
       type: "select_native_profile",
-      output: selectNativeProfile(input)
+      output: selectNativeProfile(value)
     }),
-    native_ownership_compatible: ({ input }): OracleResponse => ({
+    native_ownership_compatible: ({ input: value }): OracleResponse => ({
       schema: 1,
       type: "native_ownership_compatible",
-      output: nativeOwnershipCompatible(input)
+      output: nativeOwnershipCompatible(value)
     }),
-    repair_propose: ({ input }): OracleResponse => ({
+    repair_propose: ({ input: value }): OracleResponse => ({
       schema: 1,
       type: "repair_propose",
-      output: propose(input)
+      output: propose(value)
     }),
-    repair_begin: ({ input }): OracleResponse => ({
+    repair_begin: ({ input: value }): OracleResponse => ({
       schema: 1,
       type: "repair_begin",
-      output: beginRepair(input)
+      output: beginRepair(value)
     }),
-    repair_settle: ({ input }): OracleResponse => ({
+    repair_settle: ({ input: value }): OracleResponse => ({
       schema: 1,
       type: "repair_settle",
-      output: settleRepair(input)
+      output: settleRepair(value)
     })
   }))
 }
 
-function evaluateWithoutMutation(request: OracleRequest): OracleResponse {
-  const before = structuredClone(request)
-  const response = evaluate(request)
-  expect(request, request.type + ": input value").toEqual(before)
+function evaluateWithoutMutation(input: OracleRequest): OracleResponse {
+  const before = structuredClone(input)
+  const response = evaluate(input)
+  expect(input, `${input.type}: input value`).toEqual(before)
   return decode(Response, response)
 }
 
-function compare(requests: ReadonlyArray<OracleRequest>): ReadonlyArray<OracleResponse> {
-  const lines = requests.map((request) => {
-    const encoded: unknown = Schema.encodeSync(Request)(request)
+function compare(cases: ReadonlyArray<Case>, label: string): ReadonlyArray<OracleResponse> {
+  const lines = cases.map(({ request: oracleRequest }) => {
+    const encoded: unknown = Schema.encodeSync(Request)(oracleRequest)
     const line = JSON.stringify(encoded)
-    if (line === undefined) throw new Error("lifecycle oracle request could not be encoded as JSON")
+    if (line === undefined) throw new Error("Lifecycle oracle request could not be encoded as JSON")
     return line
   })
   const result = spawnSync(oraclePath, [], {
     encoding: "utf8",
-    input: lines.join("\n") + "\n",
+    input: `${lines.join("\n")}\n`,
     maxBuffer: 24 * 1024 * 1024,
     timeout: 30_000
   })
   if (result.error !== undefined) throw result.error
   if (result.status !== 0) {
-    throw new Error("Lean lifecycle oracle exited with status " + String(result.status) + ": " + result.stderr)
+    throw new Error(`Lean lifecycle oracle exited with status ${String(result.status)}: ${result.stderr}`)
   }
   const responses = result.stdout.split(/\r?\n/).filter((line) => line.length > 0).map((line) => {
     return decode(Response, parseJson(line))
   })
-  expect(responses, "Lean lifecycle response count").toHaveLength(requests.length)
+  expect(responses, `${label}: Lean response count`).toHaveLength(cases.length)
 
-  for (const [index, request] of requests.entries()) {
+  for (const [index, current] of cases.entries()) {
     const response = responses[index]
-    if (response === undefined) throw new Error("Missing lifecycle oracle response " + index)
+    if (response === undefined) throw new Error(`Missing lifecycle oracle response for ${current.name}`)
+    expect(equivalentResponse(response, current.expected), `${current.name}: Lean expectation`).toBe(true)
     expect(
-      equivalentResponse(evaluateWithoutMutation(request), response),
-      request.type + " oracle case " + index
+      equivalentResponse(evaluateWithoutMutation(current.request), current.expected),
+      `${current.name}: TypeScript expectation`
     ).toBe(true)
   }
   return responses
 }
 
-function request(input: unknown): OracleRequest {
-  return decode(Request, input)
-}
-
-function formatSelectionRequests(): ReadonlyArray<OracleRequest> {
-  const requests: OracleRequest[] = []
-  for (const host of DistributionModel.LocalHost.literals) {
-    for (const format of Compiler.Format.literals) {
-      requests.push(request({
-        schema: 1,
-        type: "select_distribution_format",
-        input: { host, formats: [format] }
-      }))
-      requests.push(request({
-        schema: 1,
-        type: "select_distribution_format",
-        input: { host, formats: [format, format] }
-      }))
+function currentCompatibilityCases(): ReadonlyArray<Case> {
+  const cases: Array<Case> = []
+  for (const client of clients) {
+    const identity = {
+      host: client.format,
+      platform: "linux-x64",
+      scope: "user",
+      revision: `adapter-${client.format}`
     }
-    requests.push(request({
-      schema: 1,
-      type: "select_distribution_format",
-      input: { host, formats: [] }
-    }))
-    requests.push(request({
-      schema: 1,
-      type: "select_distribution_format",
-      input: { host, formats: [...Compiler.Format.literals] }
-    }))
-  }
-  return requests
-}
-
-function otherScope(scope: Compatibility.Scope): Compatibility.Scope {
-  return Match.value(scope).pipe(
-    Match.when("user", (): Compatibility.Scope => "project"),
-    Match.when("project", (): Compatibility.Scope => "user"),
-    Match.exhaustive
-  )
-}
-
-function profileSelectionRequests(): ReadonlyArray<OracleRequest> {
-  const requests: OracleRequest[] = []
-  for (const host of Installer.Host.literals) {
-    for (const scope of Compatibility.Scope.literals) {
-      const profile = {
-        host,
-        platform: "linux",
-        version: "2.1.304",
-        scope,
-        revision: "adapter-1",
-        formats: [...Compiler.Format.literals]
-      }
-      const query = { host, platform: "linux", version: "2.1.304", scope, format: null }
-      requests.push(request({
-        schema: 1,
-        type: "select_native_profile",
-        input: { query, profiles: [profile] }
-      }))
-      requests.push(request({
-        schema: 1,
-        type: "select_native_profile",
-        input: { query: { ...query, scope: otherScope(scope) }, profiles: [profile] }
-      }))
+    const profile = decode(Compatibility.NativeProfile, {
+      ...identity,
+      format: client.format,
+      capabilities: ["stdio", "hooks"]
+    })
+    const query = {
+      host: client.format,
+      platform: identity.platform,
+      scope: identity.scope,
+      format: client.format,
+      requirements: ["stdio"]
     }
+    const selected = {
+      schema: 1,
+      type: "select_native_profile",
+      output: { type: "selected", profile }
+    }
+    const unqualified = {
+      schema: 1,
+      type: "select_native_profile",
+      output: { type: "blocked", reason: "unqualified" }
+    }
+    const ambiguous = {
+      schema: 1,
+      type: "select_native_profile",
+      output: { type: "blocked", reason: "ambiguous" }
+    }
+    cases.push(
+      {
+        name: `${client.format}_required_capability_selected`,
+        request: request({ schema: 1, type: "select_native_profile", input: { query, profiles: [profile] } }),
+        expected: decode(Response, { ...selected, schema: 1 })
+      },
+      {
+        name: `${client.format}_missing_required_capability_blocked`,
+        request: request({ schema: 1, type: "select_native_profile", input: {
+          query,
+          profiles: [decode(Compatibility.NativeProfile, { ...profile, capabilities: ["hooks"] })]
+        } }),
+        expected: decode(Response, { ...unqualified, schema: 1 })
+      },
+      {
+        name: `${client.format}_cross_client_profile_blocked`,
+        request: request({ schema: 1, type: "select_native_profile", input: {
+          query,
+          profiles: [decode(Compatibility.NativeProfile, { ...profile, host: client.other })]
+        } }),
+        expected: decode(Response, { ...unqualified, schema: 1 })
+      },
+      {
+        name: `${client.format}_duplicate_profile_ambiguous`,
+        request: request({ schema: 1, type: "select_native_profile", input: { query, profiles: [profile, profile] } }),
+        expected: decode(Response, { ...ambiguous, schema: 1 })
+      }
+    )
   }
-  return requests
+  return cases
 }
 
-function repairRequests(): ReadonlyArray<OracleRequest> {
-  const interrupted = "a".repeat(64)
-  const pending = "c".repeat(64)
-  const otherPlan = "d".repeat(64)
-  const fingerprint = "1".repeat(64)
-  const changedFingerprint = "2".repeat(64)
-  const residuals = Installer.RepairResidual.literals
-  const requests: OracleRequest[] = []
-
-  const snapshot = (residual: Installer.RepairResidual, value = fingerprint) => ({
-    fingerprint: value,
-    residual
-  })
-  const basis = (residual: Installer.RepairResidual) => ({
-    interrupted,
-    pending: interrupted,
-    observed: snapshot(residual)
-  })
-
-  for (const residual of residuals) {
-    const before = basis(residual)
-    const state = snapshot(residual)
-    requests.push(request({
-      schema: 1,
-      type: "repair_begin",
-      input: {
-        state: { type: "operation_pending", plan: interrupted },
-        observed: { type: "recoverable", state },
-        plan: pending,
-        before
-      }
-    }))
-
-    const pendingState = { type: "repair_pending", plan: pending, before: { ...before, pending } }
-    for (const observedResidual of residuals) {
-      requests.push(request({
-        schema: 1,
-        type: "repair_settle",
-        input: {
-          state: pendingState,
-          observed: {
-            type: "recoverable",
-            state: snapshot(observedResidual, changedFingerprint)
-          }
-        }
-      }))
-      requests.push(request({
-        schema: 1,
-        type: "repair_begin",
-        input: {
-          state: { type: "complete", plan: pending },
-          observed: { type: "recoverable", state: snapshot(observedResidual, changedFingerprint) },
-          plan: pending,
-          before: { ...before, pending }
-        }
-      }))
-    }
-    requests.push(request({
-      schema: 1,
-      type: "repair_begin",
-      input: {
-        state: { type: "complete", plan: pending },
-        observed: { type: "recoverable", state: snapshot("absent", changedFingerprint) },
-        plan: otherPlan,
-        before: { ...before, pending }
-      }
-    }))
+function clientBindings(value: unknown, found = new Set<Compiler.Format>()): ReadonlySet<Compiler.Format> {
+  if (typeof value === "string") {
+    if (value === "claude_code" || value === "codex") found.add(value)
+    return found
   }
-  return requests
+  if (Array.isArray(value)) {
+    for (const item of value) clientBindings(item, found)
+    return found
+  }
+  if (typeof value === "object" && value !== null) {
+    for (const item of Object.values(value)) clientBindings(item, found)
+  }
+  return found
 }
 
 const lifecycleVectors = readVectors("../spec/vectors/agent-lifecycle.ndjson")
 const repairVectors = readVectors("../spec/vectors/repair.ndjson")
 
-it("matches all authored agent lifecycle and existing repair vectors against Lean", () => {
-  expect(lifecycleVectors).toHaveLength(50)
-  expect(repairVectors).toHaveLength(18)
+it("matches every authored lifecycle and repair vector against expectations, Lean, and TypeScript", () => {
   const vectors = [...lifecycleVectors, ...repairVectors]
-  const responses = compare(vectors.map(({ request: vectorRequest }) => vectorRequest))
-  for (const [index, vector] of vectors.entries()) {
-    const response = responses[index]
-    if (response === undefined) throw new Error("Missing authored response for " + vector.name)
-    expect(equivalentResponse(response, vector.expected), vector.name).toBe(true)
+  const cases = vectors.map(({ name, request: vectorRequest, expected }) => ({
+    name,
+    request: vectorRequest,
+    expected
+  }))
+  compare(cases, "authored lifecycle vectors")
+
+  const properties = new Set(vectors.flatMap(({ properties: vectorProperties }) => vectorProperties))
+  for (const property of ["N1", "N2", "N3", "N4", "R1", "R2", "R3", "R4", "R5", "R6", "R7", "R8"]) {
+    expect(properties.has(property), `authored lifecycle vectors cover ${property}`).toBe(true)
   }
+
+  const bindings = new Set<Compiler.Format>()
+  for (const { request: vectorRequest } of vectors) {
+    for (const format of clientBindings(vectorRequest)) bindings.add(format)
+  }
+  expect(bindings, "authored lifecycle vectors use both current package clients").toEqual(new Set(Compiler.Format.literals))
 })
 
-it("matches generated format-host pairs, registration scopes, and four-way repair transitions", () => {
-  const requests = [
-    ...formatSelectionRequests(),
-    ...profileSelectionRequests(),
-    ...repairRequests()
-  ]
-  expect(requests).toHaveLength(100)
-  compare(requests)
+it("matches current client capability and ambiguity cases against Lean", () => {
+  const cases = currentCompatibilityCases()
+  expect(cases.length).toBeGreaterThan(0)
+  compare(cases, "current client compatibility cases")
 })

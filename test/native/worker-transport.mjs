@@ -61,7 +61,7 @@ try {
   const bytes = Uint8Array.of(0, 255, 128, 10, 65)
   const body = request(root)
   const binary = { ...body, input: { ...body.input, intent: { type: "present", bundle: {
-    schema: 1, plugin: PluginId.make("worker-fixture"), format: "agent_plugins_v1",
+    schema: 1, plugin: PluginId.make("worker-fixture"), format: "codex",
     digest: BundleDigest.make("a".repeat(64)), files: [{ path: PackagePath.make("binary.dat"), content: bytes, executable: false }]
   } } } }
   const roundTrip = Schema.decodeUnknownSync(WorkerRequest)(JSON.parse(JSON.stringify(Schema.encodeSync(WorkerRequest)(binary))))

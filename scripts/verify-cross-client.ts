@@ -11,8 +11,8 @@ import { discoverCodexSkills } from "./pilot/app-server.ts"
 
 type Client = { readonly host: Extract<Host, "claude_code" | "codex">; readonly format: Format }
 const clients: ReadonlyArray<Client> = [
-  { host: "claude_code", format: "claude_code_v2" },
-  { host: "codex", format: "agent_plugins_v2" }
+  { host: "claude_code", format: "claude_code" },
+  { host: "codex", format: "codex" }
 ]
 const sameFiles = Schema.toEquivalence(Schema.Array(PackageFile))
 const sameOutcome = Schema.toEquivalence(ApplyOutcome)

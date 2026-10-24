@@ -34,7 +34,7 @@ type BuildOutcome =
 const makeRequest = (root: string, options: RequestOptions = {}) =>
   Schema.decodeSync(BuildRequest)({
     root,
-    format: options.format ?? "agent_plugins_v2",
+    format: options.format ?? "codex",
     plugin: {
       id: "executable-intent",
       version: "1.0.0",
@@ -118,7 +118,7 @@ it.effect("discovers executable source modes when the declaration is omitted", (
     yield* fs.chmod(join(root, "tools/run.sh"), 0o755)
     yield* fs.chmod(join(root, "tools/readme.txt"), 0o644)
 
-    for (const format of ["agent_plugins_v2", "claude_code_v2"] as const) {
+    for (const format of ["codex", "claude_code"] as const) {
       const bundle = bundleFrom(yield* buildOutcome(makeRequest(root, { format, assets: ["tools"] })))
       expect(fileAt(bundle, "tools/run.sh").executable).toBe(true)
       expect(fileAt(bundle, "tools/readme.txt").executable).toBe(false)
@@ -134,7 +134,7 @@ it.effect("treats every captured file as data when executables is explicitly emp
     yield* fs.chmod(join(root, "tools/run.sh"), 0o755)
 
     const bundle = bundleFrom(yield* buildOutcome(makeRequest(root, {
-      format: "claude_code_v2",
+      format: "claude_code",
       assets: ["tools"],
       executables: []
     })))
@@ -158,7 +158,7 @@ it.effect("resolves exact declared source paths before shortening skill support 
     }
 
     const bundle = bundleFrom(yield* buildOutcome(makeRequest(root, {
-      format: "claude_code_v5",
+      format: "claude_code",
       skills: [skill],
       executables: [uppercase, composed]
     })))
@@ -167,7 +167,7 @@ it.effect("resolves exact declared source paths before shortening skill support 
     expect(fileAt(bundle, "skills/guide/scripts/cafe\u0301.sh").executable).toBe(false)
 
     const wrongCase = issuesFrom(yield* buildOutcome(makeRequest(root, {
-      format: "claude_code_v5",
+      format: "claude_code",
       skills: [skill],
       executables: [lowercase]
     })))
@@ -201,7 +201,7 @@ it.effect("rejects duplicate, missing, and uncaptured executable declarations", 
   }).pipe(Effect.provide(CompilerTest))
 )
 
-it.effect("packages declared executables and data while keeping generated host documents nonexecutable", () =>
+it.effect("packages declared executables and data for both current hosts", () =>
   Effect.gen(function*() {
     const fs = yield* FileSystem.FileSystem
     const root = yield* fs.makeTempDirectoryScoped({ prefix: "pluginsdk-executable-hosts-" })
@@ -226,12 +226,12 @@ it.effect("packages declared executables and data while keeping generated host d
     const codexManifest = ".codex-plugin/plugin.json"
     const hosts = [
       {
-        format: "claude_code_v5",
+        format: "claude_code",
         manifest: claudeManifest,
         agentPaths: ["agents/alpha.md", "agents/beta.md"]
       },
       {
-        format: "codex_plugin_v2",
+        format: "codex",
         manifest: codexManifest,
         agentPaths: ["agents/alpha.toml", "agents/beta.toml"]
       }

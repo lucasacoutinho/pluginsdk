@@ -26,13 +26,17 @@ def N6_ownership_isolation (model : Interface) : Prop :=
     input.current.host = input.retained.host ∧ input.current.platform = input.retained.platform ∧
     input.current.scope = input.retained.scope ∧ input.current.revision = input.retained.revision
 
-def N7_qualified_version_change_retains_ownership (model : Interface) : Prop :=
-  ∀ input, UniqueRegistration input.profiles input.current →
-    UniqueRegistration input.profiles input.retained → SameAdapter input.current input.retained →
-    input.current.version ≠ input.retained.version → model.ownershipCompatible input = true
-
 def N8_ownership_enumeration_invariant (model : Interface) : Prop :=
   ∀ left right, left.current = right.current → left.retained = right.retained →
     left.profiles.Perm right.profiles → model.ownershipCompatible left = model.ownershipCompatible right
+
+def N9_selected_profile_preserves_requirements (model : Interface) : Prop :=
+  ∀ input profile, model.select input = .selected profile →
+    ∀ capability ∈ input.query.requirements, capability ∈ profile.capabilities
+
+def N10_selected_stronger_was_weaker_candidate (model : Interface) : Prop :=
+  ∀ input weaker stronger profile, RequirementsIncluded weaker stronger →
+    model.select (requirementsInput input stronger) = .selected profile →
+      profile ∈ EligibleProfiles (requirementsInput input weaker)
 
 end PluginSdk.Compatibility

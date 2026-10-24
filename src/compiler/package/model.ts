@@ -24,42 +24,34 @@ type FormatRules = {
   readonly transport: string
   readonly headerKey: string
   readonly includeTransport: boolean
-  readonly hasSchema: boolean
   readonly environmentReference: boolean
   readonly literalExpansion: boolean
 }
 
 const formatRules: Record<RenderInput["format"], FormatRules> = {
-  agent_plugins_v1: {
-    manifestPath: "plugin.json",
-    mcpPath: "mcp.json",
-    transport: "streamable-http",
-    headerKey: "headers",
-    includeTransport: true,
-    hasSchema: true,
-    environmentReference: true,
-    literalExpansion: false
-  },
-  claude_code_v1: {
+  claude_code: {
     manifestPath: ".claude-plugin/plugin.json",
     mcpPath: ".mcp.json",
     transport: "http",
     headerKey: "headers",
     includeTransport: true,
-    hasSchema: false,
     environmentReference: false,
     literalExpansion: true
   },
-  codex_plugin_v1: {
+  codex: {
     manifestPath: ".codex-plugin/plugin.json",
     mcpPath: ".mcp.json",
     transport: "http",
     headerKey: "http_headers",
     includeTransport: false,
-    hasSchema: false,
     environmentReference: true,
     literalExpansion: false
   }
+}
+
+export function nativeLocations(format: RenderInput["format"]) {
+  const rules = formatRules[format]
+  return { host: format, manifest: rules.manifestPath, mcp: rules.mcpPath }
 }
 
 function compareKey(left: readonly string[], right: readonly string[]): number {
@@ -184,12 +176,6 @@ function transport(format: RenderInput["format"]): string {
   return formatRules[format].transport
 }
 
-function schemaRows(format: RenderInput["format"], name: string): Array<readonly [string, JsonValue]> {
-  return formatRules[format].hasSchema
-    ? [["$schema", `https://agent-plugins.org/schemas/1.0.0/${name}.schema.json`]]
-    : []
-}
-
 function jsonObject(rows: readonly (readonly [string, JsonValue])[]): JsonObject {
   const sortedRows = [...rows].sort((left, right) => compareUtf8(left[0], right[0]))
   let object: JsonObject = {}
@@ -207,7 +193,6 @@ function headerText(value: HeaderValue): string {
 
 function manifest(input: RenderInput): RenderedFile {
   const rows: Array<readonly [string, JsonValue]> = [
-    ...schemaRows(input.format, "plugin"),
     ["name", input.metadata.id],
     ["version", input.metadata.version],
     ["description", input.metadata.description]
@@ -235,7 +220,6 @@ function mcpFile(input: RenderInput): RenderedFile {
     ([name, source]) => [name, remoteServer(input.format, source)]
   )
   const rows: Array<readonly [string, JsonValue]> = [
-    ...schemaRows(input.format, "mcp"),
     ["mcpServers", jsonObject(serverRows)]
   ]
   return {

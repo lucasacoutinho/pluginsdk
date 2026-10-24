@@ -2,7 +2,6 @@ import { Array as EffectArray, Match } from "effect"
 import { PackagePath } from "../../../contracts/Plugin.ts"
 import type { Input, Issue, Result } from "../../../contracts/PortableFeatures.ts"
 import type { FilePlan } from "../../../contracts/PortableProcess.ts"
-import { hostFor } from "../mcp/model.ts"
 import { renderPortableHooks } from "../hooks/portable.ts"
 import { runtimePath } from "./portable.ts"
 import { renderPortableMcp } from "../mcp/portable.ts"
@@ -16,7 +15,7 @@ function sharedFiles(mcp: ReadonlyArray<FilePlan>, hooks: ReadonlyArray<FilePlan
 }
 
 export function renderPortableFeatures(input: Input): Result {
-  const hooks = renderPortableHooks({ host: hostFor(input.mcp.format), hooks: input.hooks })
+  const hooks = renderPortableHooks({ host: input.mcp.format, hooks: input.hooks })
   return Match.value(renderPortableMcp(input.mcp)).pipe(
     Match.discriminatorsExhaustive("type")({
       rendered: (mcp) => Match.value(hooks).pipe(

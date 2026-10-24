@@ -30,7 +30,7 @@ def serverRows (input : Input) : List (String × Lean.Json) :=
   Mcp.remoteEntries input ++ localRows input
 
 def documentRows (input : Input) : List (String × Lean.Json) :=
-  schemaRows input.format "mcp" ++ [("mcpServers", (object (serverRows input)).value)]
+  [("mcpServers", (object (serverRows input)).value)]
 
 def document (input : Input) : Option JsonObject :=
   if input.remote = [] ∧ input.locals = [] then none

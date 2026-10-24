@@ -8,7 +8,8 @@ import { Format } from "../contracts/Compiler.ts"
 import { checkPackages } from "../src/catalog/artifacts/model.ts"
 
 const vectorPath = fileURLToPath(new URL("../spec/vectors/artifacts.ndjson", import.meta.url))
-const oraclePath = fileURLToPath(new URL("../spec/.lake/build/bin/oracle", import.meta.url))
+const oraclePath = process.env["PLUGINSDK_ORACLE"] ??
+  fileURLToPath(new URL("../spec/.lake/build/bin/oracle", import.meta.url))
 const Vector = Schema.Struct({
   name: Schema.NonEmptyString,
   properties: Schema.Array(Schema.NonEmptyString),
@@ -77,12 +78,12 @@ it("rejects empty package declarations and malformed descriptors or diagnostics"
     { ...input, packages: {} },
     { ...input, packages: { unknown: "a".repeat(64) } },
     { ...input, artifacts: [{ plugin: "team-kit", format: "unknown", version: "1", digest: "a".repeat(64) }] },
-    { ...input, artifacts: [{ plugin: "team-kit", format: "claude_code_v4", version: "", digest: "a".repeat(64) }] }
+    { ...input, artifacts: [{ plugin: "team-kit", format: "unsupported_format", version: "", digest: "a".repeat(64) }] }
   ]) {
     expect(() => Schema.decodeUnknownSync(PackageSetInput)(malformed, { onExcessProperty: "error" })).toThrow()
   }
   expect(() => Schema.decodeUnknownSync(PackageSetResult)({ type: "rejected", issues: [] })).toThrow()
   expect(() => Schema.decodeUnknownSync(PackageSetResult)({
-    type: "rejected", issues: [{ type: "unknown", format: "claude_code_v4" }]
+    type: "rejected", issues: [{ type: "unknown", format: "unsupported_format" }]
   })).toThrow()
 })

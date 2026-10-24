@@ -1,9 +1,9 @@
 import { basename, join } from "node:path"
 import { Effect, Exit, Match, Schema } from "effect"
 import { PlanId, ReadyPlan, StateUnavailable, Target, type Observation } from "../../../contracts/Installer.ts"
-import { nativeLocations, validateBundle } from "../../compiler/package/native.ts"
+import { validateBundle } from "../../compiler/package/native.ts"
 import { fingerprint, planId } from "../../internal/identity.ts"
-import { qualifiedFormat, qualifiedTarget, sameOwnedTarget } from "../target/profiles.ts"
+import { qualifiedBundle, qualifiedTarget, sameOwnedTarget } from "../target/profiles.ts"
 import { InspectionUnavailable, nativeState, readInventory, sameJson, type NativeState } from "../hosts/state.ts"
 import { Installed } from "./records.ts"
 import { catalogFor } from "./recipe.ts"
@@ -35,8 +35,8 @@ const verifyCandidate = Effect.fnUntraced(function*(target: Target, native: Extr
     try: () => {
       validateBundle(marker.bundle)
       validateCompanionPlan(plan)
-      if (nativeLocations(marker.bundle.format).agents && !qualifiedFormat(target, marker.bundle.format)) {
-        throw new Error("Retained agents are not qualified for the current native version and scope")
+      if (!qualifiedBundle(target, marker.bundle)) {
+        throw new Error("Retained package requirements are unsupported by the current client contract")
       }
       return plan.id === id.value && planId(plan) === id.value && sameTarget(plan.target, marker.target) && sameOwnedTarget(target, marker.target) &&
         marker.identity.plan === id.value && marker.identity.bundle === marker.bundle.digest && sameBundle(approvedBundle, marker.bundle) &&

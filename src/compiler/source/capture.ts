@@ -72,7 +72,7 @@ const captureSources = Effect.fn("Compiler.captureSources")(function*(request: B
     const entryBytes = contents.get(entry.digest)
     if (entryBytes === undefined) return yield* Effect.die(new Error("Captured entry missing from content table"))
     const name = yield* Effect.try({
-      try: () => skillName(directory, entryBytes, request.format),
+      try: () => skillName(directory, entryBytes),
       catch: (cause) => new BuildRejected({ issues: [{ type: "invalid_skill", path: entryPath, detail: cause instanceof Error ? cause.message : "Invalid skill frontmatter" }] })
     })
     const files = yield* select(directory, "skill", "directory")

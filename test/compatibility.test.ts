@@ -11,9 +11,13 @@ import { nativeOwnershipCompatible, selectNativeProfile } from "../src/installer
 type SelectRequest = Extract<Compatibility.OracleRequest, { type: "select_native_profile" }>
 type OwnershipRequest = Extract<Compatibility.OracleRequest, { type: "native_ownership_compatible" }>
 type CompatibilityCase = { readonly name: string; readonly request: Compatibility.OracleRequest }
+type InvalidRequest = { readonly name: string; readonly request: unknown }
 
-const oraclePath = fileURLToPath(new URL("../spec/.lake/build/bin/oracle", import.meta.url))
-const vectorPath = fileURLToPath(new URL("../spec/vectors/compatibility.ndjson", import.meta.url))
+const oraclePath = process.env.PLUGINSDK_ORACLE ?? fileURLToPath(new URL("../spec/.lake/build/bin/oracle", import.meta.url))
+const vectorPaths = [
+  fileURLToPath(new URL("../spec/vectors/compatibility.ndjson", import.meta.url)),
+  fileURLToPath(new URL("../spec/vectors/cursor-compatibility.ndjson", import.meta.url))
+]
 const Vector = Schema.Struct({
   name: Schema.NonEmptyString,
   properties: Schema.Array(Schema.NonEmptyString),
@@ -32,11 +36,15 @@ function decode<S extends Schema.ConstraintDecoder<unknown>>(schema: S, input: u
   return Schema.decodeUnknownSync(schema, { onExcessProperty: "error" })(input)
 }
 
-function readVectors(path = vectorPath): ReadonlyArray<typeof Vector.Type> {
+function readVectors(path: string): ReadonlyArray<typeof Vector.Type> {
   return readFileSync(path, "utf8").split(/\r?\n/).filter((line) => line.length > 0).map((line) => {
     const raw: unknown = JSON.parse(line)
     return decode(Vector, raw)
   })
+}
+
+function readAllVectors(): ReadonlyArray<typeof Vector.Type> {
+  return vectorPaths.flatMap(readVectors)
 }
 
 function runOracle(requests: ReadonlyArray<Compatibility.OracleRequest>): ReadonlyArray<Compatibility.OracleResponse> {
@@ -49,8 +57,8 @@ function runOracle(requests: ReadonlyArray<Compatibility.OracleRequest>): Readon
   const result = spawnSync(oraclePath, [], {
     encoding: "utf8",
     input: `${lines.join("\n")}\n`,
-    maxBuffer: 24 * 1024 * 1024,
-    timeout: 30_000
+    maxBuffer: 32 * 1024 * 1024,
+    timeout: 60_000
   })
   if (result.error !== undefined) throw result.error
   if (result.status !== 0) throw new Error(`Lean compatibility oracle exited with status ${String(result.status)}: ${result.stderr}`)
@@ -121,37 +129,64 @@ function addSelectionPermutations(
   })
 }
 
+function capabilitySubsets(
+  capabilities: ReadonlyArray<Compatibility.Capability>
+): ReadonlyArray<ReadonlyArray<Compatibility.Capability>> {
+  let subsets: Array<ReadonlyArray<Compatibility.Capability>> = [[]]
+  for (const capability of capabilities) {
+    const previous = subsets.slice()
+    for (const subset of previous) subsets.push([...subset, capability])
+  }
+  return subsets
+}
+
 function generatedSelectionCases(): ReadonlyArray<CompatibilityCase> {
   const cases: Array<CompatibilityCase> = []
   const platforms = ["linux", "darwin", "win32"]
-  const versions = ["2.1.303", "2.1.304"]
   const scopes = Compatibility.Scope.literals
+  const capabilities = Compatibility.Capability.literals
+  const requirements = capabilitySubsets(capabilities)
+  const formatQueries: ReadonlyArray<Format | null> = [null, ...Format.literals]
+  const [defaultFormat] = Format.literals
+  if (defaultFormat === undefined) throw new Error("Compatibility needs at least one package format")
 
   for (const host of Host.literals) {
     for (const platform of platforms) {
-      for (const version of versions) {
-        for (const scope of scopes) {
-          for (const format of [null, ...Format.literals]) {
-            const identity = { host, platform, version, scope, revision: "adapter-1" }
-            const query = { host, platform, version, scope, format }
-            const formats = format === null ? Format.literals : [format]
-            const selected = decodeProfile({ ...identity, formats })
+      for (const scope of scopes) {
+        for (const format of formatQueries) {
+          for (const required of requirements) {
+            const identity = { host, platform, scope, revision: "adapter-1" }
+            const query = { host, platform, scope, format, requirements: required }
+            const selected = decodeProfile({
+              ...identity,
+              format: format ?? defaultFormat,
+              capabilities
+            })
             const ineligible = [
-              decodeProfile({ ...identity, host: other(Host.literals, host), formats }),
-              decodeProfile({ ...identity, platform: other(platforms, platform), formats }),
-              decodeProfile({ ...identity, version: other(versions, version), formats }),
-              decodeProfile({ ...identity, scope: other(scopes, scope), formats })
+              decodeProfile({ ...identity, host: other(Host.literals, host), format: selected.format, capabilities }),
+              decodeProfile({ ...identity, platform: other(platforms, platform), format: selected.format, capabilities }),
+              decodeProfile({ ...identity, scope: other(scopes, scope), format: selected.format, capabilities })
             ]
             if (format !== null) {
-              ineligible.push(decodeProfile({ ...identity, formats: [other(Format.literals, format)] }))
+              ineligible.push(decodeProfile({
+                ...identity,
+                format: other(Format.literals, format),
+                capabilities
+              }))
             }
-            addSelectionPermutations(cases, `query_${host}_${platform}_${version}_${scope}_${format ?? "any"}`, selectionRequest({
+            if (required.length > 0) {
+              ineligible.push(decodeProfile({
+                ...identity,
+                format: selected.format,
+                capabilities: capabilities.filter((capability) => !required.includes(capability))
+              }))
+            }
+
+            const label = `${host}_${platform}_${scope}_${format ?? "any"}_${required.join("-") || "none"}`
+            addSelectionPermutations(cases, `unique_${label}`, selectionRequest({ query, profiles: [selected, ...ineligible] }))
+            addSelectionPermutations(cases, `duplicate_${label}`, selectionRequest({
               query,
-              profiles: [selected, ...ineligible]
-            }))
-            addSelectionPermutations(cases, `duplicate_${host}_${platform}_${version}_${scope}_${format ?? "any"}`, selectionRequest({
-              query,
-              profiles: [...ineligible, selected, decodeProfile({ ...identity, formats })]
+              profiles: [...ineligible, selected, decodeProfile(selected)]
             }))
           }
         }
@@ -178,47 +213,41 @@ function generatedOwnershipCases(): ReadonlyArray<CompatibilityCase> {
   const platforms = ["linux", "darwin", "win32"]
   const scopes = Compatibility.Scope.literals
   const revisions = ["adapter-1", "adapter-2"]
-  const formats = [Format.literals[0]]
+  const [format] = Format.literals
+  if (format === undefined) throw new Error("Compatibility needs at least one package format")
 
   for (const host of Host.literals) {
     for (const platform of platforms) {
       for (const scope of scopes) {
         for (const revision of revisions) {
-          const current = decodeIdentity({ host, platform, version: "2.1.303", scope, revision })
-          const retained = decodeIdentity({ host, platform, version: "2.1.304", scope, revision })
-          const currentProfile = decodeProfile({ ...current, formats })
-          const retainedProfile = decodeProfile({ ...retained, formats })
-          const baseProfiles = [currentProfile, retainedProfile]
+          const current = decodeIdentity({ host, platform, scope, revision })
+          const currentProfile = decodeProfile({ ...current, format, capabilities: Compatibility.Capability.literals })
           const label = `ownership_${host}_${platform}_${scope}_${revision}`
-          addOwnershipPermutations(cases, `${label}_version_change`, ownershipRequest({ current, retained, profiles: baseProfiles }))
-          addOwnershipPermutations(cases, `${label}_same_version`, ownershipRequest({
+          addOwnershipPermutations(cases, `${label}_same_identity`, ownershipRequest({
             current,
             retained: current,
-            profiles: baseProfiles
+            profiles: [currentProfile]
           }))
 
           const changed = [
-            decodeIdentity({ ...retained, host: other(Host.literals, host) }),
-            decodeIdentity({ ...retained, platform: other(platforms, platform) }),
-            decodeIdentity({ ...retained, scope: other(scopes, scope) }),
-            decodeIdentity({ ...retained, revision: other(revisions, revision) })
+            decodeIdentity({ ...current, host: other(Host.literals, host) }),
+            decodeIdentity({ ...current, platform: other(platforms, platform) }),
+            decodeIdentity({ ...current, scope: other(scopes, scope) }),
+            decodeIdentity({ ...current, revision: other(revisions, revision) })
           ]
-          for (const [index, changedRetained] of changed.entries()) {
+          for (const [index, retained] of changed.entries()) {
+            const retainedProfile = decodeProfile({ ...retained, format, capabilities: Compatibility.Capability.literals })
             addOwnershipPermutations(cases, `${label}_adapter_change_${index}`, ownershipRequest({
               current,
-              retained: changedRetained,
-              profiles: [currentProfile, decodeProfile({ ...changedRetained, formats })]
+              retained,
+              profiles: [currentProfile, retainedProfile]
             }))
           }
-          addOwnershipPermutations(cases, `${label}_duplicate_current`, ownershipRequest({
+
+          addOwnershipPermutations(cases, `${label}_duplicate_registration`, ownershipRequest({
             current,
-            retained,
-            profiles: [currentProfile, retainedProfile, currentProfile]
-          }))
-          addOwnershipPermutations(cases, `${label}_duplicate_retained`, ownershipRequest({
-            current,
-            retained,
-            profiles: [currentProfile, retainedProfile, retainedProfile]
+            retained: current,
+            profiles: [currentProfile, decodeProfile(currentProfile)]
           }))
         }
       }
@@ -227,10 +256,30 @@ function generatedOwnershipCases(): ReadonlyArray<CompatibilityCase> {
   return cases
 }
 
-const vectors = readVectors()
+function rawSelectionRequest(query: unknown, profiles: unknown): unknown {
+  return { schema: 1, type: "select_native_profile", input: { query, profiles } }
+}
 
-it("matches all 44 authored compatibility vectors against their expectations and Lean", () => {
-  expect(vectors).toHaveLength(44)
+function oracleRejects(request: unknown, name: string): void {
+  const line = JSON.stringify(request)
+  if (line === undefined) throw new Error(`${name}: malformed request is not JSON-serializable`)
+  const result = spawnSync(oraclePath, [], { input: `${line}\n`, encoding: "utf8", timeout: 10_000 })
+  if (result.error !== undefined) throw result.error
+  expect(result.status, name).toBe(1)
+  expect(result.stdout, name).toBe("")
+  expect(result.stderr, name).toContain("oracle:")
+}
+
+const vectors = readAllVectors()
+
+it("matches all 64 authored compatibility vectors against expectations, Lean, and TypeScript", () => {
+  expect(vectors).toHaveLength(64)
+  const properties = new Set(vectors.flatMap(({ properties: vectorProperties }) => vectorProperties))
+  for (const property of ["N1", "N2", "N3", "N4", "N5", "N6", "N8", "N9", "N10"]) {
+    expect(properties.has(property), `authored vectors cover ${property}`).toBe(true)
+  }
+  expect(properties.has("N7"), "the retired version property is absent").toBe(false)
+
   const responses = runOracle(vectors.map(({ request }) => request))
   expect(responses).toHaveLength(vectors.length)
   for (const [index, vector] of vectors.entries()) {
@@ -244,17 +293,14 @@ it("matches all 44 authored compatibility vectors against their expectations and
   }
 })
 
-it("matches Lean over bounded selection and ownership combinations, duplicates and row permutations", () => {
-  const selectionCases = generatedSelectionCases()
-  const ownershipCases = generatedOwnershipCases()
-  expect(selectionCases.length).toBeGreaterThan(0)
-  expect(ownershipCases.length).toBeGreaterThan(0)
-  const cases = [...selectionCases, ...ownershipCases]
+it("matches Lean over generated capability, format, adapter, duplicate, and order combinations", () => {
+  const cases = [...generatedSelectionCases(), ...generatedOwnershipCases()]
+  expect(cases.length).toBeGreaterThan(0)
   const responses = runOracle(cases.map(({ request }) => request))
   expect(responses).toHaveLength(cases.length)
   for (const [index, current] of cases.entries()) {
     const response = responses[index]
-    if (response === undefined) throw new Error(`Missing generated compatibility oracle response for ${current.name}`)
+    if (response === undefined) throw new Error(`Missing generated compatibility response for ${current.name}`)
     expect(
       equivalentResponse(evaluateWithoutMutation(current.request), response),
       `${current.name}: TypeScript matches Lean`
@@ -262,29 +308,63 @@ it("matches Lean over bounded selection and ownership combinations, duplicates a
   }
 })
 
-it("preserves Cursor client identity while selecting its compatible package format", () => {
-  const cursor = readVectors(fileURLToPath(new URL("../spec/vectors/cursor-compatibility.ndjson", import.meta.url)))
-  expect(cursor).toHaveLength(20)
-  const responses = runOracle(cursor.map(({ request }) => request))
-  expect(responses).toHaveLength(cursor.length)
-  for (const [index, vector] of cursor.entries()) {
-    const response = responses[index]
-    if (response === undefined) throw new Error(`Missing Cursor oracle response for ${vector.name}`)
-    expect(equivalentResponse(response, vector.expected), `${vector.name}: Lean`).toBe(true)
-    expect(equivalentResponse(evaluateWithoutMutation(vector.request), vector.expected), `${vector.name}: TypeScript`).toBe(true)
-  }
-})
-
-it("rejects malformed Cursor profile requests at both wire boundaries", () => {
+it("rejects malformed compatibility inputs in both schema and Lean wire decoding", () => {
   const Fixture = Schema.Struct({ name: Schema.NonEmptyString, request: Schema.Unknown })
-  const raw: unknown = JSON.parse(readFileSync(new URL("./fixtures/cursor-compatibility-invalid.json", import.meta.url), "utf8"))
-  const fixtures = decode(Schema.Array(Fixture), raw)
+  const fixtureInput: unknown = JSON.parse(readFileSync(
+    new URL("./fixtures/cursor-compatibility-invalid.json", import.meta.url),
+    "utf8"
+  ))
+  const fixtures = decode(Schema.Array(Fixture), fixtureInput)
   expect(fixtures).toHaveLength(6)
-  for (const { name, request } of fixtures) {
+
+  const validQuery = {
+    host: "cursor",
+    platform: "win32",
+    scope: "user",
+    format: "claude_code",
+    requirements: ["stdio"]
+  }
+  const validProfile = {
+    host: "cursor",
+    platform: "win32",
+    scope: "user",
+    revision: "cursor-adapter:1",
+    format: "claude_code",
+    capabilities: ["stdio"]
+  }
+  const malformed: ReadonlyArray<InvalidRequest> = [
+    {
+      name: "host_is_not_package_format",
+      request: rawSelectionRequest({ ...validQuery, format: "cursor" }, [])
+    },
+    {
+      name: "missing_query_requirements",
+      request: rawSelectionRequest({
+        host: "cursor", platform: "win32", scope: "user", format: "claude_code"
+      }, [])
+    },
+    {
+      name: "missing_profile_capabilities",
+      request: rawSelectionRequest(validQuery, [{
+        host: "cursor", platform: "win32", scope: "user", revision: "cursor-adapter:1", format: "claude_code"
+      }])
+    },
+    {
+      name: "non_array_requirements",
+      request: rawSelectionRequest({ ...validQuery, requirements: "stdio" }, [])
+    },
+    {
+      name: "non_array_profile_capabilities",
+      request: rawSelectionRequest(validQuery, [{ ...validProfile, capabilities: "stdio" }])
+    },
+    {
+      name: "extra_top_level_field",
+      request: { schema: 1, type: "select_native_profile", input: { query: validQuery, profiles: [] }, force: true }
+    }
+  ]
+
+  for (const { name, request } of [...fixtures, ...malformed]) {
     expect(() => decode(Compatibility.OracleRequest, request), name).toThrow()
-    const result = spawnSync(oraclePath, [], { input: `${JSON.stringify(request)}\n`, encoding: "utf8", timeout: 10_000 })
-    if (result.error !== undefined) throw result.error
-    expect(result.status, name).toBe(1)
-    expect(result.stdout, name).toBe("")
+    oracleRejects(request, name)
   }
 })

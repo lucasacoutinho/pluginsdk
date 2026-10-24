@@ -24,11 +24,7 @@ def PM2_document_exact (model : Interface) : Prop :=
     match output.document with
     | none => True
     | some value =>
-      ObjectKeys value.value (match input.format with
-        | .agentPluginsV1 => ["$schema", "mcpServers"]
-        | .claudeCodeV1 => ["mcpServers"]
-        | .codexPluginV1 => ["mcpServers"]) ∧
-      SchemaField input.format value.value "mcp" ∧
+      ObjectKeys value.value ["mcpServers"] ∧
       ∃ servers, Field value.value "mcpServers" servers ∧
         ObjectKeys servers (input.remote.map Prod.fst ++ input.locals.map Prod.fst) ∧
         (∀ name source, (name, source) ∈ input.remote →

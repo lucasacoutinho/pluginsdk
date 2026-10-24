@@ -14,9 +14,9 @@ import { jsonBytes, parseJsonBytes } from "../src/internal/json.ts"
 import { bundleRoles } from "../src/installer/companions/capture.ts"
 
 type Host = "claude_code" | "codex"
-const formats: ReadonlyArray<{ readonly format: Format; readonly v1: Format; readonly agents: Format; readonly host: Host }> = [
-  { format: "claude_code_portable_v2", v1: "claude_code_portable_v1", agents: "claude_code_v5", host: "claude_code" },
-  { format: "codex_plugin_portable_v2", v1: "codex_plugin_portable_v1", agents: "codex_plugin_v2", host: "codex" }
+const formats: ReadonlyArray<{ readonly format: Format; readonly host: Host }> = [
+  { format: "claude_code", host: "claude_code" },
+  { format: "codex", host: "codex" }
 ]
 const CompilerTest = Layer.provideMerge(CompilerLive, NodeServices.layer)
 const runtime = new Uint8Array(readFileSync(new URL("../runtime/process.mjs", import.meta.url)))
@@ -122,34 +122,33 @@ it.effect("builds deterministic mixed packages with one runtime and complete hoo
     expect(new Uint8Array(fileAt(bundle, "automation/job.mjs").content)).toEqual(new TextEncoder().encode(fixture.source))
     const metadata = validateBundle(bundle)
     expect(metadata.processes.map(({ path }) => path)).toEqual([".psdk/mcp/0.json", hookPath, ".psdk/hooks/1.json"])
+    expect(metadata.requirements).toEqual(["stdio", "hooks", "agents"])
     for (const { path, script } of metadata.processes) {
       const data = dataAt(bundle, path)
       expect(script).toEqual(data.script)
       expect(fileAt(bundle, path).executable).toBe(false)
       expect(fileAt(bundle, data.posix).executable).toBe(true)
     }
-    const legacy = yield* compiler.build(fixture.request(row.agents))
-    expect(bundle.files.filter((file) => file.path.startsWith("agents/"))).toEqual(legacy.files.filter((file) => file.path.startsWith("agents/")))
-    expect(bundleRoles(bundle)).toEqual(bundleRoles(legacy))
+    expect(bundle.files.some((file) => file.path.startsWith("agents/"))).toBe(true)
     expect(bundleRoles(bundle)).toHaveLength(row.host === "codex" ? 1 : 0)
   }
 }).pipe(Effect.provide(CompilerTest)))
 
-it.effect("preserves v1 MCP package bytes and omits unused process outputs", () => Effect.gen(function*() {
+it.effect("derives requirements from validated MCP and hook documents", () => Effect.gen(function*() {
   const fixture = yield* prepare()
   const compiler = yield* Compiler
   for (const row of formats) {
     for (const mcp of [{}, { remote: fixture.plugin.mcp.remote }, fixture.plugin.mcp]) {
       const options = { hooks: {}, agents: {}, mcp }
-      const old = yield* compiler.build(fixture.request(row.v1, options))
       const current = yield* compiler.build(fixture.request(row.format, options))
-      expect(current.files).toEqual(old.files)
       expect(current.files.some((file) => file.path === "hooks/hooks.json")).toBe(false)
       expect(validateBundle(current).processes).toHaveLength("shared" in mcp ? 1 : 0)
+      expect(validateBundle(current).requirements).toEqual("shared" in mcp ? ["stdio"] : [])
     }
     const onlyHooks = yield* compiler.build(fixture.request(row.format, { mcp: {}, agents: {} }))
     expect(onlyHooks.files.some((file) => file.path === ".mcp.json")).toBe(false)
     expect(validateBundle(onlyHooks).processes.map(({ path }) => path)).toEqual([hookPath, ".psdk/hooks/1.json"])
+    expect(validateBundle(onlyHooks).requirements).toEqual(["hooks"])
   }
 }).pipe(Effect.provide(CompilerTest)))
 
@@ -178,7 +177,7 @@ it.effect("refuses hook environment references during build and in resealed proc
   const fixture = yield* prepare()
   const compiler = yield* Compiler
   const env = { API_TOKEN: { type: "environment", name: "TOKEN" } }
-  const captured = yield* compiler.build(fixture.request("claude_code_portable_v2", {
+  const captured = yield* compiler.build(fixture.request("claude_code", {
     hooks: {}, agents: {}, mcp: { shared: { ...fixture.plugin.mcp.shared, env } }
   }))
   const capturedData = dataAt(captured, ".psdk/mcp/0.json")

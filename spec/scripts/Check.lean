@@ -27,11 +27,6 @@ private def obligations : List (Name × Name × List Name) := [
     ``PluginSdk.Compiler.Hooks.Binding.HB2_codex_binding_exact,
     ``PluginSdk.Compiler.Hooks.Binding.HB3_data_paths_safe,
     ``PluginSdk.Compiler.Hooks.Binding.HB4_data_path_identity]),
-  (``PluginSdk.Compiler.BuildFormat.Interface, `PluginSdk.Compiler.BuildFormat.model, [
-    ``PluginSdk.Compiler.BuildFormat.BF1_agents_exact,
-    ``PluginSdk.Compiler.BuildFormat.BF2_hooks_exact,
-    ``PluginSdk.Compiler.BuildFormat.BF3_stdio_portable_exact,
-    ``PluginSdk.Compiler.BuildFormat.BF4_basic_exact]),
   (``PluginSdk.Compatibility.ClientPackages.Interface, `PluginSdk.Compatibility.ClientPackages.model, [
     ``PluginSdk.Compatibility.ClientPackages.CB1_family_exact,
     ``PluginSdk.Compatibility.ClientPackages.CB2_normalization_exact,
@@ -57,7 +52,6 @@ private def obligations : List (Name × Name × List Name) := [
     ``PluginSdk.Installer.ProcessDirectory.PD4_runtime_cwd_exact]),
   (``PluginSdk.Installer.LauncherRuntime.Interface, `PluginSdk.Installer.LauncherRuntime.model, [
     ``PluginSdk.Installer.LauncherRuntime.NR1_absent_requires_nothing,
-    ``PluginSdk.Installer.LauncherRuntime.NR2_posix_checks_exact,
     ``PluginSdk.Installer.LauncherRuntime.NR3_portable_checks_exact,
     ``PluginSdk.Installer.LauncherRuntime.NR4_unsupported_exact,
     ``PluginSdk.Installer.LauncherRuntime.NR5_node_admission_exact]),
@@ -169,8 +163,9 @@ private def obligations : List (Name × Name × List Name) := [
     ``PluginSdk.Compatibility.N4_selection_enumeration_invariant,
     ``PluginSdk.Compatibility.N5_ownership_exact,
     ``PluginSdk.Compatibility.N6_ownership_isolation,
-    ``PluginSdk.Compatibility.N7_qualified_version_change_retains_ownership,
-    ``PluginSdk.Compatibility.N8_ownership_enumeration_invariant]),
+    ``PluginSdk.Compatibility.N8_ownership_enumeration_invariant,
+    ``PluginSdk.Compatibility.N9_selected_profile_preserves_requirements,
+    ``PluginSdk.Compatibility.N10_selected_stronger_was_weaker_candidate]),
   (``PluginSdk.Compiler.Agents.Interface, `PluginSdk.Compiler.Agents.model, [
     ``PluginSdk.Compiler.Agents.G1_declarations_exact,
     ``PluginSdk.Compiler.Agents.G2_definition_preserved,
@@ -358,14 +353,6 @@ private def obligations : List (Name × Name × List Name) := [
     ``PluginSdk.Compiler.Process.Portable.Runtime.PR2_execution_refines_launcher,
     ``PluginSdk.Compiler.Process.Portable.Runtime.PR3_complete_process,
     ``PluginSdk.Compiler.Process.Portable.Runtime.PR4_missing_source_stops]),
-  (``PluginSdk.Compiler.Mcp.Interface, `PluginSdk.Compiler.Mcp.model, [
-    ``PluginSdk.Compiler.Mcp.K1_servers_exact,
-    ``PluginSdk.Compiler.Mcp.K2_generated_files_exact,
-    ``PluginSdk.Compiler.Mcp.K3_launcher_paths_safe,
-    ``PluginSdk.Compiler.Mcp.K4_accepts_exactly_native,
-    ``PluginSdk.Compiler.Mcp.K5_enumeration_invariant,
-    ``PluginSdk.Compiler.Mcp.K6_remote_document_preserved,
-    ``PluginSdk.Compiler.Mcp.K7_cwd_root_preserved]),
   (``PluginSdk.Compiler.Mcp.Portable.Interface, `PluginSdk.Compiler.Mcp.Portable.model, [
     ``PluginSdk.Compiler.Mcp.Portable.PM1_exact_admission,
     ``PluginSdk.Compiler.Mcp.Portable.PM2_document_exact,
@@ -373,15 +360,6 @@ private def obligations : List (Name × Name × List Name) := [
     ``PluginSdk.Compiler.Mcp.Portable.PM4_paths_safe,
     ``PluginSdk.Compiler.Mcp.Portable.PM5_enumeration_invariant,
     ``PluginSdk.Compiler.Mcp.Portable.PM6_diagnostics]),
-  (``PluginSdk.Compiler.Hooks.Interface, `PluginSdk.Compiler.Hooks.model, [
-    ``PluginSdk.Compiler.Hooks.H1_document_exact,
-    ``PluginSdk.Compiler.Hooks.H2_files_exact,
-    ``PluginSdk.Compiler.Hooks.H3_handlers_exact,
-    ``PluginSdk.Compiler.Hooks.H4_paths_safe,
-    ``PluginSdk.Compiler.Hooks.H5_acceptance_exact,
-    ``PluginSdk.Compiler.Hooks.H6_enumeration_invariant,
-    ``PluginSdk.Compiler.Hooks.H7_empty_preserved,
-    ``PluginSdk.Compiler.Hooks.H8_process_preserved]),
   (``PluginSdk.FileRead.Interface, `PluginSdk.FileRead.model, [
     ``PluginSdk.FileRead.V1_plain_parse_exact,
     ``PluginSdk.FileRead.V2_containment_exact,

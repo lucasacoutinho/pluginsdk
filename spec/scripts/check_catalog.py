@@ -1,11 +1,12 @@
 import copy
 import json
+import os
 from pathlib import Path
 import subprocess
 
 
 SPEC = Path(__file__).resolve().parents[1]
-ORACLE = SPEC / ".lake/build/bin/oracle"
+ORACLE = Path(os.environ.get("PLUGINSDK_ORACLE", str(SPEC / ".lake/build/bin/oracle")))
 VECTORS = SPEC / "vectors/catalog.ndjson"
 
 
@@ -23,7 +24,7 @@ def replay():
         "changed_native_packages", "changed_mcp_contract",
         "same_names_other_organization", "new_identity_same_display_version",
         "missing_organization_cannot_alias", "missing_release_cannot_alias",
-        "no_substitution_for_claude_code_v1", "plugin_cannot_be_selected_as_mcp",
+        "no_substitution_for_codex", "plugin_cannot_be_selected_as_mcp",
         "conflicting_records_forward", "conflicting_records_reverse",
         "conflicting_records_reject_replay_forward", "identical_duplicates_resolve",
     }

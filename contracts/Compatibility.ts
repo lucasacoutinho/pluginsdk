@@ -1,6 +1,8 @@
 import { Schema } from "effect"
-import { Format } from "./Compiler.ts"
+import { Capability, Format } from "./Compiler.ts"
 import { Host } from "./Installer.ts"
+
+export { Capability } from "./Compiler.ts"
 
 const identityText = Schema.NonEmptyString.check(Schema.makeFilter((value) => value.isWellFormed(), {
   expected: "a nonempty Unicode native profile identity"
@@ -17,22 +19,22 @@ export type Scope = typeof Scope.Type
 export const ProfileIdentity = Schema.Struct({
   host: Host,
   platform: RuntimePlatform,
-  version: RuntimeVersion,
   scope: Scope,
   revision: AdapterRevision
 })
 export type ProfileIdentity = typeof ProfileIdentity.Type
 export const NativeProfile = Schema.Struct({
   ...ProfileIdentity.fields,
-  formats: Schema.NonEmptyArray(Format)
+  format: Format,
+  capabilities: Schema.Array(Capability)
 })
 export type NativeProfile = typeof NativeProfile.Type
 export const ProfileQuery = Schema.Struct({
   host: Host,
   platform: RuntimePlatform,
-  version: RuntimeVersion,
   scope: Scope,
-  format: Schema.NullOr(Format)
+  format: Schema.NullOr(Format),
+  requirements: Schema.Array(Capability)
 })
 export type ProfileQuery = typeof ProfileQuery.Type
 export const SelectionInput = Schema.Struct({ query: ProfileQuery, profiles: Schema.Array(NativeProfile) })

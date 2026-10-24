@@ -17,8 +17,6 @@ python3 scripts/check_windows_quoting.py
 python3 scripts/check_windows_streams.py
 python3 scripts/check_process.py
 python3 scripts/check_launcher.py
-python3 scripts/check_mcp.py
-python3 scripts/check_hooks.py
 python3 scripts/check_repair.py
 python3 scripts/check_authorization.py
 python3 scripts/check_catalog.py

@@ -5,7 +5,7 @@ import { Destination, Target, type PlanId, type ReadyPlan } from "../../../contr
 import { AgentName, Directory } from "../../../contracts/Plugin.ts"
 import { CacheVersion, Platform } from "../../../contracts/ProjectActivation.ts"
 import { BlockKey, MarketplaceName, Registration } from "../../../contracts/ProjectConfig.ts"
-import { nativeLocations, validateBundle } from "../../compiler/package/native.ts"
+import { validateBundle } from "../../compiler/package/native.ts"
 import { commitment } from "../../internal/identity.ts"
 import { buildProjectActivation } from "./activation-model.ts"
 import { targetPaths } from "../target/resolve.ts"
@@ -36,13 +36,11 @@ export const projectRegistration = (target: ProjectTarget, id: PlanId): Registra
 }
 
 export const projectActivation = (target: ProjectTarget, id: PlanId, bundle: Bundle) => {
-  if (bundle.plugin !== target.plugin || nativeLocations(bundle.format).host !== "codex") {
+  if (bundle.plugin !== target.plugin || bundle.format !== "codex") {
     throw new Error("Project activation requires the target's complete Codex package")
   }
   const metadata = validateBundle(bundle)
-  const roles = nativeLocations(bundle.format).agents
-    ? bundle.files.filter((file) => file.path.startsWith("agents/"))
-    : []
+  const roles = bundle.files.filter((file) => file.path.startsWith("agents/"))
   if (roles.length > roleLimits.files || roles.some((file) => file.content.length > roleLimits.bytes)) {
     throw new Error("Project agents exceed the native inventory's role count or file size limit")
   }
@@ -75,8 +73,7 @@ export const validateProjectPlan = (plan: ReadyPlan): void => {
     return
   }
   if (plan.project === undefined || plan.companions !== undefined) throw new Error("Codex project plan requires its config capture")
-  if (plan.change.type !== "remove" && plan.change.bundle.format !== "agent_plugins_v1" && plan.change.bundle.format !== "agent_plugins_v2" &&
-    plan.change.bundle.format !== "codex_plugin_portable_v1" && plan.change.bundle.format !== "codex_plugin_portable_v2") {
+  if (plan.change.type !== "remove" && plan.change.bundle.format !== "codex") {
     throw new Error("Codex project plan requires a qualified project package")
   }
   const previous = plan.before.receipt === null ? null : projectRegistration(plan.target, plan.before.receipt.identity.plan)

@@ -33,39 +33,50 @@ private def writeScope : Scope → Json
   | .user => .str "user"
   | .project => .str "project"
 
+private def readCapability (json : Json) : Except String Capability := do
+  match ← json.getStr? with
+  | "stdio" => return .stdio
+  | "hooks" => return .hooks
+  | "agents" => return .agents
+  | value => throw s!"unknown capability: {value}"
+
+private def writeCapability : Capability → Json
+  | .stdio => .str "stdio"
+  | .hooks => .str "hooks"
+  | .agents => .str "agents"
+
 private def readIdentityFields (json : Json) : Except String ProfileIdentity := do
   return ⟨← readHost (← json.getObjVal? "host"),
     ⟨← Catalog.Wire.readNonempty (← json.getObjVal? "platform")⟩,
-    ⟨← Catalog.Wire.readNonempty (← json.getObjVal? "version")⟩,
     ← readScope (← json.getObjVal? "scope"),
     ⟨← Catalog.Wire.readNonempty (← json.getObjVal? "revision")⟩⟩
 
 private def readIdentity (json : Json) : Except String ProfileIdentity := do
-  checkFields json ["host", "platform", "version", "scope", "revision"]
+  checkFields json ["host", "platform", "scope", "revision"]
   readIdentityFields json
 
 private def readProfile (json : Json) : Except String NativeProfile := do
-  checkFields json ["host", "platform", "version", "scope", "revision", "formats"]
-  let formats ← (← (← json.getObjVal? "formats").getArr?).toList.mapM Catalog.Wire.readPackageFormat
-  if formats.isEmpty then throw "expected at least one qualified format"
-  return ⟨← readIdentityFields json, formats⟩
+  checkFields json ["host", "platform", "scope", "revision", "format", "capabilities"]
+  let capabilities ← (← (← json.getObjVal? "capabilities").getArr?).toList.mapM readCapability
+  return ⟨← readIdentityFields json,
+    ← Catalog.Wire.readPackageFormat (← json.getObjVal? "format"), capabilities⟩
 
 private def writeProfile (profile : NativeProfile) : Json := Json.mkObj [
   ("host", writeHost profile.identity.host),
   ("platform", .str profile.identity.platform.value),
-  ("version", .str profile.identity.version.value),
   ("scope", writeScope profile.identity.scope),
   ("revision", .str profile.identity.revision.value),
-  ("formats", .arr (profile.formats.map (fun format => .str (Catalog.Artifacts.FormatKey format))).toArray)
+  ("format", .str (Catalog.Wire.writePackageFormat profile.format)),
+  ("capabilities", .arr (profile.capabilities.map writeCapability).toArray)
 ]
 
 private def readQuery (json : Json) : Except String ProfileQuery := do
-  checkFields json ["host", "platform", "version", "scope", "format"]
+  checkFields json ["host", "platform", "scope", "format", "requirements"]
+  let requirements ← (← (← json.getObjVal? "requirements").getArr?).toList.mapM readCapability
   return ⟨← readHost (← json.getObjVal? "host"),
     ⟨← Catalog.Wire.readNonempty (← json.getObjVal? "platform")⟩,
-    ⟨← Catalog.Wire.readNonempty (← json.getObjVal? "version")⟩,
     ← readScope (← json.getObjVal? "scope"),
-    ← readOptional Catalog.Wire.readPackageFormat (← json.getObjVal? "format")⟩
+    ← readOptional Catalog.Wire.readPackageFormat (← json.getObjVal? "format"), requirements⟩
 
 private def readSelectionInput (json : Json) : Except String SelectionInput := do
   checkFields json ["query", "profiles"]

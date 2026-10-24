@@ -12,13 +12,11 @@ import type { Directory, Plugin } from "../../contracts/Plugin.ts"
 import { BuildSnapshot, ProjectDefinition, ProjectError } from "../../contracts/Project.ts"
 import type { BuildSnapshot as BuildSnapshotType, LocalClient as LocalClientType, ProjectDefinition as ProjectDefinitionType } from "../../contracts/Project.ts"
 import type { FileDigest } from "../../contracts/CompilerModel.ts"
-import type { PackageClient } from "../../contracts/Clients.ts"
 import { copyBundle, fileDigest } from "../internal/identity.ts"
 import { jsonBytes, parseJsonBytes } from "../internal/json.ts"
 import { writeJsonAtomically } from "../internal/storage.ts"
-import { nativeLocations, validateBundle } from "../compiler/package/native.ts"
-import { buildClients, packageClient } from "../installer/target/packages.ts"
-import { selectBuildFormat } from "./build-format.ts"
+import { validateBundle } from "../compiler/package/native.ts"
+import { buildClients } from "../installer/target/packages.ts"
 
 const projectError = (detail: string): ProjectError => new ProjectError({ detail })
 
@@ -46,19 +44,6 @@ export const pluginDefinition = (definition: ProjectDefinitionType): Plugin =>
 export const definitionDigest = (definition: ProjectDefinitionType): FileDigest =>
   fileDigest(jsonBytes(Schema.encodeSync(ProjectDefinition)(definition)))
 
-const hasStdio = (plugin: Plugin): boolean => Object.values(plugin.mcp).some((server) => Match.value(server).pipe(
-  Match.when({ type: "stdio" }, () => true),
-  Match.when({ url: Match.defined }, () => false),
-  Match.exhaustive
-))
-
-export const recommendedFormat = (plugin: Plugin, client: LocalClientType): Format => selectBuildFormat({
-  client: packageClient(client),
-  hasAgents: Object.keys(plugin.agents ?? {}).length > 0,
-  hasHooks: Object.keys(plugin.hooks ?? {}).length > 0,
-  hasStdio: hasStdio(plugin)
-})
-
 export const compileProject = Effect.fn("Project.compileProject")(function*(
   definition: ProjectDefinitionType,
   root: Directory,
@@ -67,23 +52,21 @@ export const compileProject = Effect.fn("Project.compileProject")(function*(
   const [firstClient, ...remainingClients] = buildClients(clients)
 
   const plugin = pluginDefinition(definition)
-  const buildFor = (client: PackageClient) => Compiler.use((compiler) => compiler.build({
+  const buildFor = (client: Format) => Compiler.use((compiler) => compiler.build({
     root,
     plugin,
-    format: recommendedFormat(plugin, client)
+    format: client
   }))
   const first = yield* buildFor(firstClient)
   const remaining = yield* Effect.forEach(remainingClients, buildFor)
   return [first, ...remaining]
 })
 
-const hostOrder = (host: PackageClient): number => Match.value(host).pipe(
+const hostOrder = (host: Format): number => Match.value(host).pipe(
   Match.when("claude_code", () => 0),
   Match.when("codex", () => 1),
   Match.exhaustive
 )
-
-const bundleHost = (bundle: BundleType): PackageClient => nativeLocations(bundle.format).host
 
 const bundleProblem = (
   definition: ProjectDefinitionType,
@@ -101,7 +84,7 @@ const bundleProblem = (
     }
     if (bundle.plugin !== definition.id) return "Build package plugin does not match the definition; rebuild the project"
     if (metadata.version !== definition.version) return "Build package version does not match the definition; rebuild the project"
-    const host = bundleHost(bundle)
+    const host = bundle.format
     if (hosts.has(host)) return "Build contains more than one package for a client; rebuild the project"
     hosts.add(host)
     const order = hostOrder(host)
@@ -125,7 +108,7 @@ const captureBuildSnapshot = (
   definition: ProjectDefinitionType,
   bundles: NonEmptyReadonlyArray<BundleType>
 ): BuildSnapshotType => {
-  const copied = EffectArray.sort(EffectArray.map(bundles, copyBundle), Order.mapInput(Order.Number, (bundle: BundleType) => hostOrder(bundleHost(bundle))))
+  const copied = EffectArray.sort(EffectArray.map(bundles, copyBundle), Order.mapInput(Order.Number, (bundle: BundleType) => hostOrder(bundle.format)))
   const snapshot = Schema.decodeSync(Schema.toType(BuildSnapshot))({
     schema: 1,
     definition: definitionDigest(definition),

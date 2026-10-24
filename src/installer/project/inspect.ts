@@ -11,7 +11,7 @@ import { ConfigRead } from "../hosts/codex-config.ts"
 import { readCodexConfig, runHost } from "../hosts/commands.ts"
 import { InspectionUnavailable, inspectIO, sameJson } from "../hosts/state.ts"
 import { readPayload } from "../payload/read.ts"
-import { qualifiedFormat, sameOwnedTarget } from "../target/profiles.ts"
+import { qualifiedBundle, sameOwnedTarget } from "../target/profiles.ts"
 import { editProjectDocument, inspectProjectDocument, type DocumentResult } from "./config/document.ts"
 import { readProjectFile } from "./files/file.ts"
 import { isCodexProject, projectActivation, projectBlockKey, projectCatalog, projectRegistration, projectRevision, validateProjectPlan, type ProjectTarget } from "./layout.ts"
@@ -131,7 +131,7 @@ export const verifyProjectRevision = Effect.fn("Installer.verifyProjectRevision"
     catch: (cause) => new InspectionUnavailable({ cause })
   })
   if (plan.id !== id || planId(plan) !== id || !sameTarget(plan.target, marker.target) || !sameOwnedTarget(target, plan.target) ||
-    marker.identity.plan !== id || marker.identity.bundle !== bundle.digest || !sameBundle(marker.bundle, bundle) || !qualifiedFormat(target, bundle.format)) return null
+    marker.identity.plan !== id || marker.identity.bundle !== bundle.digest || !sameBundle(marker.bundle, bundle) || !qualifiedBundle(target, bundle)) return null
   const catalog = yield* readRecord(target.key, join(revision.market, ".agents/plugins/marketplace.json"), Schema.Json)
   if (!sameJson(catalog, projectCatalog(target, id))) return null
   const activation = yield* Effect.try({

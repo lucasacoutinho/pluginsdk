@@ -7,7 +7,8 @@ import {
   type PreviewClient, type PreviewResult, type ProjectDefinition
 } from "../../../contracts/Project.ts"
 import { commitment } from "../../internal/identity.ts"
-import { compileProject, pluginDefinition, recommendedFormat } from "../build.ts"
+import { compileProject } from "../build.ts"
+import { packageClient } from "../../installer/target/packages.ts"
 import { inspectClient, localHome, resolveClient } from "./clients.ts"
 import { previewProvider } from "./imports.ts"
 import { applyInherited, applyInstallation, prepareInstallation, type PreparedInstallation } from "./installations.ts"
@@ -23,7 +24,7 @@ export const previewProject = Effect.fn("Project.preview")(function*(
   const root = yield* fs.realPath(source).pipe(Effect.mapError(() => new ProjectError({ detail: "Cannot resolve the plugin source directory" })))
   const plugin = PluginId.make(`psdk-dev-${definition.id.slice(0, 30)}-${commitment("preview", { root, plugin: definition.id }).slice(0, 16)}`)
   const development: ProjectDefinition = { ...definition, id: plugin }
-  const detected = yield* Effect.forEach(clients, (client) => inspectClient(client, remove ? null : recommendedFormat(pluginDefinition(development), client)))
+  const detected = yield* Effect.forEach(clients, (client) => inspectClient(client, remove ? null : packageClient(client)))
   const available = detected.flatMap(({ client, profile }) => profile === null ? [] : [{ client, profile }])
   const [first, ...rest] = available
   if (first === undefined) return yield* new ProjectError({ detail: "No local clients found; install a supported client and see docs/compatibility.md" })
@@ -35,7 +36,7 @@ export const previewProject = Effect.fn("Project.preview")(function*(
   })).pipe(Match.discriminatorsExhaustive("type")({
     direct: (route) => Effect.succeed({ client, route }),
     inherited: (route) => Effect.succeed({ client, route }),
-    blocked: () => Effect.fail(new ProjectError({ detail: "Cursor's Claude import is qualified only for skills on the pinned profiles; use an explicit --target for other plugin features" }))
+    blocked: () => Effect.fail(new ProjectError({ detail: "Cursor's shared Claude preview supports skills only; select --target for a direct preview" }))
   })))
 
   const plans = yield* Effect.forEach(routes, ({ client, route }) => Effect.gen(function*() {
@@ -44,7 +45,7 @@ export const previewProject = Effect.fn("Project.preview")(function*(
       direct: ({ desired }) => Match.value(desired).pipe(
         Match.when("absent", () => Effect.succeed<Intent>({ type: "absent", plugin })),
         Match.when("present", () => Effect.gen(function*() {
-          const bundle = bundles.find((bundle) => recommendedFormat(pluginDefinition(development), client.client) === bundle.format)
+          const bundle = bundles.find((bundle) => packageClient(client.client) === bundle.format)
           if (bundle === undefined) return yield* new ProjectError({ detail: `Preview package is missing for ${client.client}` })
           return { type: "present", bundle } satisfies Intent
         })),

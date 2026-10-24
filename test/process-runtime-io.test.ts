@@ -76,7 +76,7 @@ function renderPackage(options: PlanOptions): PackageFiles {
     cwd
   })
   const input = decodeStrict(PortableMcp.Input, {
-    format: "claude_code_v1",
+    format: "claude_code",
     remote: {},
     local: { fixture: plan }
   })

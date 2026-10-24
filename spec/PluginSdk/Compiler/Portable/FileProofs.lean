@@ -1,6 +1,7 @@
 import PluginSdk.Compiler.Portable.Facts
 import PluginSdk.Compiler.Mcp.Portable.Proofs
 import PluginSdk.Compiler.Hooks.Portable.Proofs
+import PluginSdk.Compiler.Hooks.Enumeration
 
 namespace PluginSdk.Compiler.Portable.Proofs
 
@@ -63,7 +64,7 @@ private theorem mcp_entries_length (input : Mcp.Input) :
 private theorem hooks_entries_length (input : Hooks.Input) :
     (Hooks.Portable.entries input).length = input.hooks.length := by
   change (Hooks.indexedHooks input).length = input.hooks.length
-  exact Hooks.Proofs.indexedHooks_length input
+  exact Hooks.indexedHooks_length input
 
 private theorem mcp_payload_length (input : Mcp.Input) :
     ((Mcp.Portable.files input).filter payload).length = 2 * input.locals.length := by

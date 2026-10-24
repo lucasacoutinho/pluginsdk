@@ -37,7 +37,7 @@ const readyPlan = (planning: PlanningValue | null): ReadyPlan => {
 }
 
 const bundleVersion = (bundle: Bundle): string => {
-  const file = bundleFile(bundle, "plugin.json")
+  const file = bundleFile(bundle, ".codex-plugin/plugin.json")
   const value: unknown = JSON.parse(Buffer.from(file.content).toString("utf8"))
   return Schema.decodeUnknownSync(Manifest)(value).version
 }
@@ -77,11 +77,9 @@ const installedSkill = async (fixture: ProjectFixture, bundle: Bundle, project: 
   if (!(await readFile(row.path)).equals(Buffer.from(bundleFile(bundle, `skills/${skillName}/SKILL.md`).content))) {
     throw new Error("Native skill bytes differ from the compiler bundle")
   }
-  if (bundle.format === "agent_plugins_v2") {
-    const reference = join(dirname(row.path), "reference.md")
-    if (!(await readFile(reference)).equals(Buffer.from(bundleFile(bundle, `skills/${skillName}/reference.md`).content))) {
-      throw new Error("Native reference bytes differ from the compiler bundle")
-    }
+  const reference = join(dirname(row.path), "reference.md")
+  if (!(await readFile(reference)).equals(Buffer.from(bundleFile(bundle, `skills/${skillName}/reference.md`).content))) {
+    throw new Error("Native reference bytes differ from the compiler bundle")
   }
   await assertBundleAt(bundle, cache)
   return { row, marketplace, cache }
@@ -102,11 +100,17 @@ const assertSame = async (path: string, before: { readonly bytes: Buffer; readon
 
 const projectPluginCache = (fixture: ProjectFixture): string => join(fixture.home, "plugins", "cache")
 
-it("Codex project v2 install, replacement, stale review, removal, and replay stay scoped to A", async () => {
+it("Codex project install, replacement, stale review, removal, and replay stay scoped to A", async () => {
   await withProjectFixture(async (fixture) => {
     const userBefore = await capture(fixture.userConfig)
     const initial = await fixture.bundle("first revision")
     const desired = await fixture.bundle("second revision")
+    expect(initial.bundle.format).toBe("codex")
+    expect(bundleFile(initial.bundle, `skills/${skillName}/reference.md`).content).toEqual(Buffer.from("reference bytes for first revision\n"))
+    expect(bundleFile(initial.bundle, "tools/run.sh")).toMatchObject({
+      content: Buffer.from("#!/bin/sh\nprintf '%s\\n' 'first revision'\n"),
+      executable: true
+    })
     expect(bundleVersion(initial.bundle)).toBe(bundleVersion(desired.bundle))
     expect(initial.bundle.digest).not.toBe(desired.bundle.digest)
 
@@ -183,11 +187,10 @@ it("Codex project v2 install, replacement, stale review, removal, and replay sta
   })
 })
 
-it("Codex project v1 completes a basic install and removal lifecycle", async () => {
+it("Codex project installation creates an absent project config and preserves user state", async () => {
   await withProjectFixture(async (fixture) => {
     const userBefore = await capture(fixture.userConfig)
-    const built = await fixture.bundle("legacy basic package", "agent_plugins_v1")
-    expect(built.bundle.files.some((file) => String(file.path) === "tools/run.sh")).toBe(false)
+    const built = await fixture.bundle("new project configuration")
     await rm(join(fixture.projectA, ".codex"), { recursive: true })
     const planned = await fixture.plan(built.bundlePath)
     expect(planned.result.code).toBe(0)
@@ -203,7 +206,7 @@ it("Codex project v1 completes a basic install and removal lifecycle", async () 
     expect((await fixture.apply(removal.path)).outcome).toMatchObject({ type: "completed", result: { type: "removed" } })
     await assertNoFixtureSkill(fixture, fixture.projectA, String(fixture.pluginId))
     expect(existsSync(join(projectPluginCache(fixture), active.marketplace))).toBe(false)
-    await assertSame(fixture.userConfig, userBefore, "Ordinary Codex user config after v1 lifecycle")
+    await assertSame(fixture.userConfig, userBefore, "Ordinary Codex user config after project lifecycle")
   })
 })
 

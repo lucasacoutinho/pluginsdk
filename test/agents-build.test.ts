@@ -12,11 +12,6 @@ import { validateBundle } from "../src/compiler/package/native.ts"
 
 const CompilerTest = Layer.provideMerge(CompilerLive, NodeServices.layer)
 
-const legacyFormats: ReadonlyArray<Format> = [
-  "agent_plugins_v1", "claude_code_v1", "agent_plugins_v2", "claude_code_v2",
-  "agent_plugins_v3", "claude_code_v3", "claude_code_v4", "codex_plugin_v1"
-]
-
 const claudePrompt = `Review “café” safely.\nLiteral \${CLAUDE_PLUGIN_ROOT}.\nUse "double quotes" and 'single quotes'.`
 const codexPrompt = `Compare 雪 and café.\nLiteral \${PLUGIN_ROOT}.\nKeep "quoted" content intact.`
 
@@ -37,8 +32,8 @@ const agentDefinitions = {
 const auditorDefinition = Schema.decodeSync(AgentDefinition)(agentDefinitions.auditor)
 
 const agentFormats: ReadonlyArray<readonly [Format, "claude_code" | "codex"]> = [
-  ["claude_code_v5", "claude_code"],
-  ["codex_plugin_v2", "codex"]
+  ["claude_code", "claude_code"],
+  ["codex", "codex"]
 ]
 const agentNames: ReadonlyArray<keyof typeof agentDefinitions> = ["auditor", "zulu"]
 
@@ -194,17 +189,13 @@ it.effect("builds canonical Claude and Codex agent documents and preserves promp
   }).pipe(Effect.provide(CompilerTest))
 )
 
-it.effect("rejects agent declarations on all older formats and preserves empty-agent commitments", () =>
+it.effect("preserves empty-agent package commitments for both clients", () =>
   Effect.gen(function*() {
     const fs = yield* FileSystem.FileSystem
-    const root = yield* fs.makeTempDirectoryScoped({ prefix: "pluginsdk-agents-legacy-" })
-    yield* writeSourceFile(fs, root, agentDefinitions.auditor.prompt, claudePrompt)
+    const root = yield* fs.makeTempDirectoryScoped({ prefix: "pluginsdk-agents-empty-" })
     const compiler = yield* Compiler
 
-    for (const format of legacyFormats) {
-      expect(yield* buildIssues(makeRequest(root, format, { auditor: agentDefinitions.auditor }))).toEqual([
-        { type: "unsupported_feature", feature: "agents", format }
-      ])
+    for (const [format] of agentFormats) {
       const absent = yield* compiler.build(makeRequest(root, format))
       const empty = yield* compiler.build(makeRequest(root, format, {}))
       expect(empty.files).toEqual(absent.files)
@@ -219,7 +210,7 @@ it.effect("rejects unsupported controls at the programmatic build boundary", () 
     const root = yield* fs.makeTempDirectoryScoped({ prefix: "pluginsdk-agents-controls-" })
     yield* writeSourceFile(fs, root, agentDefinitions.auditor.prompt, claudePrompt)
     const compiler = yield* Compiler
-    const request = makeRequest(root, "codex_plugin_v2", { auditor: agentDefinitions.auditor })
+    const request = makeRequest(root, "codex", { auditor: agentDefinitions.auditor })
     yield* compiler.build(request)
     const unsupported = {
       ...request,
@@ -244,7 +235,7 @@ it.effect("captures agent prompts inside the root and rejects invalid UTF-8 or b
     yield* fs.writeFile(join(root, "prompts", "invalid.md"), new Uint8Array([0xff, 0xfe]))
     yield* writeSourceFile(fs, root, "prompts/blank.md", " \n\t ")
 
-    const promptRequest = (prompt: string) => makeRequest(root, "claude_code_v5", {
+    const promptRequest = (prompt: string) => makeRequest(root, "claude_code", {
       auditor: { ...agentDefinitions.auditor, prompt }
     })
     expect(yield* buildIssues(promptRequest("prompts/escape.md"))).toEqual([
@@ -266,8 +257,8 @@ it.effect("rejects resealed noncanonical or unsafe imported native agents", () =
     yield* writeSourceFile(fs, root, "prompts/zulu.md", codexPrompt)
     yield* writeSourceFile(fs, root, "prompts/auditor.md", claudePrompt)
     const compiler = yield* Compiler
-    const claude = yield* compiler.build(makeRequest(root, "claude_code_v5", agentDefinitions))
-    const codex = yield* compiler.build(makeRequest(root, "codex_plugin_v2", agentDefinitions))
+    const claude = yield* compiler.build(makeRequest(root, "claude_code", agentDefinitions))
+    const codex = yield* compiler.build(makeRequest(root, "codex", agentDefinitions))
 
     expectInvalidBundle(replaceCodexDocument(codex, (document) => ({ ...document, name: "other-plugin:auditor" })))
     expectInvalidBundle(replaceCodexDocument(codex, (document) => ({ ...document, features: { shell_tool: true } })))

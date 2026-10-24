@@ -8,20 +8,18 @@
         "query": {
           "host": "cursor_agent",
           "platform": "win32",
-          "version": "3.26.16+8fcb8ace5c73fa31f2e2707fd6783160e4ed3e40",
           "scope": "user",
-          "format": "claude_code_portable_v1"
+          "format": "claude_code",
+          "requirements": ["stdio"]
         },
         "profiles": [
           {
             "host": "cursor",
             "platform": "win32",
-            "version": "3.26.16+8fcb8ace5c73fa31f2e2707fd6783160e4ed3e40",
             "scope": "user",
             "revision": "cursor-local-directory:1",
-            "formats": [
-              "claude_code_portable_v1"
-            ]
+            "format": "claude_code",
+            "capabilities": ["stdio"]
           }
         ]
       }
@@ -34,31 +32,18 @@
       "type": "select_native_profile",
       "input": {
         "query": {
-          "host": {
-            "name": "cursor"
-          },
+          "host": {"name": "cursor"},
           "platform": "win32",
-          "version": "3.26.16+8fcb8ace5c73fa31f2e2707fd6783160e4ed3e40",
           "scope": "user",
-          "format": "claude_code_portable_v1"
+          "format": "claude_code",
+          "requirements": ["stdio"]
         },
-        "profiles": [
-          {
-            "host": "cursor",
-            "platform": "win32",
-            "version": "3.26.16+8fcb8ace5c73fa31f2e2707fd6783160e4ed3e40",
-            "scope": "user",
-            "revision": "cursor-local-directory:1",
-            "formats": [
-              "claude_code_portable_v1"
-            ]
-          }
-        ]
+        "profiles": []
       }
     }
   },
   {
-    "name": "empty_profile_formats",
+    "name": "unknown_capability",
     "request": {
       "schema": 1,
       "type": "select_native_profile",
@@ -66,25 +51,16 @@
         "query": {
           "host": "cursor",
           "platform": "win32",
-          "version": "3.26.16+8fcb8ace5c73fa31f2e2707fd6783160e4ed3e40",
           "scope": "user",
-          "format": "claude_code_portable_v1"
+          "format": "claude_code",
+          "requirements": ["skills"]
         },
-        "profiles": [
-          {
-            "host": "cursor",
-            "platform": "win32",
-            "version": "3.26.16+8fcb8ace5c73fa31f2e2707fd6783160e4ed3e40",
-            "scope": "user",
-            "revision": "cursor-local-directory:1",
-            "formats": []
-          }
-        ]
+        "profiles": []
       }
     }
   },
   {
-    "name": "force_field",
+    "name": "observed_version_is_not_profile_identity",
     "request": {
       "schema": 1,
       "type": "select_native_profile",
@@ -92,28 +68,17 @@
         "query": {
           "host": "cursor",
           "platform": "win32",
-          "version": "3.26.16+8fcb8ace5c73fa31f2e2707fd6783160e4ed3e40",
           "scope": "user",
-          "format": "claude_code_portable_v1"
+          "version": "3.26.16",
+          "format": "claude_code",
+          "requirements": ["stdio"]
         },
-        "profiles": [
-          {
-            "host": "cursor",
-            "platform": "win32",
-            "version": "3.26.16+8fcb8ace5c73fa31f2e2707fd6783160e4ed3e40",
-            "scope": "user",
-            "revision": "cursor-local-directory:1",
-            "formats": [
-              "claude_code_portable_v1"
-            ]
-          }
-        ],
-        "force": true
+        "profiles": []
       }
     }
   },
   {
-    "name": "query_extra_field",
+    "name": "legacy_multi_format_profile",
     "request": {
       "schema": 1,
       "type": "select_native_profile",
@@ -121,21 +86,18 @@
         "query": {
           "host": "cursor",
           "platform": "win32",
-          "version": "3.26.16+8fcb8ace5c73fa31f2e2707fd6783160e4ed3e40",
           "scope": "user",
-          "format": "claude_code_portable_v1",
-          "binary": "Cursor.exe"
+          "format": "claude_code",
+          "requirements": ["stdio"]
         },
         "profiles": [
           {
             "host": "cursor",
             "platform": "win32",
-            "version": "3.26.16+8fcb8ace5c73fa31f2e2707fd6783160e4ed3e40",
             "scope": "user",
             "revision": "cursor-local-directory:1",
-            "formats": [
-              "claude_code_portable_v1"
-            ]
+            "formats": ["claude_code"],
+            "capabilities": ["stdio"]
           }
         ]
       }
@@ -150,22 +112,11 @@
         "query": {
           "host": "cursor",
           "platform": "win32",
-          "version": "3.26.16+8fcb8ace5c73fa31f2e2707fd6783160e4ed3e40",
           "scope": "user",
-          "format": "claude_code_portable_v1"
+          "format": "claude_code",
+          "requirements": ["stdio"]
         },
-        "profiles": [
-          {
-            "host": "cursor",
-            "platform": "win32",
-            "version": "3.26.16+8fcb8ace5c73fa31f2e2707fd6783160e4ed3e40",
-            "scope": "user",
-            "revision": "cursor-local-directory:1",
-            "formats": [
-              "claude_code_portable_v1"
-            ]
-          }
-        ]
+        "profiles": []
       }
     }
   }

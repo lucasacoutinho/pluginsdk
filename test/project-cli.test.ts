@@ -219,7 +219,7 @@ const expectPublishedPackageBytes = (
   snapshot: BuildSnapshot
 ): void => {
   for (const bundle of snapshot.bundles) {
-    const client = bundle.format.startsWith("claude_code") ? "claude_code" : "codex"
+    const client = bundle.format
     const prefix = `plugins/${release.plugin}/${release.digest}/${client}`
     for (const file of bundle.files) {
       expect(remoteFile(repository, home, `${prefix}/${file.path}`)).toEqual(Buffer.from(file.content))
@@ -257,7 +257,7 @@ it("builds declared executable sources for Claude, Codex and Cursor targets", ()
   const built = runCli(project, home, ["build"])
   expect(built.status, built.stderr).toBe(0)
   const snapshot = readBuild(project)
-  expect(new Set(snapshot.bundles.map(({ format }) => format))).toEqual(new Set(["claude_code_v2", "agent_plugins_v2"]))
+  expect(new Set(snapshot.bundles.map(({ format }) => format))).toEqual(new Set(["claude_code", "codex"]))
   for (const bundle of snapshot.bundles) {
     expect(bundle.files.find(({ path }) => path === "tools/report.sh")?.executable).toBe(true)
     expect(bundle.files.find(({ path }) => path === "tools/README.md")?.executable).toBe(false)
@@ -265,7 +265,7 @@ it("builds declared executable sources for Claude, Codex and Cursor targets", ()
   }
   const cursor = runCli(project, home, ["build", "--target", "cursor"])
   expect(cursor.status, cursor.stderr).toBe(0)
-  expect(readBuild(project).bundles).toEqual(snapshot.bundles.filter(({ format }) => format === "claude_code_v2"))
+  expect(readBuild(project).bundles).toEqual(snapshot.bundles.filter(({ format }) => format === "claude_code"))
   writeFile(join(project, "definition.json"), JSON.stringify({ ...definition, executables: ["tools/missing.sh"] }))
   const rejected = runCli(project, home, ["build"])
   expect(rejected.status).toBe(1)
@@ -288,7 +288,7 @@ it("builds and publishes immutable releases while preserving marketplace state",
   expect(firstBuild.status, firstBuild.stderr).toBe(0)
   const firstSnapshotBytes = readFileSync(buildPath)
   const firstSnapshot = readBuild(project)
-  expect(firstSnapshot.bundles.map((bundle) => bundle.format)).toEqual(["claude_code_v2", "agent_plugins_v2"])
+  expect(firstSnapshot.bundles.map((bundle) => bundle.format)).toEqual(["claude_code", "codex"])
   expect(firstSnapshot.definition).toMatch(/^[a-f0-9]{64}$/)
   const firstBuildDirectory = join(project, ".pluginsdk", "build")
   const claudeBundle = Schema.decodeUnknownSync(Bundle)(parseJson(readFileSync(join(firstBuildDirectory, "claude_code.bundle.json"), "utf8")))
@@ -372,7 +372,7 @@ it("builds and publishes immutable releases while preserving marketplace state",
   expect(codexBuild.status, codexBuild.stderr).toBe(0)
   const codexSnapshot = readBuild(project)
   expect(codexSnapshot.bundles).toHaveLength(1)
-  expect(codexSnapshot.bundles[0]?.format).toBe("agent_plugins_v2")
+  expect(codexSnapshot.bundles[0]?.format).toBe("codex")
   const codexPublish = runCli(project, home, ["publish"])
   expect(codexPublish.status, codexPublish.stderr).toBe(0)
   expect(codexPublish.stdout).toContain("published: release-notes@1.2.0")

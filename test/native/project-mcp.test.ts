@@ -116,7 +116,7 @@ const buildRemoteMcpBundle = async (
 
   const request = Schema.decodeSync(BuildRequest)({
 		root: sourceRoot,
-		format: "agent_plugins_v2",
+		format: "codex",
 		plugin: {
 			id: fixture.pluginId,
 			version: "1.0.0",
@@ -130,7 +130,7 @@ const buildRemoteMcpBundle = async (
 	))
 	const bundlePath = join(fixture.source, "remote-http-plugin.bundle.json")
 	await writeFile(bundlePath, JSON.stringify(Schema.encodeSync(BundleSchema)(bundle)))
-	expect(bundle.format).toBe("agent_plugins_v2")
+	expect(bundle.format).toBe("codex")
 	expect(bundle.plugin).toBe(fixture.pluginId)
 	return { bundlePath, digest: bundle.digest }
 }

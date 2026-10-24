@@ -57,20 +57,8 @@ def RequiredIssue (input : Input) : Issue → Prop
         ∃ digest, FormatDigest input.packages format digest ∧ artifact.digest ≠ digest
 
 def FormatKey : PackageFormat → String
-  | .agentPluginsV1 => "agent_plugins_v1"
-  | .claudeCodeV1 => "claude_code_v1"
-  | .agentPluginsV2 => "agent_plugins_v2"
-  | .claudeCodeV2 => "claude_code_v2"
-  | .agentPluginsV3 => "agent_plugins_v3"
-  | .claudeCodeV3 => "claude_code_v3"
-  | .claudeCodeV4 => "claude_code_v4"
-  | .codexPluginV1 => "codex_plugin_v1"
-  | .claudeCodeV5 => "claude_code_v5"
-  | .codexPluginV2 => "codex_plugin_v2"
-  | .claudeCodePortableV1 => "claude_code_portable_v1"
-  | .codexPluginPortableV1 => "codex_plugin_portable_v1"
-  | .claudeCodePortableV2 => "claude_code_portable_v2"
-  | .codexPluginPortableV2 => "codex_plugin_portable_v2"
+  | .claudeCode => "claude_code"
+  | .codex => "codex"
 
 def IssueKey : Issue → List String
   | .missingPackage format => ["missing_package", FormatKey format]

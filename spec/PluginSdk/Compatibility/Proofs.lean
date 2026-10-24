@@ -114,11 +114,6 @@ theorem N6_ownership_isolation :
   have exact := (N5_ownership_exact input).mp compatible
   exact exact.2.2
 
-theorem N7_qualified_version_change_retains_ownership :
-    PluginSdk.Compatibility.N7_qualified_version_change_retains_ownership model := by
-  intro input currentUnique retainedUnique sameAdapter _versionChange
-  exact (N5_ownership_exact input).mpr ⟨currentUnique, retainedUnique, sameAdapter⟩
-
 theorem N8_ownership_enumeration_invariant :
     PluginSdk.Compatibility.N8_ownership_enumeration_invariant model := by
   unfold PluginSdk.Compatibility.N8_ownership_enumeration_invariant
@@ -136,12 +131,62 @@ theorem N8_ownership_enumeration_invariant :
         SameAdapter right.current right.retained) := by
     rw [currentUnique, retainedUnique, currentEqual, retainedEqual]
   have outputsTrueEqual :
-      model.ownershipCompatible left = true ↔
-        model.ownershipCompatible right = true := by
+      model.ownershipCompatible left = true ↔ model.ownershipCompatible right = true := by
     rw [N5_ownership_exact left, N5_ownership_exact right]
     exact conditionsEqual
   cases leftResult : model.ownershipCompatible left <;>
     cases rightResult : model.ownershipCompatible right <;>
     simp_all
+
+theorem N9_selected_profile_preserves_requirements :
+    PluginSdk.Compatibility.N9_selected_profile_preserves_requirements model := by
+  unfold PluginSdk.Compatibility.N9_selected_profile_preserves_requirements
+  intro input profile selected capability requirementMember
+  have candidates := N1_selected_is_sole_profile input profile selected
+  have selectedMember : profile ∈ EligibleProfiles input := by
+    rw [candidates]
+    simp
+  unfold EligibleProfiles at selectedMember
+  simp only [List.mem_filter, decide_eq_true_eq] at selectedMember
+  rcases selectedMember with ⟨_, eligible⟩
+  rcases eligible with ⟨_, _, _, _, requirementsPresent⟩
+  have supported := (List.all_eq_true.mp requirementsPresent) capability requirementMember
+  exact List.contains_iff_mem.mp supported
+
+private theorem eligible_weaker_of_stronger
+    (query : ProfileQuery)
+    (weaker stronger : List Capability)
+    (included : RequirementsIncluded weaker stronger)
+    (profile : NativeProfile)
+    (eligible : Eligible { query with requirements := stronger } profile) :
+    Eligible { query with requirements := weaker } profile := by
+  unfold Eligible at *
+  rcases eligible with ⟨host, platform, scope, format, requirementsPresent⟩
+  refine ⟨host, platform, scope, format, ?_⟩
+  apply List.all_eq_true.mpr
+  intro capability member
+  exact (List.all_eq_true.mp requirementsPresent) capability (included capability member)
+
+private theorem eligibleProfiles_weaker_of_stronger
+    (input : SelectionInput)
+    (weaker stronger : List Capability)
+    (included : RequirementsIncluded weaker stronger)
+    (profile : NativeProfile)
+    (member : profile ∈ EligibleProfiles (requirementsInput input stronger)) :
+    profile ∈ EligibleProfiles (requirementsInput input weaker) := by
+  unfold EligibleProfiles at member ⊢
+  simp only [List.mem_filter, decide_eq_true_eq] at member ⊢
+  rcases member with ⟨inProfiles, eligible⟩
+  exact ⟨inProfiles, eligible_weaker_of_stronger input.query weaker stronger included profile eligible⟩
+
+theorem N10_selected_stronger_was_weaker_candidate :
+    PluginSdk.Compatibility.N10_selected_stronger_was_weaker_candidate model := by
+  unfold PluginSdk.Compatibility.N10_selected_stronger_was_weaker_candidate
+  intro input weaker stronger profile included selected
+  have sole := N1_selected_is_sole_profile (requirementsInput input stronger) profile selected
+  have strongMember : profile ∈ EligibleProfiles (requirementsInput input stronger) := by
+    rw [sole]
+    simp
+  exact eligibleProfiles_weaker_of_stronger input weaker stronger included profile strongMember
 
 end PluginSdk.Compatibility.Proofs

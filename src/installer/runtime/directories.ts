@@ -2,7 +2,7 @@ import { join } from "node:path"
 import { Effect, Match } from "effect"
 import { DestinationUnsupported, StateUnavailable, type ReadyPlan } from "../../../contracts/Installer.ts"
 import { ProcessText } from "../../../contracts/Plugin.ts"
-import { nativeLocations, validateBundle } from "../../compiler/package/native.ts"
+import { validateBundle } from "../../compiler/package/native.ts"
 import { admitProcessDirectory } from "./directory-policy.ts"
 import { targetPaths } from "../target/resolve.ts"
 import { isCodexProject, projectActivation } from "../project/layout.ts"
@@ -17,7 +17,7 @@ export const checkProcessDirectories = Effect.fn("Installer.checkProcessDirector
   })
   if (metadata.processes.length === 0) return
   const paths = targetPaths(plan.target)
-  const root = ProcessText.make(isLocalTarget(plan.target) ? join(plan.target.destination.home, localPaths(plan.target).live) : Match.value(nativeLocations(bundle.format).host).pipe(
+  const root = ProcessText.make(isLocalTarget(plan.target) ? join(plan.target.destination.home, localPaths(plan.target).live) : Match.value(bundle.format).pipe(
     Match.when("claude_code", () => join(paths.market, "payloads", plan.id)),
     Match.when("codex", () => isCodexProject(plan.target)
       ? projectActivation(plan.target, plan.id, bundle).cache.payload

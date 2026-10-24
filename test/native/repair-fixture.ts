@@ -6,7 +6,7 @@ import { setTimeout as sleep } from "node:timers/promises"
 import { fileURLToPath } from "node:url"
 import { Effect, Match, Schema } from "effect"
 import { expect } from "vitest"
-import { BuildRequest, Bundle, Compiler } from "../../contracts/Compiler.ts"
+import { BuildRequest, Bundle, Compiler, type Format } from "../../contracts/Compiler.ts"
 import { ApplyOutcome, Planning, type ApplyOutcome as ApplyOutcomeValue, type Host as HostValue, type Planning as PlanningValue, type ReadyPlan, type Target } from "../../contracts/Installer.ts"
 import { StoredState, type Execution } from "../../src/installer/lifecycle/records.ts"
 import { targetPaths } from "../../src/installer/target/resolve.ts"
@@ -103,7 +103,8 @@ const processGroup = (execution: Execution): number => Match.value(execution).pi
   Match.discriminatorsExhaustive("type")({
     prepared: () => { throw new Error("Expected the native worker to retain its process group") },
     running: (value) => value.group,
-    windows_running: () => { throw new Error("Linux repair acceptance cannot inspect a Windows job witness") }
+    windows_running: () => { throw new Error("Linux repair acceptance cannot inspect a Windows job witness") },
+    windows_writers: () => { throw new Error("Linux repair acceptance cannot inspect Windows writer witnesses") }
   })
 )
 
@@ -118,9 +119,9 @@ export const executionGroupAt = async (target: Target): Promise<number> => {
   }))
 }
 
-const formatFor = (host: QualifiedHost): "claude_code_v1" | "agent_plugins_v1" => Match.value(host).pipe(
-  Match.when("claude_code", (): "claude_code_v1" => "claude_code_v1"),
-  Match.when("codex", (): "agent_plugins_v1" => "agent_plugins_v1"),
+const formatFor = (host: QualifiedHost): Format => Match.value(host).pipe(
+  Match.when("claude_code", (): Format => "claude_code"),
+  Match.when("codex", (): Format => "codex"),
   Match.exhaustive
 )
 

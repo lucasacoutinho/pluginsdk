@@ -39,12 +39,12 @@ export const assertSameInventory = (expected: SourceInventory, actual: SourceInv
 }
 
 export const formatFor = (host: PilotHost): Format => Match.value(host).pipe(
-  Match.when("claude_code", (): Format => "claude_code_v2"),
-  Match.when("codex", (): Format => "agent_plugins_v2"),
+  Match.when("claude_code", (): Format => "claude_code"),
+  Match.when("codex", (): Format => "codex"),
   Match.exhaustive
 )
 
-export const manifestPathFor = (host: PilotHost): string => Match.value(host).pipe(Match.when("claude_code", () => ".claude-plugin/plugin.json"), Match.when("codex", () => "plugin.json"), Match.exhaustive)
+export const manifestPathFor = (host: PilotHost): string => Match.value(host).pipe(Match.when("claude_code", () => ".claude-plugin/plugin.json"), Match.when("codex", () => ".codex-plugin/plugin.json"), Match.exhaustive)
 
 export const inventorySource = async (root: string): Promise<SourceInventory> => {
   const files: SourceFile[] = []
@@ -177,6 +177,7 @@ export const verifyBundle = (bundle: Bundle, source: SourceSnapshot, host: Pilot
   assert.ok(manifest, `Compiled bundle is missing ${manifestPath}`)
   const manifestValue: unknown = JSON.parse(Buffer.from(manifest.content).toString("utf8"))
   const outputManifest = Schema.decodeUnknownSync(Schema.JsonObject)(manifestValue)
+  assert.deepEqual(Object.keys(outputManifest).sort(ordered), ["description", "name", "version"])
   assert.equal(outputManifest.name, source.id)
   assert.equal(outputManifest.version, version)
   assert.equal(outputManifest.description, source.description)

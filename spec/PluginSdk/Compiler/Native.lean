@@ -6,16 +6,11 @@ open Lean
 
 theorem manifest_native (input : RenderInput) : NativeManifest input (manifest input) := by
   have keys : ((manifestRows input).map Prod.fst).Nodup := by
-    cases format : input.format <;> simp [manifestRows, schemaRows, format]
-  refine ⟨?_, ?_, ?_, ?_, ?_, ?_⟩
+    simp [manifestRows]
+  refine ⟨?_, ?_, ?_, ?_, ?_⟩
   · exact manifestFile_value input.format
   · have shape := object_keys (manifestRows input)
-    cases format : input.format <;> simpa [manifestRows, schemaRows, format] using shape
-  · cases format : input.format
-    · apply object_field keys
-      simp [manifestRows, schemaRows, format]
-    · trivial
-    · trivial
+    simpa [manifestRows] using shape
   all_goals apply object_field keys; simp [manifestRows]
 
 theorem headerRows_keys (source : RemoteMcp) :
@@ -33,13 +28,10 @@ theorem server_native (format : Format) (source : RemoteMcp) :
     cases format <;> simpa [serverRows, serverKeys, headerKey] using shape
   · intro notCodex
     cases format with
-    | agentPluginsV1 =>
+    | claudeCode =>
         apply object_field (serverRows_keys ..)
         simp [serverRows]
-    | claudeCodeV1 =>
-        apply object_field (serverRows_keys ..)
-        simp [serverRows]
-    | codexPluginV1 => exact absurd rfl notCodex
+    | codex => exact absurd rfl notCodex
   · apply object_field (serverRows_keys ..)
     cases format <;> simp [serverRows, headerKey]
   · apply object_field (serverRows_keys ..)
@@ -48,7 +40,7 @@ theorem server_native (format : Format) (source : RemoteMcp) :
     exact object_keys _
 
 theorem mcpRows_keys (input : RenderInput) : ((mcpRows input).map Prod.fst).Nodup := by
-  cases format : input.format <;> simp [mcpRows, schemaRows, format]
+  simp [mcpRows]
 
 theorem server_object_keys (input : RenderInput) :
     ((input.mcp.map fun (name, source) => (name, (object (serverRows input.format source)).value)).map Prod.fst) =
@@ -56,15 +48,10 @@ theorem server_object_keys (input : RenderInput) :
 
 theorem mcp_native (input : RenderInput) (normalized : Normalized input) (present : input.mcp ≠ []) :
     NativeMcp input (mcp input) := by
-  refine ⟨present, ?_, ?_, ?_, ?_⟩
+  refine ⟨present, ?_, ?_, ?_⟩
   · exact mcpFile_value input.format
   · have shape := object_keys (mcpRows input)
-    cases format : input.format <;> simpa [mcpRows, schemaRows, format] using shape
-  · cases format : input.format
-    · apply object_field (mcpRows_keys _)
-      simp [mcpRows, schemaRows, format]
-    · trivial
-    · trivial
+    simpa [mcpRows] using shape
   · refine ⟨(object (input.mcp.map fun (name, source) =>
       (name, (object (serverRows input.format source)).value))).value, ?_, ?_, ?_⟩
     · apply object_field (mcpRows_keys _); simp [mcpRows]

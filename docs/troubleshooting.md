@@ -8,15 +8,15 @@ If publication is `uncertain`, rerun `publish`. It inspects the destination befo
 
 ## `preview` cannot find a client
 
-Check that `claude` or `codex` is on `PATH`. Use `--target` to select one client. Preview reports a missing client when the other one is available; an unsupported installed version stops the operation before installation changes.
+Check that `claude` or `codex` is on `PATH`. On Windows x64, Cursor must be installed in its supported user-local location. Use `--target` to select one client. Preview reports missing clients; an installed client whose native contract cannot be inspected stops the operation before installation changes.
 
 ## The client or platform is unsupported
 
-Check your client version against [Supported clients](compatibility.md). Use the client's configuration directory for `--home`. For Codex, that is normally `$HOME/.codex`; for Claude Code, `$HOME/.claude`.
+Check the platform, scope and package features in [Supported clients](compatibility.md). Use the client's configuration directory for `--home`. For Codex, that is normally `$HOME/.codex`; for Claude Code, `$HOME/.claude`; for Cursor, `$HOME/.cursor`.
 
-Windows x64 supports user installations and preview for Claude Code 2.1.304 and Codex CLI 0.163.0, including bundled stdio MCP with Node 24.18+. Use `pluginsdk preview --target claude_code` or `pluginsdk preview --target codex` for a development copy.
+Windows x64 supports user installations and preview for Claude Code, Codex and Cursor, including bundled stdio MCP with Node 24.18+. Use `pluginsdk preview --target` with the client name for a development copy.
 
-Both clients support [project installations](usage.md#install-for-a-project) on Windows. Codex requires a trusted project with plugins enabled. Claude can list a project installation as disabled when you inspect it from a different project. Bundled stdio, hooks and agents require one of the client, version and scope combinations in [Supported clients](compatibility.md). macOS and clients outside that table are unavailable.
+Claude Code and Codex support [project installations](usage.md#install-for-a-project) on Windows. Codex requires a trusted project with plugins enabled. Claude can list a project installation as disabled when you inspect it from a different project. Cursor has no project adapter and rejects hooks and agents. macOS and clients outside the support table are unavailable.
 
 ## A Windows working directory is too long
 
@@ -38,7 +38,7 @@ PluginSDK does not overwrite an installation merely because its name matches you
 
 ## Applying returns `stale_plan`
 
-Create a fresh plan. The client version, destination or installation state has changed since the saved review. Inspect the new plan before applying it.
+Create a fresh plan. The destination, adapter contract or installation state has changed since the saved review. A client version change alone does not stale a plan. Inspect the new plan before applying it.
 
 ## Planning returns `pending`, or apply returns `uncertain`
 

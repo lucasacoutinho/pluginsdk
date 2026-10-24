@@ -9,10 +9,10 @@ import type { ResolvedClient } from "./clients.ts"
 
 const sameProfile = Schema.toEquivalence(ProfileIdentity)
 const providerProfile = Schema.decodeSync(ProfileIdentity)({
-  host: "claude_code", platform: "win32", version: "2.1.304", scope: "user", revision: "claude-local-marketplace:1"
+  host: "claude_code", platform: "win32", scope: "user", revision: "claude-local-marketplace:1"
 })
 const consumerProfile = Schema.decodeSync(ProfileIdentity)({
-  host: "cursor", platform: "win32", version: "3.26.16+8fcb8ace5c73fa31f2e2707fd6783160e4ed3e40", scope: "user", revision: "cursor-local-directory:1"
+  host: "cursor", platform: "win32", scope: "user", revision: "cursor-local-directory:1"
 })
 const ImportPreference = Schema.Struct({ value: Schema.Literals(["true", "false"]) })
 

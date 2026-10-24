@@ -17,6 +17,7 @@ import {
   ArtifactMcpRelease,
   ArtifactRejected,
   CatalogInputRejected,
+  CatalogUnavailable,
   ContractRejected,
   McpAdmissionRequest,
   McpArchive,
@@ -233,7 +234,7 @@ const makePluginBundle = async (root: string) => {
   await writeFile(join(assets, "reference.txt"), "catalog contract fixture\n")
   const request = Schema.decodeSync(BuildRequest)({
     root: Directory.make(source),
-    format: "claude_code_v4",
+    format: "claude_code",
     plugin: {
       id: "contract-plugin",
       version: "1.0.0",
@@ -536,7 +537,7 @@ it("validates JSON Schema structures and protocol-specific output roots", () => 
   expect(unpackMcpArchive(packed.bytes).contract).toEqual(currentOutput)
 })
 
-it("reads a raw schema 1 plugin store without rewriting it, then upgrades atomically on MCP admission", async () => {
+it("keeps current plugin and MCP entries immutable across catalog reopens", async () => {
   await withDirectory(async (root) => {
     const bundle = await makePluginBundle(root)
     const key = makeKey("shared-application", "release-1")
@@ -563,26 +564,21 @@ it("reads a raw schema 1 plugin store without rewriting it, then upgrades atomic
     const expectedContract = unpackMcpArchive(nextMcp.bytes).contract
     const directory = join(root, "catalog")
     const file = join(directory, "catalog.json")
-    const legacyBytes = new TextEncoder().encode(JSON.stringify({
-      schema: 1,
-      entries: [{
-        release: Schema.encodeSync(PluginRelease)(pluginRelease),
-        bundles: [Schema.encodeSync(Bundle)(bundle)]
-      }]
-    }))
-    await mkdir(directory)
-    await writeFile(file, legacyBytes)
+    await runCatalog(directory, (catalog) => catalog.initialize)
 
     await runCatalog(directory, (catalog) => Effect.gen(function*() {
       yield* catalog.initialize
-      const plugin = yield* catalog.acquire({ key, target: { type: "plugin", format: "claude_code_v4" } })
+      expect(yield* catalog.admit({ type: "plugin", release: pluginRelease, bundles: [bundle] })).toEqual({
+        type: "admitted"
+      })
+      const plugin = yield* catalog.acquire({ key, target: { type: "plugin", format: "claude_code" } })
       expect(plugin).toEqual({ type: "plugin", release: pluginRelease, bundle })
       expect(yield* catalog.acquire({ key, target: { type: "mcp" } })).toEqual({
         type: "blocked", reason: "kind_mismatch"
       })
       expect(yield* catalog.acquire({
         key: makeKey("shared-application", "release-1", "other-org"),
-        target: { type: "plugin", format: "claude_code_v4" }
+        target: { type: "plugin", format: "claude_code" }
       })).toEqual({ type: "blocked", reason: "release_missing" })
       expect(yield* catalog.admit({ type: "plugin", release: pluginRelease, bundles: [bundle] })).toEqual({
         type: "unchanged"
@@ -591,14 +587,13 @@ it("reads a raw schema 1 plugin store without rewriting it, then upgrades atomic
         type: "conflict"
       })
     }))
-    expect(await readFile(file)).toEqual(Buffer.from(legacyBytes))
 
     await runCatalog(directory, (catalog) => Effect.gen(function*() {
       yield* catalog.initialize
       expect(yield* catalog.admit({ type: "mcp", release: nextMcp.release, contract: inputContract })).toEqual({
         type: "admitted"
       })
-      expect(yield* catalog.acquire({ key: nextMcpKey, target: { type: "plugin", format: "claude_code_v4" } })).toEqual({
+      expect(yield* catalog.acquire({ key: nextMcpKey, target: { type: "plugin", format: "claude_code" } })).toEqual({
         type: "blocked", reason: "kind_mismatch"
       })
       const acquired = yield* catalog.acquire({ key: nextMcpKey, target: { type: "mcp" } })
@@ -614,6 +609,35 @@ it("reads a raw schema 1 plugin store without rewriting it, then upgrades atomic
       Schema.decodeSync(Schema.toType(McpAdmissionRequest))({ type: "mcp", release: nextMcp.release, contract: expectedContract })
     ]
     expect(actualRecord.entries).toEqual(expectedEntries)
+  })
+})
+
+it("refuses schema 1 catalog records without rewriting their bytes", async () => {
+  await withDirectory(async (root) => {
+    const bundle = await makePluginBundle(root)
+    const key = makeKey("legacy-application", "release-1")
+    const release = makePluginRelease(key, bundle)
+    const directory = join(root, "catalog")
+    const file = join(directory, "catalog.json")
+    const schemaOneBytes = new TextEncoder().encode(JSON.stringify({
+      schema: 1,
+      entries: [{
+        release: Schema.encodeSync(PluginRelease)(release),
+        bundles: [Schema.encodeSync(Bundle)(bundle)]
+      }]
+    }))
+    await mkdir(directory)
+    await writeFile(file, schemaOneBytes)
+
+    await runCatalog(directory, (catalog) => Effect.gen(function*() {
+      const initialization = yield* Effect.flip(catalog.initialize)
+      expect(initialization).toBeInstanceOf(CatalogUnavailable)
+      const admission = yield* Effect.flip(catalog.admit({ type: "plugin", release, bundles: [bundle] }))
+      expect(admission).toBeInstanceOf(CatalogUnavailable)
+      const acquisition = yield* Effect.flip(catalog.acquire({ key, target: { type: "plugin", format: "claude_code" } }))
+      expect(acquisition).toBeInstanceOf(CatalogUnavailable)
+    }))
+    expect(await readFile(file)).toEqual(Buffer.from(schemaOneBytes))
   })
 })
 
@@ -680,12 +704,12 @@ it("keeps mixed plugin and MCP admissions atomic across independent writers", as
 
     await runCatalog(directory, (catalog) => Effect.gen(function*() {
       yield* catalog.initialize
-      expect(yield* catalog.acquire({ key: pluginUnique.release.key, target: { type: "plugin", format: "claude_code_v4" } }))
+      expect(yield* catalog.acquire({ key: pluginUnique.release.key, target: { type: "plugin", format: "claude_code" } }))
         .toEqual({ type: "plugin", release: pluginUnique.release, bundle })
       expect(yield* catalog.acquire({ key: mcpUnique.release.key, target: { type: "mcp" } }))
         .toEqual({ type: "mcp", release: mcpUnique.release, contract: mcpUniqueExpected })
       const shared = pluginConflictResult.type === "admitted"
-        ? yield* catalog.acquire({ key: sharedKey, target: { type: "plugin", format: "claude_code_v4" } })
+        ? yield* catalog.acquire({ key: sharedKey, target: { type: "plugin", format: "claude_code" } })
         : yield* catalog.acquire({ key: sharedKey, target: { type: "mcp" } })
       expect(shared.type).toBe(pluginConflictResult.type === "admitted" ? "plugin" : "mcp")
     }))

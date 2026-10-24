@@ -1,5 +1,5 @@
 import { Schema } from "effect"
-import { EnvironmentName, HookEvent, HookName, HookTimeout, PackagePath, ProcessText } from "./Plugin.ts"
+import { HookEvent, HookName, HookTimeout } from "./Plugin.ts"
 import { ProcessInput, ProcessPlan } from "./Process.ts"
 export { HookEvent, HookName, HookTimeout } from "./Plugin.ts"
 
@@ -39,36 +39,3 @@ export const HooksInput = Schema.Struct({
   hooks: Schema.Record(HookName, PlannedHook)
 })
 export type HooksInput = typeof HooksInput.Type
-
-export const HookIssue = Schema.Struct({
-  type: Schema.Literal("environment_reference_unsupported"),
-  hook: HookName,
-  name: EnvironmentName
-})
-export type HookIssue = typeof HookIssue.Type
-
-export const HooksResult = Schema.Union([
-  Schema.Struct({
-    type: Schema.Literal("rendered"),
-    document: Schema.NullOr(Schema.JsonObject),
-    files: Schema.Array(Schema.Struct({ path: PackagePath, content: ProcessText, executable: Schema.Literal(true) }))
-  }),
-  Schema.Struct({ type: Schema.Literal("rejected"), issues: Schema.NonEmptyArray(HookIssue) })
-]).pipe(Schema.toTaggedUnion("type"))
-export type HooksResult = typeof HooksResult.Type
-
-export const OracleRequest = Schema.Struct({
-  schema: Schema.Literal(1),
-  type: Schema.Literal("render_hooks"),
-  input: HooksInput
-})
-export type OracleRequest = typeof OracleRequest.Type
-
-export const OracleResponse = Schema.Struct({
-  schema: Schema.Literal(1),
-  type: Schema.Literal("render_hooks"),
-  output: HooksResult
-})
-export type OracleResponse = typeof OracleResponse.Type
-
-export { renderHooks } from "../src/compiler/hooks/model.ts"

@@ -4,10 +4,6 @@ import type { Input, NodeObservation, Requirements } from "../../../contracts/La
 export function launcherRuntimeChecks(input: Input): Requirements {
   return Match.value(input.kind).pipe(Match.discriminatorsExhaustive("type")({
     absent: (): Requirements => [],
-    posix: ({ cwdRoot }): Requirements => {
-      if (input.platform !== "linux") return null
-      return cwdRoot ? ["shell", "env", "pwd"] : ["shell", "env"]
-    },
     portable: (): Requirements => {
       if (input.platform === "linux") return ["node", "shell", "env"]
       return input.platform === "win32" ? ["node"] : null

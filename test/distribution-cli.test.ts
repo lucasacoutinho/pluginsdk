@@ -70,7 +70,7 @@ it("strictly rejects malformed request and reviewed-plan JSON before execution",
       contents: {
         type: "plugin",
         plugin: "demo",
-        packages: { claude_code_v2: "b".repeat(64) }
+        packages: { claude_code: "b".repeat(64) }
       }
     })
     const releasePath = join(directory, "release.json")

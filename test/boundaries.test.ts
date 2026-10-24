@@ -20,7 +20,7 @@ type BuildOutcome =
 const makeRequest = (root: string, options: { readonly version?: string; readonly skills?: ReadonlyArray<string> } = {}) =>
   Schema.decodeSync(BuildRequest)({
     root,
-    format: "agent_plugins_v1",
+    format: "codex",
     plugin: {
       id: "demo",
       version: options.version ?? "1.0.0",
@@ -97,14 +97,13 @@ const makeBundle = (content: Uint8Array): Bundle => {
   const body = Schema.decodeSync(Schema.toType(BundleBody))({
     schema: 1,
     plugin: PluginId.make("demo"),
-    format: "agent_plugins_v1",
-    files: [{ path: PackagePath.make("plugin.json"), content, executable: false }]
+    format: "codex",
+    files: [{ path: PackagePath.make(".codex-plugin/plugin.json"), content, executable: false }]
   })
   return Schema.decodeSync(Schema.toType(BundleSchema))({ ...body, digest: bundleDigest(body) })
 }
 
 const validManifestBytes = (): Uint8Array => new TextEncoder().encode(JSON.stringify({
-  $schema: "https://agent-plugins.org/schemas/1.0.0/plugin.schema.json",
   name: "demo",
   version: "opaque build_7",
   description: "Boundary snapshot"
@@ -150,7 +149,7 @@ it.effect("Compiler.build snapshots mutable request values before real filesyste
 
     const request = yield* Schema.decodeEffect(BuildRequest)({
       root,
-      format: "claude_code_v2",
+      format: "claude_code",
       plugin: {
         id: "demo",
         version: "1.0.0",
@@ -209,9 +208,9 @@ it("installer request and plan snapshots detach SharedArrayBuffer-backed bytes",
       repair: () => { throw new Error("Expected a present request intent") },
       present: (intent) => intent.bundle
     }))
-    const requestBytes = bundleFile(requestBundle, "plugin.json").content
+    const requestBytes = bundleFile(requestBundle, ".codex-plugin/plugin.json").content
     const requestDigest = requestBundle.digest
-    expect(bundleFile(requestSource.bundle, "plugin.json").content.buffer).toBe(requestSource.shared)
+    expect(bundleFile(requestSource.bundle, ".codex-plugin/plugin.json").content.buffer).toBe(requestSource.shared)
     expect(requestBytes.buffer).not.toBe(requestSource.shared)
     requestSource.content.fill(0)
     expect(new TextDecoder().decode(requestBytes)).toContain("opaque build_7")
@@ -239,9 +238,9 @@ it("installer request and plan snapshots detach SharedArrayBuffer-backed bytes",
       replace: (change) => change.bundle,
       remove: () => { throw new Error("Expected an install plan") }
     }))
-    const planBytes = bundleFile(capturedPlanBundle, "plugin.json").content
+    const planBytes = bundleFile(capturedPlanBundle, ".codex-plugin/plugin.json").content
     const planDigest = capturedPlanBundle.digest
-    expect(bundleFile(planSource.bundle, "plugin.json").content.buffer).toBe(planSource.shared)
+    expect(bundleFile(planSource.bundle, ".codex-plugin/plugin.json").content.buffer).toBe(planSource.shared)
     expect(planBytes.buffer).not.toBe(planSource.shared)
     planSource.content.fill(0)
     expect(new TextDecoder().decode(planBytes)).toContain("opaque build_7")
@@ -264,11 +263,11 @@ it.effect("rejects unsafe native version components and accepts a safe non-semve
 
     const accepted = bundleFrom(yield* buildOutcome(makeRequest(root, { version: "opaque build_7" })))
     expect(accepted.plugin).toBe("demo")
-    expect(new TextDecoder().decode(bundleFile(accepted, "plugin.json").content)).toContain("opaque build_7")
+    expect(new TextDecoder().decode(bundleFile(accepted, ".codex-plugin/plugin.json").content)).toContain("opaque build_7")
   }).pipe(Effect.provide(CompilerTest))
 )
 
-it.effect("rejects unsupported hosts and Codex project scope before native inspection", () =>
+it.effect("rejects unsupported hosts and Cursor project scope before native inspection", () =>
   Effect.gen(function*() {
     const fs = yield* FileSystem.FileSystem
     const root = yield* fs.makeTempDirectoryScoped({ prefix: "pluginsdk-unsupported-target-" })
@@ -287,16 +286,17 @@ it.effect("rejects unsupported hosts and Codex project scope before native inspe
       expect(unsupportedFrom(outcome).destination.host).toBe(host)
     }
 
-    const codexProject: Destination = {
+    const cursorProject: Destination = {
       type: "project",
-      host: "codex",
-      home: Directory.make(join(root, "missing-codex-home")),
+      host: "cursor",
+      home: Directory.make(join(root, "missing-cursor-home")),
       root: Directory.make(join(root, "missing-project-root"))
     }
-    const projectOutcome = yield* planOutcome({ destination: codexProject, intent: { type: "present", bundle } }).pipe(
+    const claudeBundle = bundleFrom(yield* buildOutcome({ ...makeRequest(root), format: "claude_code" }).pipe(Effect.provide(CompilerTest)))
+    const projectOutcome = yield* planOutcome({ destination: cursorProject, intent: { type: "present", bundle: claudeBundle } }).pipe(
       Effect.provide(Layer.provideMerge(InstallerLive, NodeServices.layer))
     )
-    expect(unsupportedFrom(projectOutcome).destination.host).toBe("codex")
-    expect(unsupportedFrom(projectOutcome).detail).toContain("user-scope installation only")
+    expect(unsupportedFrom(projectOutcome).destination.host).toBe("cursor")
+    expect(unsupportedFrom(projectOutcome).detail).toContain("Native contract is unqualified")
   }).pipe(Effect.provide(NodeServices.layer))
 )

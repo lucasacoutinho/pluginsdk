@@ -6,7 +6,8 @@ import { Match, Schema } from "effect"
 import * as Runtime from "../contracts/LauncherRuntime.ts"
 import { acceptsNodeRuntime, launcherRuntimeChecks } from "../src/installer/runtime/launcher-policy.ts"
 
-const oracle = fileURLToPath(new URL("../spec/.lake/build/bin/oracle", import.meta.url))
+const oracle = process.env["PLUGINSDK_ORACLE"] ??
+  fileURLToPath(new URL("../spec/.lake/build/bin/oracle", import.meta.url))
 const vectors = fileURLToPath(new URL("../spec/vectors/launcher-runtime.ndjson", import.meta.url))
 const Vector = Schema.Struct({
   name: Schema.NonEmptyString,
@@ -34,9 +35,12 @@ function runOracle(requests: ReadonlyArray<Runtime.OracleRequest>): ReadonlyArra
   return result.stdout.trimEnd().split("\n").map((line) => decode(Runtime.OracleResponse, JSON.parse(line)))
 }
 
-it("matches all 26 authored NR1–NR5 cases against Lean and TypeScript", () => {
+it("matches authored current NR1, NR3, NR4 and NR5 cases against Lean and TypeScript", () => {
   const cases = readFileSync(vectors, "utf8").trimEnd().split("\n").map((line) => decode(Vector, JSON.parse(line)))
-  expect(cases).toHaveLength(26)
+  expect(new Set(cases.flatMap(({ properties }) => properties))).toEqual(new Set(["NR1", "NR3", "NR4", "NR5"]))
+  expect(new Set(cases.flatMap(({ request }) =>
+    request.type === "launcher_runtime_checks" ? [request.input.kind.type] : []
+  ))).toEqual(new Set(["absent", "portable"]))
   const replies = runOracle(cases.map(({ request }) => request))
   expect(replies).toHaveLength(cases.length)
   cases.forEach(({ name, request, expected }, index) => {
@@ -48,7 +52,7 @@ it("matches all 26 authored NR1–NR5 cases against Lean and TypeScript", () => 
 it("conforms on platform, launcher-kind, Node version and capability boundaries", () => {
   const requests: Array<Runtime.OracleRequest> = []
   for (const platform of ["linux", "win32", "darwin", "freebsd", "Linux", "日本語"]) {
-    for (const kind of [{ type: "absent" }, { type: "posix", cwdRoot: false }, { type: "posix", cwdRoot: true }, { type: "portable" }]) {
+    for (const kind of [{ type: "absent" }, { type: "portable" }]) {
       requests.push(decode(Runtime.OracleRequest, { schema: 1, type: "launcher_runtime_checks", input: { platform, kind } }))
     }
     for (const major of [0, 18, 23, 24, 25, 26, Number.MAX_SAFE_INTEGER]) {
@@ -59,12 +63,15 @@ it("conforms on platform, launcher-kind, Node version and capability boundaries"
       }
     }
   }
+  expect(new Set(requests.flatMap((request) =>
+    request.type === "launcher_runtime_checks" ? [request.input.kind.type] : []
+  ))).toEqual(new Set(["absent", "portable"]))
   const replies = runOracle(requests)
   expect(replies).toHaveLength(requests.length)
   requests.forEach((request, index) => expect(evaluate(request), JSON.stringify(request)).toEqual(replies[index]))
 })
 
-it("refuses malformed external Node observations and launcher variants", () => {
+it("refuses malformed Node observations and obsolete launcher wire shapes", () => {
   for (const value of [-1, 0.5, Number.MAX_SAFE_INTEGER + 1, null, true, "24", {}, []]) {
     for (const field of ["major", "minor"]) {
       const request = { schema: 1, type: "accept_node_runtime", input: { platform: "linux", major: 24, minor: 18, execve: true, [field]: value } }
@@ -75,7 +82,13 @@ it("refuses malformed external Node observations and launcher variants", () => {
       expect(result.stdout).toBe("")
     }
   }
-  for (const kind of [{ type: "other" }, { type: "posix" }, { type: "portable", cwdRoot: false }]) {
+  for (const kind of [
+    { type: "other" },
+    { type: "posix", cwdRoot: false },
+    { type: "posix", cwdRoot: true },
+    { type: "posix" },
+    { type: "portable", cwdRoot: false }
+  ]) {
     const request = { schema: 1, type: "launcher_runtime_checks", input: { platform: "win32", kind } }
     expect(() => decode(Runtime.OracleRequest, request)).toThrow()
     const result = spawnSync(oracle, [], { input: JSON.stringify(request) + "\n", encoding: "utf8", timeout: 10_000 })
@@ -83,4 +96,11 @@ it("refuses malformed external Node observations and launcher variants", () => {
     expect(result.status).toBe(1)
     expect(result.stdout).toBe("")
   }
+  expect(() => decode(Runtime.Check, "pwd")).toThrow()
+  expect(() => decode(Runtime.Requirements, ["pwd"])).toThrow()
+  expect(() => decode(Runtime.OracleResponse, {
+    schema: 1,
+    type: "launcher_runtime_checks",
+    output: ["pwd"]
+  })).toThrow()
 })

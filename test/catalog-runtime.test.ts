@@ -22,7 +22,7 @@ import { CompilerLive } from "../src/compiler/index.ts"
 import { bundleDigest } from "../src/internal/identity.ts"
 import { ReleaseCatalogLive } from "../src/catalog/index.ts"
 
-const formats: ReadonlyArray<Format> = ["claude_code_v4", "codex_plugin_v1"]
+const formats: ReadonlyArray<Format> = ["claude_code", "codex"]
 const compilerLayer = Layer.provideMerge(CompilerLive, NodeServices.layer)
 const writerPath = fileURLToPath(new URL("./fixtures/catalog-writer.ts", import.meta.url))
 
@@ -186,6 +186,12 @@ it("stores complete compiler packages for two integrations and reloads them afte
       await makeFixture(root, "payroll", "payroll-helper", "2.1.0")
     ]
     const releases = apps.map((app) => makeRelease(key(app.integration, "release-1"), app.plugin, app.version, app.bundles))
+    const firstApp = apps[0]
+    if (firstApp === undefined) throw new Error("Catalog fixture has no applications")
+    const claudeBundle = bundleAt(firstApp.bundles, "claude_code")
+    const claudeOnlyRelease = makeRelease(
+      key(firstApp.integration, "release-claude-only"), firstApp.plugin, firstApp.version, [claudeBundle]
+    )
     for (const app of apps) for (const format of formats) {
       const payload = fileAt(bundleAt(app.bundles, format), "third_party/tools/payload.bin")
       expect(Array.from(payload.content)).toEqual([0, 255, 128, 1, 42])
@@ -199,6 +205,8 @@ it("stores complete compiler packages for two integrations and reloads them afte
         if (release === undefined) throw new Error(`Missing release ${index}`)
         expect(yield* catalog.admit({ type: "plugin", release, bundles: [...app.bundles] })).toEqual({ type: "admitted" })
       }
+      expect(yield* catalog.admit({ type: "plugin", release: claudeOnlyRelease, bundles: [claudeBundle] }))
+        .toEqual({ type: "admitted" })
     }))
     expect(await readdir(directory)).toContain("catalog.json")
 
@@ -217,11 +225,12 @@ it("stores complete compiler packages for two integrations and reloads them afte
       if (first === undefined) throw new Error("First application release is missing")
       expect(yield* catalog.acquire({
         key: key(first.key.integration, first.key.release, "another-org"),
-        target: { type: "plugin", format: "claude_code_v4" }
+        target: { type: "plugin", format: "claude_code" }
       }))
         .toEqual({ type: "blocked", reason: "release_missing" })
-      expect(yield* catalog.acquire({ key: first.key, target: { type: "plugin", format: "agent_plugins_v3" } }))
-        .toEqual({ type: "blocked", reason: "format_unavailable" })
+      expect(yield* catalog.acquire({
+        key: claudeOnlyRelease.key, target: { type: "plugin", format: "codex" }
+      })).toEqual({ type: "blocked", reason: "format_unavailable" })
     }))
   })
 })
@@ -242,9 +251,9 @@ it("keeps an admitted key immutable while admitting a new key and ignoring bundl
       expect(yield* catalog.admit({ type: "plugin", release: originalRelease, bundles: [...original.bundles].reverse() })).toEqual({ type: "unchanged" })
       expect(yield* catalog.admit({ type: "plugin", release: changedAtSameKey, bundles: [...changed.bundles] })).toEqual({ type: "conflict" })
       expect(yield* catalog.admit({ type: "plugin", release: changedAtNewKey, bundles: [...changed.bundles] })).toEqual({ type: "admitted" })
-      const retained = yield* catalog.acquire({ key: originalKey, target: { type: "plugin", format: "claude_code_v4" } })
+      const retained = yield* catalog.acquire({ key: originalKey, target: { type: "plugin", format: "claude_code" } })
       expect(retained).toEqual({
-        type: "plugin", release: originalRelease, bundle: bundleAt(original.bundles, "claude_code_v4")
+        type: "plugin", release: originalRelease, bundle: bundleAt(original.bundles, "claude_code")
       })
     }))
   })
@@ -256,10 +265,10 @@ it("returns typed package-set rejections for missing, extra, duplicate and misma
     const app = await makeFixture(root, "calendar", "calendar-helper", "1.0.0")
     const otherPlugin = await makeFixture(root, "calendar-other", "other-helper", "1.0.0")
     const otherVersion = await makeFixture(root, "calendar", app.plugin, "1.1.0")
-    const claude = bundleAt(app.bundles, "claude_code_v4")
-    const codex = bundleAt(app.bundles, "codex_plugin_v1")
-    const otherClaude = bundleAt(otherPlugin.bundles, "claude_code_v4")
-    const versionClaude = bundleAt(otherVersion.bundles, "claude_code_v4")
+    const claude = bundleAt(app.bundles, "claude_code")
+    const codex = bundleAt(app.bundles, "codex")
+    const otherClaude = bundleAt(otherPlugin.bundles, "claude_code")
+    const versionClaude = bundleAt(otherVersion.bundles, "claude_code")
     const fullRelease = makeRelease(key("calendar", "release-full"), app.plugin, app.version, app.bundles)
     const onlyClaudeRelease = makeRelease(key("calendar", "release-one"), app.plugin, app.version, [claude])
     const pluginMismatch = makeRelease(
@@ -275,22 +284,22 @@ it("returns typed package-set rejections for missing, extra, duplicate and misma
     await runCatalog(directory, (catalog) => Effect.gen(function*() {
       yield* catalog.initialize
       expect(yield* packageIssues(catalog, { type: "plugin", release: fullRelease, bundles: [claude] })).toEqual([
-        { type: "missing_package", format: "codex_plugin_v1" }
+        { type: "missing_package", format: "codex" }
       ])
       expect(yield* packageIssues(catalog, { type: "plugin", release: onlyClaudeRelease, bundles: [claude, codex] })).toEqual([
-        { type: "unexpected_package", format: "codex_plugin_v1" }
+        { type: "unexpected_package", format: "codex" }
       ])
       expect(yield* packageIssues(catalog, { type: "plugin", release: fullRelease, bundles: [claude, codex, claude] })).toEqual([
-        { type: "duplicate_package", format: "claude_code_v4" }
+        { type: "duplicate_package", format: "claude_code" }
       ])
       expect(yield* packageIssues(catalog, { type: "plugin", release: pluginMismatch, bundles: [otherClaude] })).toEqual([
-        { type: "plugin_mismatch", format: "claude_code_v4" }
+        { type: "plugin_mismatch", format: "claude_code" }
       ])
       expect(yield* packageIssues(catalog, { type: "plugin", release: versionMismatch, bundles: [versionClaude] })).toEqual([
-        { type: "version_mismatch", format: "claude_code_v4" }
+        { type: "version_mismatch", format: "claude_code" }
       ])
       expect(yield* packageIssues(catalog, { type: "plugin", release: digestMismatch, bundles: [claude] })).toEqual([
-        { type: "digest_mismatch", format: "claude_code_v4" }
+        { type: "digest_mismatch", format: "claude_code" }
       ])
     }))
   })
@@ -300,7 +309,7 @@ it("rejects a changed digest and a resealed invalid native manifest", async () =
   await withDirectory(async (root) => {
     const directory = join(root, "catalog")
     const app = await makeFixture(root, "notes", "notes-helper", "1.0.0")
-    const claude = bundleAt(app.bundles, "claude_code_v4")
+    const claude = bundleAt(app.bundles, "claude_code")
     const manifest = claude.files.find((file) => file.path === ".claude-plugin/plugin.json")
     if (manifest === undefined) throw new Error("Compiler package has no Claude manifest")
     const tampered = {
@@ -331,7 +340,7 @@ it("copies caller and acquisition bytes so neither can alter later reads", async
     const app = await makeFixture(root, "docs", "docs-helper", "1.0.0")
     const release = makeRelease(key("docs", "release-1"), app.plugin, app.version, app.bundles)
     const candidates = [...app.bundles]
-    const expected = bundleAt(app.bundles, "claude_code_v4")
+    const expected = bundleAt(app.bundles, "claude_code")
     const original = structuredClone(expected)
 
     await runCatalog(directory, (catalog) => Effect.gen(function*() {
@@ -340,13 +349,13 @@ it("copies caller and acquisition bytes so neither can alter later reads", async
       for (const bundle of candidates) for (const file of bundle.files) file.content.fill(0)
       candidates.splice(0, candidates.length)
 
-      const first = yield* catalog.acquire({ key: release.key, target: { type: "plugin", format: "claude_code_v4" } })
+      const first = yield* catalog.acquire({ key: release.key, target: { type: "plugin", format: "claude_code" } })
       expect(first.type).toBe("plugin")
       if (first.type === "plugin") {
         expect(first.bundle).toEqual(original)
         for (const file of first.bundle.files) file.content.fill(0)
       }
-      const second = yield* catalog.acquire({ key: release.key, target: { type: "plugin", format: "claude_code_v4" } })
+      const second = yield* catalog.acquire({ key: release.key, target: { type: "plugin", format: "claude_code" } })
       expect(second).toEqual({ type: "plugin", release, bundle: original })
     }))
   })
@@ -356,7 +365,7 @@ it("blocks missing, corrupt, linked and schema-invalid stores without recreating
   const appRoot = await mkdtemp(join(tmpdir(), "pluginsdk-catalog-invalid-fixture-"))
   try {
     const app = await makeFixture(appRoot, "mail", "mail-helper", "1.0.0")
-    const bundle = bundleAt(app.bundles, "claude_code_v4")
+    const bundle = bundleAt(app.bundles, "claude_code")
     const release = makeRelease(key("mail", "release-1"), app.plugin, app.version, [bundle])
     const cases = ["missing", "corrupt", "symlink", "invalid"] as const
     for (const kind of cases) {
@@ -379,7 +388,7 @@ it("blocks missing, corrupt, linked and schema-invalid stores without recreating
           expect(admission).toBeInstanceOf(CatalogUnavailable)
           const acquisition = yield* Effect.flip(catalog.acquire({
             key: release.key,
-            target: { type: "plugin", format: "claude_code_v4" }
+            target: { type: "plugin", format: "claude_code" }
           }))
           expect(acquisition).toBeInstanceOf(CatalogUnavailable)
         }))
@@ -442,10 +451,10 @@ it("serializes independent child-process admissions and keeps one complete confl
       for (const row of retained) {
         const acquired = yield* catalog.acquire({
           key: row.release.key,
-          target: { type: "plugin", format: "codex_plugin_v1" }
+          target: { type: "plugin", format: "codex" }
         })
         expect(acquired).toEqual({
-          type: "plugin", release: row.release, bundle: bundleAt(row.bundles, "codex_plugin_v1")
+          type: "plugin", release: row.release, bundle: bundleAt(row.bundles, "codex")
         })
       }
     }))

@@ -1,6 +1,6 @@
-import { Effect, FileSystem, Layer, Match, Schema } from "effect"
+import { Effect, FileSystem, Layer, Match } from "effect"
 import { ChildProcessSpawner } from "effect/process"
-import { HostUnavailable, Installer, PlanRejected, StateUnavailable, Target, type ApplyOutcome, type Desired, type Observation, type PlanBody, type PlanChange, type PlanRequest, type Planning, type ReadyPlan, type ReviewedPlan } from "../../../contracts/Installer.ts"
+import { HostUnavailable, Installer, PlanRejected, StateUnavailable, type ApplyOutcome, type Desired, type Observation, type PlanBody, type PlanChange, type PlanRequest, type Planning, type ReadyPlan, type ReviewedPlan } from "../../../contracts/Installer.ts"
 import { planId } from "../../internal/identity.ts"
 import { begin, decide, settle } from "./model.ts"
 import { checkOtherExecutions, executeOnce, executionQuiescent } from "../execution/execute.ts"
@@ -9,12 +9,11 @@ import { changedBundle, loadState, modelChange, rejectInvalidBundle, rejectInval
 import { type Execution } from "./records.ts"
 import { lockTarget } from "../target/locks.ts"
 import { resolveTarget } from "../target/resolve.ts"
+import { sameOwnedTarget } from "../target/profiles.ts"
 import { applyRepair, planRepair } from "../recovery/repair.ts"
 import { captureCompanions, companionConflict, reviewCapturedCompanions, sameCapture } from "../companions/capture.ts"
 import { captureProject, reviewProjectPlan } from "../project/inspect.ts"
 import { checkProcessDirectories } from "../runtime/directories.ts"
-
-const sameTarget = Schema.toEquivalence(Target)
 
 export const InstallerEngineLive = Layer.effect(Installer, Effect.gen(function*() {
   const fs = yield* FileSystem.FileSystem
@@ -24,10 +23,10 @@ export const InstallerEngineLive = Layer.effect(Installer, Effect.gen(function*(
     const request = yield* Effect.try({ try: () => snapshotRequest(input), catch: rejectInvalidBundle })
     const plugin = request.intent.type === "present" ? request.intent.bundle.plugin : request.intent.plugin
     const bundle = request.intent.type === "present" ? request.intent.bundle : null
-    const target = yield* resolveTarget(request.destination, plugin, bundle?.format)
+    const target = yield* resolveTarget(request.destination, plugin, bundle ?? undefined)
     yield* lockTarget(target)
-    const lockedTarget = yield* resolveTarget(request.destination, plugin, bundle?.format)
-    if (!sameTarget(target, lockedTarget)) return yield* new HostUnavailable({ host: target.destination.host, cause: new Error("Physical destination changed while acquiring its lock") })
+    const lockedTarget = yield* resolveTarget(request.destination, plugin, bundle ?? undefined)
+    if (!sameOwnedTarget(target, lockedTarget)) return yield* new HostUnavailable({ host: target.destination.host, cause: new Error("Physical destination changed while acquiring its lock") })
     yield* checkOtherExecutions(target)
     const record = yield* loadState(target)
     if (request.intent.type === "repair") return yield* planRepair(target, request.intent.pending, record)
@@ -69,11 +68,11 @@ export const InstallerEngineLive = Layer.effect(Installer, Effect.gen(function*(
 
   const apply = Effect.fn("Installer.apply")(function*(input: ReviewedPlan) {
     const plan = yield* Effect.try({ try: () => snapshotPlan(input), catch: rejectInvalidPlan })
-    const target = yield* resolveTarget(plan.target.destination, plan.target.plugin, changedBundle(plan)?.format)
-    if (!sameTarget(target, plan.target)) return yield* new PlanRejected({ reason: "stale_plan" })
+    const target = yield* resolveTarget(plan.target.destination, plan.target.plugin, changedBundle(plan))
+    if (!sameOwnedTarget(target, plan.target)) return yield* new PlanRejected({ reason: "stale_plan" })
     const leases = yield* lockTarget(target)
-    const lockedTarget = yield* resolveTarget(plan.target.destination, plan.target.plugin, changedBundle(plan)?.format)
-    if (!sameTarget(target, lockedTarget)) return yield* new PlanRejected({ reason: "stale_plan" })
+    const lockedTarget = yield* resolveTarget(plan.target.destination, plan.target.plugin, changedBundle(plan))
+    if (!sameOwnedTarget(target, lockedTarget)) return yield* new PlanRejected({ reason: "stale_plan" })
     yield* checkOtherExecutions(target)
     const record = yield* loadState(target)
     if (plan.type === "repair_ready") return yield* applyRepair(plan, record, leases)

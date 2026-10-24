@@ -1,5 +1,5 @@
 import { join } from "node:path"
-import { Effect, Match, Schema } from "effect"
+import { Effect, Match, Schema, Struct } from "effect"
 import { BundleRejected, type Bundle } from "../../../contracts/Compiler.ts"
 import {
   PlanRejected,
@@ -25,7 +25,7 @@ import { targetPaths } from "../target/resolve.ts"
 import { validateCompanionPlan } from "../companions/capture.ts"
 import { isCodexProject, validateProjectPlan } from "../project/layout.ts"
 
-const sameTarget = Schema.toEquivalence(Target)
+const sameTarget = Schema.toEquivalence(Schema.Struct(Struct.omit(Target.fields, ["version"])))
 const samePlan = Schema.toEquivalence(ReviewedPlan)
 const samePending = Schema.toEquivalence(Pending)
 const sameRepairPending = Schema.toEquivalence(RepairPending)

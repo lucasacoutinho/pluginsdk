@@ -38,7 +38,9 @@ Use an SSH or HTTPS Git URL. An absolute local repository path also works for lo
 npx pluginsdk preview
 ```
 
-Preview installs a separate development plugin in available local Claude Code and Codex installations. It respects `CLAUDE_CONFIG_DIR` and `CODEX_HOME`, and otherwise uses their normal configuration directories. Use `--target claude_code` or `--target codex` to select one client.
+Preview installs a separate development plugin in available local Claude Code and Codex installations, and in Cursor on Windows x64. It respects `CLAUDE_CONFIG_DIR` and `CODEX_HOME`; Cursor uses its normal `.cursor` directory. Use `--target claude_code`, `--target codex` or `--target cursor` to select one client.
+
+When Cursor imports plugins from the selected Claude home, a shared skills-only preview uses that source and reports `inherited`. It removes any owned direct development copy to avoid duplicate skills. With imports disabled, preview installs directly in Cursor. A shared preview containing MCP, hooks or agents requires an explicit target; Cursor itself supports MCP but rejects hooks and agents.
 
 Edit your workflows and run `preview` again. Open fresh client sessions to load the changes. Remove the development copy with `preview --remove`.
 
@@ -59,7 +61,7 @@ A repeated identical publication returns `unchanged`. Reusing a version with dif
 
 An occupied plugin name or changed managed package blocks publication. PluginSDK preserves other teams' marketplace entries and repository files. A concurrent branch change rejects the attempted update; rerun `publish` to inspect the latest state. An `uncertain` result also requires a rerun to confirm what reached the repository.
 
-`build --target codex` captures a Codex-only release. Publishing it preserves the last Claude Code release in the marketplace. `build --format` emits an individual package for installation management and does not capture a publishable release.
+`build --target codex` captures a Codex-only release. Publishing it preserves the last Claude Code release in the marketplace.
 
 ## Install the published plugin
 

@@ -4,20 +4,8 @@ namespace PluginSdk.Catalog
 
 def FormatDigest (packages : FormatDigests) (format : PackageFormat) (digest : String) : Prop :=
   match format with
-  | .agentPluginsV1 => packages.agentPluginsV1 = some digest
-  | .claudeCodeV1 => packages.claudeCodeV1 = some digest
-  | .agentPluginsV2 => packages.agentPluginsV2 = some digest
-  | .claudeCodeV2 => packages.claudeCodeV2 = some digest
-  | .agentPluginsV3 => packages.agentPluginsV3 = some digest
-  | .claudeCodeV3 => packages.claudeCodeV3 = some digest
-  | .claudeCodeV4 => packages.claudeCodeV4 = some digest
-  | .codexPluginV1 => packages.codexPluginV1 = some digest
-  | .claudeCodeV5 => packages.claudeCodeV5 = some digest
-  | .codexPluginV2 => packages.codexPluginV2 = some digest
-  | .claudeCodePortableV1 => packages.claudeCodePortableV1 = some digest
-  | .codexPluginPortableV1 => packages.codexPluginPortableV1 = some digest
-  | .claudeCodePortableV2 => packages.claudeCodePortableV2 = some digest
-  | .codexPluginPortableV2 => packages.codexPluginPortableV2 = some digest
+  | .claudeCode => packages.claudeCode = some digest
+  | .codex => packages.codex = some digest
 
 def Selects (release : Release) (target : ReleaseTarget) (artifact : SelectedArtifact) : Prop :=
   match release.contents, target, artifact with

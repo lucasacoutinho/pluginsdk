@@ -76,9 +76,8 @@ def readServer (json : Json) : Except String RemoteMcp := do
 private def readInput (json : Json) : Except String RenderInput := do
   checkFields json ["format", "metadata", "skills", "mcp"]
   let format ← match ← (← json.getObjVal? "format").getStr? with
-    | "agent_plugins_v1" => pure Format.agentPluginsV1
-    | "claude_code_v1" => pure Format.claudeCodeV1
-    | "codex_plugin_v1" => pure Format.codexPluginV1
+    | "claude_code" => pure Format.claudeCode
+    | "codex" => pure Format.codex
     | tag => throw s!"unsupported format: {tag}"
   let metadata ← json.getObjVal? "metadata"
   checkFields metadata ["id", "version", "description"]

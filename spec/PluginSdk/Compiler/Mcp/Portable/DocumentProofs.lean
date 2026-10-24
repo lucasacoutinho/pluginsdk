@@ -29,34 +29,15 @@ private theorem server_rows_keys_nodup (input : Input) (normalized : Mcp.Normali
     (serverRows input).map Prod.fst |>.Nodup :=
   (server_rows_names_perm input).nodup_iff.mpr normalized.1
 
-private theorem document_schema_field (input : Input) :
-    SchemaField input.format (object (documentRows input)).value "mcp" := by
-  cases formatEq : input.format with
-  | agentPluginsV1 =>
-    apply object_field
-    · simp [documentRows, schemaRows, formatEq]
-    · simp [documentRows, schemaRows, formatEq]
-  | claudeCodeV1 => trivial
-  | codexPluginV1 => trivial
-
 private theorem document_mcp_servers_field (input : Input) :
     Field (object (documentRows input)).value "mcpServers" (object (serverRows input)).value := by
   apply object_field
-  · cases formatEq : input.format <;> simp [documentRows, schemaRows, formatEq]
-  · simp [documentRows, schemaRows]
+  · simp [documentRows]
+  · simp [documentRows]
 
 private theorem document_object_keys (input : Input) :
-    ObjectKeys (object (documentRows input)).value (match input.format with
-      | .agentPluginsV1 => ["$schema", "mcpServers"]
-      | .claudeCodeV1 => ["mcpServers"]
-      | .codexPluginV1 => ["mcpServers"]) := by
-  cases formatEq : input.format with
-  | agentPluginsV1 =>
-    simpa [documentRows, schemaRows, formatEq] using object_keys (documentRows input)
-  | claudeCodeV1 =>
-    simpa [documentRows, schemaRows, formatEq] using object_keys (documentRows input)
-  | codexPluginV1 =>
-    simpa [documentRows, schemaRows, formatEq] using object_keys (documentRows input)
+    ObjectKeys (object (documentRows input)).value ["mcpServers"] := by
+  simpa [documentRows] using object_keys (documentRows input)
 
 theorem PM2_document_exact : PM2_document_exact model := by
   intro input output normalized rendered
@@ -74,7 +55,7 @@ theorem PM2_document_exact : PM2_document_exact model := by
         · injection documentEq with equal
           exact equal.symm
       subst value
-      refine ⟨document_object_keys input, document_schema_field input, ?_⟩
+      refine ⟨document_object_keys input, ?_⟩
       let servers := (object (serverRows input)).value
       have keysNodup : (serverRows input).map Prod.fst |>.Nodup :=
         server_rows_keys_nodup input normalized
@@ -229,7 +210,7 @@ theorem PM5_enumeration_invariant : PM5_enumeration_invariant model := by
   have serverValuesEq : (object (serverRows left)).value =
       (object (serverRows right)).value := congrArg JsonObject.value serverObjectsEq
   have documentRowsEq : documentRows left = documentRows right := by
-    simp [documentRows, formatEq, serverValuesEq]
+    simp [documentRows, serverValuesEq]
   have documentEq : document left = document right := by
     by_cases emptyLeft : left.remote = [] ∧ left.locals = []
     · have emptyRight : right.remote = [] ∧ right.locals = [] :=

@@ -8,7 +8,7 @@ import { createInterface } from "node:readline"
 import { fileURLToPath } from "node:url"
 import { NodeServices } from "@effect/platform-node"
 import { Effect, Layer, Schema } from "effect"
-import { BuildRequest, Bundle as BundleSchema, Compiler, type Bundle, type Format } from "../../contracts/Compiler.ts"
+import { BuildRequest, Bundle as BundleSchema, Compiler, type Bundle } from "../../contracts/Compiler.ts"
 import { ApplyOutcome, Planning, type ApplyOutcome as ApplyOutcomeValue, type Planning as PlanningValue } from "../../contracts/Installer.ts"
 import { PluginId } from "../../contracts/Plugin.ts"
 import { CompilerLive } from "../../src/compiler/index.ts"
@@ -21,7 +21,6 @@ const skillName = "project-fixture"
 const pluginVersion = "1.0.0"
 const compilerLayer = Layer.provideMerge(CompilerLive, NodeServices.layer)
 
-export type ProjectFormat = Extract<Format, "agent_plugins_v1" | "agent_plugins_v2">
 export type ProcessResult = {
   readonly code: number | null
   readonly signal: NodeJS.Signals | null
@@ -47,7 +46,7 @@ export type ProjectFixture = {
   readonly userConfig: string
   readonly pluginId: typeof pluginId
   readonly env: Readonly<Record<string, string>>
-  readonly bundle: (label: string, format?: ProjectFormat, selectedPluginId?: string) => Promise<{ readonly bundle: Bundle; readonly bundlePath: string }>
+  readonly bundle: (label: string, selectedPluginId?: string) => Promise<{ readonly bundle: Bundle; readonly bundlePath: string }>
   readonly plan: (bundlePath: string | null, project?: string, targetHome?: string) => Promise<PlanRun>
   readonly apply: (path: string) => Promise<ApplyRun>
   readonly applyResult: (path: string) => Promise<ProcessResult>
@@ -302,37 +301,38 @@ const createFixture = async (root: string, groups: Set<number>): Promise<Project
   const trust = [projectA, projectB].map((path) => `[projects.${JSON.stringify(path)}]\ntrust_level = "trusted"\n`).join("\n")
   await writeFile(userConfig, `[features]\nplugins = true\n\n${trust}`, { mode: 0o600 })
   let planCounter = 0
-  const bundle = async (label: string, format: ProjectFormat = "agent_plugins_v2", selectedPluginId = String(pluginId)) => {
-      const sourceRoot = join(source, sha256(`${selectedPluginId}\0${format}\0${label}`).slice(0, 20))
-      const skillRoot = join(sourceRoot, "skills", skillName)
-      await mkdir(skillRoot, { recursive: true })
-      const skillText = [
-        "---", `name: ${skillName}`, "description: Verify project scoped Codex plugin lifecycle.", "---",
-        `# ${skillName}`, "", "Read `reference.md` for this revision.", label, ""
-      ].join("\n")
-      await writeFile(join(skillRoot, "SKILL.md"), skillText)
-      const assets = format === "agent_plugins_v2" ? ["tools/run.sh"] : []
-      if (format === "agent_plugins_v2") {
-        const reference = join(skillRoot, "reference.md")
-        const asset = join(sourceRoot, "tools", "run.sh")
-        await mkdir(dirname(asset), { recursive: true })
-        await writeFile(reference, `reference bytes for ${label}\n`)
-        await writeFile(asset, `#!/bin/sh\nprintf '%s\\n' '${label}'\n`)
-        await chmod(asset, 0o755)
+  const bundle = async (label: string, selectedPluginId = String(pluginId)) => {
+    const sourceRoot = join(source, sha256(`${selectedPluginId}\0codex\0${label}`).slice(0, 20))
+    const skillRoot = join(sourceRoot, "skills", skillName)
+    await mkdir(skillRoot, { recursive: true })
+    const skillText = [
+      "---", `name: ${skillName}`, "description: Verify project scoped Codex plugin lifecycle.", "---",
+      `# ${skillName}`, "", "Read `reference.md` for this revision.", label, ""
+    ].join("\n")
+    await writeFile(join(skillRoot, "SKILL.md"), skillText)
+    const reference = join(skillRoot, "reference.md")
+    const asset = join(sourceRoot, "tools", "run.sh")
+    await mkdir(dirname(asset), { recursive: true })
+    await writeFile(reference, `reference bytes for ${label}\n`)
+    await writeFile(asset, `#!/bin/sh\nprintf '%s\\n' '${label}'\n`)
+    await chmod(asset, 0o755)
+    const request = Schema.decodeSync(BuildRequest)({
+      root: sourceRoot,
+      format: "codex",
+      plugin: {
+        id: selectedPluginId,
+        version: pluginVersion,
+        description: "Project native lifecycle fixture.",
+        skills: [`skills/${skillName}`],
+        assets: ["tools/run.sh"],
+        mcp: {}
       }
-      const request = Schema.decodeSync(BuildRequest)({
-        root: sourceRoot,
-        format,
-        plugin: {
-          id: selectedPluginId, version: pluginVersion, description: "Project native lifecycle fixture.",
-          skills: [`skills/${skillName}`], ...(assets.length > 0 ? { assets } : {}), mcp: {}
-        }
-      })
-      const bundle = await Effect.runPromise(Compiler.use((compiler) => compiler.build(request)).pipe(Effect.provide(compilerLayer)))
-      const bundlePath = join(root, "bundles", `${bundle.digest}.json`)
-      await mkdir(dirname(bundlePath), { recursive: true })
-      await writeFile(bundlePath, JSON.stringify(Schema.encodeSync(BundleSchema)(bundle)))
-      return { bundle, bundlePath }
+    })
+    const bundle = await Effect.runPromise(Compiler.use((compiler) => compiler.build(request)).pipe(Effect.provide(compilerLayer)))
+    const bundlePath = join(root, "bundles", `${bundle.digest}.json`)
+    await mkdir(dirname(bundlePath), { recursive: true })
+    await writeFile(bundlePath, JSON.stringify(Schema.encodeSync(BundleSchema)(bundle)))
+    return { bundle, bundlePath }
   }
   const launch = (args: ReadonlyArray<string>, extraEnv: Readonly<Record<string, string>> = {}) =>
     launchProcess(groups, pinnedNode, [cli, ...args], projectA, { ...env, ...extraEnv })

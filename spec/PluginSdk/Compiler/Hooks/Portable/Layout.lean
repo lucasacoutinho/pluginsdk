@@ -1,3 +1,4 @@
+import PluginSdk.Compiler.Json
 import PluginSdk.Compiler.Hooks.Portable.Types
 import PluginSdk.Compiler.Hooks.Portable.Paths
 import PluginSdk.Compiler.Hooks.Binding.Model

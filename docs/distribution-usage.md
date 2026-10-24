@@ -2,7 +2,7 @@
 
 Review one approved plugin release for several local client configurations, then track each installation from the same saved plan.
 
-First [retain the platform tools release](catalog-usage.md). Use Linux with the [supported client versions](compatibility.md). Configuration homes must be available on the machine where you run these commands.
+First [retain the platform tools release](catalog-usage.md). Use a [supported client and platform](compatibility.md). Configuration homes must be available on the machine where you run these commands.
 
 ## Name the destinations
 
@@ -36,7 +36,7 @@ Save `.pluginsdk/destinations.json`:
 
 Replace the homes with your existing absolute paths. JSON does not expand `$HOME`. Labels must be unique, and two labels cannot refer to the same physical installation.
 
-For a supported Claude project installation, use `"type": "project"` and add the absolute project `"root"`. Codex project scope is unavailable.
+For a Claude Code or Codex project installation, use `"type": "project"` and add the absolute project `"root"`. On Windows x64, a Cursor user destination uses `"host": "cursor"` and its `.cursor` home; it selects the retained Claude-compatible package.
 
 ## Review the release
 

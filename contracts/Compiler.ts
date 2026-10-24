@@ -1,13 +1,12 @@
 import { Context, Effect, Schema } from "effect"
 import { Directory, EnvironmentName, HeaderName, PackagePath, Plugin, PluginId } from "./Plugin.ts"
+import { PackageClient } from "./Clients.ts"
 
-export const Format = Schema.Literals([
-  "agent_plugins_v1", "claude_code_v1", "agent_plugins_v2", "claude_code_v2", "agent_plugins_v3", "claude_code_v3",
-  "claude_code_v4", "codex_plugin_v1", "claude_code_v5", "codex_plugin_v2",
-  "claude_code_portable_v1", "codex_plugin_portable_v1",
-  "claude_code_portable_v2", "codex_plugin_portable_v2"
-])
+export const Format = PackageClient
 export type Format = typeof Format.Type
+
+export const Capability = Schema.Literals(["stdio", "hooks", "agents"])
+export type Capability = typeof Capability.Type
 
 export const BundleDigest = Schema.String.check(
   Schema.isPattern(/^[a-f0-9]{64}$/)
@@ -44,13 +43,6 @@ export type PathCollision = typeof PathCollision.Type
 
 export const ReservedAsset = Schema.Struct({ type: Schema.Literal("reserved_asset"), path: PackagePath })
 export type ReservedAsset = typeof ReservedAsset.Type
-
-export const UnsupportedFeature = Schema.Struct({
-  type: Schema.Literal("unsupported_feature"),
-  feature: Schema.Literals(["assets", "stdio", "hooks", "agents"]),
-  format: Format
-})
-export type UnsupportedFeature = typeof UnsupportedFeature.Type
 
 export const BundleCheckIssue = Schema.Union([
   Schema.Struct({ type: Schema.Literal("digest_mismatch") }),
@@ -120,7 +112,6 @@ export const BuildIssue = Schema.Union([
   }),
   PathCollision,
   ReservedAsset,
-  UnsupportedFeature,
   Schema.Struct({ type: Schema.Literal("source_escape"), path: PackagePath }),
   Schema.Struct({ type: Schema.Literal("invalid_process"), server: Schema.NonEmptyString, reason: LocalMcpProblem }),
   Schema.Struct({ type: Schema.Literal("invalid_hook_process"), hook: Schema.NonEmptyString, reason: LocalMcpProblem }),

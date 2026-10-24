@@ -1,9 +1,12 @@
 import { expect, it } from "@effect/vitest"
+import { NodeServices } from "@effect/platform-node"
+import { Effect } from "effect"
 import { spawnSync } from "node:child_process"
 import { existsSync, mkdirSync, mkdtempSync, rmSync, writeFileSync } from "node:fs"
 import { tmpdir } from "node:os"
 import { join } from "node:path"
 import { fileURLToPath } from "node:url"
+import { inspectClient } from "../src/project/preview/clients.ts"
 
 const cli = fileURLToPath(new URL("../src/cli.ts", import.meta.url))
 
@@ -34,15 +37,34 @@ it("reports missing clients without creating local configuration", () => fixture
   expect(existsSync(join(root, "claude-home"))).toBe(false)
 }))
 
-it("blocks an unsupported installed client before changing either home", () => fixture((root, bin) => {
+it("rejects malformed client version output before changing either home", () => fixture((root, bin) => {
   writeFileSync(join(bin, "claude"), "#!/bin/sh\nprintf '2.1.304 (Claude Code)\\n'\n", { mode: 0o755 })
-  writeFileSync(join(bin, "codex"), "#!/bin/sh\nprintf 'codex-cli 99.0.0\\n'\n", { mode: 0o755 })
+  writeFileSync(join(bin, "codex"), "#!/bin/sh\nprintf 'not-a-Codex-version\\n'\n", { mode: 0o755 })
   const result = preview(root, bin)
   expect(result.status).toBe(1)
-  expect(result.stderr).toContain("codex 99.0.0 is unsupported")
+  expect(result.stderr).toContain("codex returned an unsupported version response")
   expect(existsSync(join(root, "codex-home"))).toBe(false)
   expect(existsSync(join(root, "claude-home"))).toBe(false)
 }))
+
+it.skipIf(process.platform !== "linux")("accepts one unseen Codex version under its current native profile", async () => {
+  const root = mkdtempSync(join(tmpdir(), "pluginsdk-preview-version-"))
+  const bin = join(root, "bin")
+  mkdirSync(bin)
+  writeFileSync(join(bin, "codex"), "#!/bin/sh\nprintf 'codex-cli 99.0.0\\n'\n", { mode: 0o755 })
+  const previousPath = process.env["PATH"]
+  process.env["PATH"] = previousPath === undefined ? bin : `${bin}:${previousPath}`
+  try {
+    const inspected = await Effect.runPromise(inspectClient("codex", "codex").pipe(Effect.provide(NodeServices.layer)))
+    if (inspected.profile === null) throw new Error("The installed Codex client did not receive its current profile")
+    expect(inspected.profile).toMatchObject({ host: "codex", format: "codex", revision: "codex-local-marketplace:1" })
+    expect(inspected.profile).not.toHaveProperty("version")
+  } finally {
+    if (previousPath === undefined) delete process.env["PATH"]
+    else process.env["PATH"] = previousPath
+    rmSync(root, { recursive: true, force: true })
+  }
+})
 
 it("reports an unlaunchable client instead of treating it as missing", () => fixture((root, bin) => {
   writeFileSync(join(bin, "claude"), "#!/bin/sh\nexit 0\n", { mode: 0o644 })

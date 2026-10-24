@@ -3,7 +3,7 @@ import { dirname, join } from "node:path"
 import { expect, it } from "@effect/vitest"
 import { NodeServices } from "@effect/platform-node"
 import { Effect, FileSystem, Layer, Match, Schema } from "effect"
-import { BuildRequest, BundleBody, Compiler, type BuildIssue, type Bundle, type PackageFile } from "../contracts/Compiler.ts"
+import { BuildRequest, BundleBody, Compiler, type BuildIssue, type Bundle, type Format, type PackageFile } from "../contracts/Compiler.ts"
 import { PackagePath } from "../contracts/Plugin.ts"
 import { CompilerLive } from "../src/compiler/index.ts"
 import { validateBundle } from "../src/compiler/package/native.ts"
@@ -11,12 +11,12 @@ import { bundleDigest } from "../src/internal/identity.ts"
 import { jsonBytes, parseJsonBytes } from "../src/internal/json.ts"
 
 const CompilerTest = Layer.provideMerge(CompilerLive, NodeServices.layer)
-const formats = ["claude_code_v3", "agent_plugins_v3"]
+const formats: ReadonlyArray<Format> = ["claude_code", "codex"]
 const source = "import { writeFileSync } from 'node:fs'\n" +
   "if (process.env.STARTED) writeFileSync(process.env.STARTED, 'started')\n" +
   "console.log(JSON.stringify({argv:process.argv.slice(2),cwd:process.cwd(),env:Object.fromEntries(['OPTIND','EMPTY','TEXT','FROM_SOURCE'].filter(k=>Object.hasOwn(process.env,k)).map(k=>[k,process.env[k]]))}))\n"
 
-const request = (root: string, format: string, mcp: unknown, assets: ReadonlyArray<string> = ["mcp"]) =>
+const request = (root: string, format: Format, mcp: unknown, assets: ReadonlyArray<string> = ["mcp"]) =>
   Schema.decodeUnknownSync(BuildRequest)({
     root, format,
     plugin: { id: "process-demo", version: "1.0.0", description: "Existing application MCP", skills: [], assets, mcp }
@@ -67,17 +67,21 @@ it.effect("builds one process declaration for both clients without starting the 
     expect(launcher.executable).toBe(true)
     if (sharedLauncher !== undefined) expect(launcher.content).toEqual(sharedLauncher)
     sharedLauncher = launcher.content
-    const portable = format === "agent_plugins_v3"
-    const variable = portable ? "${PLUGIN_ROOT}" : "${CLAUDE_PLUGIN_ROOT}"
+    const codex = format === "codex"
+    const variable = codex ? "${PLUGIN_ROOT}" : "${CLAUDE_PLUGIN_ROOT}"
     const local = {
-      type: "stdio", command: portable ? "./.psdk/mcp/0.sh" : variable + "/.psdk/mcp/0.sh",
-      args: [variable], env: {}, ...(portable ? { cwd: variable } : {})
+      type: "stdio", command: "node",
+      args: [variable + "/.psdk/runtime/process.mjs", variable, ".psdk/mcp/0.json"], env: {}
     }
-    expect(parseJsonBytes(fileAt(bundle, portable ? "mcp.json" : ".mcp.json").content)).toEqual({
-      ...(portable ? { $schema: "https://agent-plugins.org/schemas/1.0.0/mcp.schema.json" } : {}),
-      mcpServers: { app: local, remote: { type: portable ? "streamable-http" : "http", url: "https://app.example/mcp", headers: { "X-App": "shared" } } }
+    expect(parseJsonBytes(fileAt(bundle, ".mcp.json").content)).toEqual({
+      mcpServers: {
+        app: codex ? { command: "node", args: [".psdk/runtime/process.mjs", ".", ".psdk/mcp/0.json"], env: {}, cwd: "." } : local,
+        remote: codex
+          ? { url: "https://app.example/mcp", http_headers: { "X-App": "shared" } }
+          : { type: "http", url: "https://app.example/mcp", headers: { "X-App": "shared" } }
+      }
     })
-    const packageRoot = join(root, portable ? "codex-package" : "claude-package")
+    const packageRoot = join(root, codex ? "codex-package" : "claude-package")
     for (const file of bundle.files) {
       const path = join(packageRoot, file.path)
       yield* fs.makeDirectory(dirname(path), { recursive: true })
@@ -102,7 +106,7 @@ it.effect("resolves executable references at the captured skill's final package 
   yield* fs.writeFileString(join(root, "custom/review/SKILL.md"), "---\nname: review\ndescription: Review changes.\n---\nUse the packaged tool.\n")
   yield* fs.writeFileString(join(root, "custom/review/bin/run.sh"), "#!/bin/sh\nprintf '%s' packaged\n")
   yield* fs.chmod(join(root, "custom/review/bin/run.sh"), 0o755)
-  const base = request(root, "claude_code_v3", { app: { type: "stdio", command: { file: "skills/review/bin/run.sh" } } }, [])
+  const base = request(root, "claude_code", { app: { type: "stdio", command: { file: "skills/review/bin/run.sh" } } }, [])
   const bundle = yield* Compiler.use((compiler) => compiler.build({ ...base, plugin: { ...base.plugin, skills: [PackagePath.make("custom/review")] } }))
   expect(fileAt(bundle, "skills/review/bin/run.sh").executable).toBe(true)
   expect(new TextDecoder().decode(fileAt(bundle, ".psdk/mcp/0.sh").content)).toContain("skills/review/bin/run.sh")
@@ -110,7 +114,7 @@ it.effect("resolves executable references at the captured skill's final package 
 
 it.effect("rejects missing sources, nonexecutable commands, missing directories and unsupported references explicitly", () => Effect.gen(function*() {
   const { root } = yield* prepare()
-  expect(yield* issues(request(root, "agent_plugins_v3", {
+  expect(yield* issues(request(root, "codex", {
     app: {
       type: "stdio", command: { file: "mcp/server.mjs" }, args: [{ file: "not-captured" }], cwd: "absent",
       env: { TOKEN: { type: "environment", name: "APP_TOKEN" } }
@@ -121,44 +125,31 @@ it.effect("rejects missing sources, nonexecutable commands, missing directories 
     { type: "invalid_process", server: "app", reason: { type: "missing_file", path: "not-captured" } },
     { type: "invalid_process", server: "app", reason: { type: "not_executable", path: "mcp/server.mjs" } }
   ])
-  expect(yield* issues(request(root, "claude_code_v3", { app: { type: "stdio", command: "node", args: [{ file: ".claude-plugin/plugin.json" }] } }, []))).toContainEqual({
+  expect(yield* issues(request(root, "claude_code", { app: { type: "stdio", command: "node", args: [{ file: ".claude-plugin/plugin.json" }] } }, []))).toContainEqual({
     type: "invalid_process", server: "app", reason: { type: "missing_file", path: ".claude-plugin/plugin.json" }
   })
 }).pipe(Effect.provide(CompilerTest)))
 
-it.effect("preserves old format meaning and detects collisions with generated launchers", () => Effect.gen(function*() {
+it.effect("rejects collisions between captured assets and generated launchers", () => Effect.gen(function*() {
   const { fs, root } = yield* prepare()
   const local = { app: { type: "stdio", command: "node" } }
-  for (const format of ["claude_code_v1", "agent_plugins_v1", "claude_code_v2", "agent_plugins_v2"]) {
-    expect(yield* issues(request(root, format, local, []))).toEqual([{ type: "unsupported_feature", feature: "stdio", format }])
-  }
-  const compiler = yield* Compiler
-  const remote = { app: { url: "https://app.example/mcp", headers: {} } }
-  for (const pair of [["claude_code_v2", "claude_code_v3"], ["agent_plugins_v2", "agent_plugins_v3"]]) {
-    const oldFormat = pair[0]
-    const newFormat = pair[1]
-    if (oldFormat === undefined || newFormat === undefined) throw new Error("Format pair is incomplete")
-    const before = yield* compiler.build(request(root, oldFormat, remote))
-    const after = yield* compiler.build(request(root, newFormat, remote))
-    expect(after.files).toEqual(before.files)
-  }
   yield* fs.makeDirectory(join(root, ".psdk/mcp"), { recursive: true })
   yield* fs.writeFileString(join(root, ".psdk/mcp/0.sh"), "source bytes")
-  const collision = yield* issues(request(root, "claude_code_v3", local, [".psdk"]))
+  const collision = yield* issues(request(root, "claude_code", local, [".psdk"]))
   expect(collision).toContainEqual({ type: "path_collision", path: ".psdk/mcp/0.sh" })
 }).pipe(Effect.provide(CompilerTest)))
 
 it.effect("validates imported process packages after their digests have been recomputed", () => Effect.gen(function*() {
   const { root } = yield* prepare()
-  const bundle = yield* Compiler.use((compiler) => compiler.build(request(root, "agent_plugins_v3", { app: { type: "stdio", command: "node", args: [{ file: "mcp/server.mjs" }] } })))
-  const server = { type: "stdio", command: "./.psdk/mcp/0.sh", args: ["${PLUGIN_ROOT}"], cwd: "${PLUGIN_ROOT}", env: {} }
+  const bundle = yield* Compiler.use((compiler) => compiler.build(request(root, "codex", { app: { type: "stdio", command: "node", args: [{ file: "mcp/server.mjs" }] } })))
+  const server = { command: "node", args: [".psdk/runtime/process.mjs", ".", ".psdk/mcp/0.json"], env: {}, cwd: "." }
   for (const changed of [
-    { ...server, command: "node" }, { ...server, command: "./.psdk/mcp/1.sh" },
+    { ...server, command: "/bin/sh" }, { ...server, command: "./.psdk/mcp/1.json" },
     { ...server, args: ["literal-root"] }, { ...server, cwd: "/tmp" },
     { ...server, env: { PLUGIN_ROOT: "replacement" } }
   ]) {
-    const files = bundle.files.map((file) => file.path === "mcp.json"
-      ? { ...file, content: jsonBytes({ $schema: "https://agent-plugins.org/schemas/1.0.0/mcp.schema.json", mcpServers: { app: changed } }) }
+    const files = bundle.files.map((file) => file.path === ".mcp.json"
+      ? { ...file, content: jsonBytes({ mcpServers: { app: changed } }) }
       : file)
     expect(() => validateBundle(repackage(bundle, files))).toThrow()
   }

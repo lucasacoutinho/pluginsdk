@@ -49,7 +49,7 @@ type AgentInput = Readonly<Record<string, typeof AgentDefinition.Encoded>>
 
 const buildRequest = (root: string, agents: AgentInput) => Schema.decodeSync(BuildRequest)({
   root,
-  format: "codex_plugin_v2",
+  format: "codex",
   plugin: {
     id: "companion-kit",
     version: "1.0.0",

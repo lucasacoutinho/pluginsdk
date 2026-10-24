@@ -118,7 +118,7 @@ theorem mcp_equivalent {left right : RenderInput} (normalized : Normalized left)
   have serversEqual := object_eq_of_perm rowsPerm (by rw [server_object_keys]; exact normalized.1)
   have rowsEqual : mcpRows left = mcpRows right := by
     unfold mcpRows
-    rw [serversEqual, format]
+    rw [serversEqual]
   simp only [mcp]
   rw [format, rowsEqual]
 

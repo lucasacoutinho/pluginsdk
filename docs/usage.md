@@ -37,7 +37,7 @@ Reapplying a completed plan returns its recorded result without repeating the na
 
 ## Install for a project
 
-Add the project root to the plan. For Codex 0.163.0, use a project already trusted by Codex with plugins enabled:
+Add the project root to the plan. For Codex, use a project already trusted by Codex with plugins enabled:
 
 ```sh
 npx pluginsdk plan .pluginsdk/build/codex.bundle.json \
@@ -49,7 +49,7 @@ npx pluginsdk apply .pluginsdk/codex-project.plan.json
 
 Codex keeps its ordinary home and authentication. PluginSDK updates the project's `.codex/config.toml` while preserving unrelated settings. The review includes the config file's digest and permissions. If that file changes after review, create a fresh plan.
 
-For a supported Claude Code version on Linux or Windows:
+For Claude Code on Linux or Windows:
 
 ```sh
 npx pluginsdk plan .pluginsdk/build/claude_code.bundle.json --host claude_code --home "$HOME/.claude" --project "$PWD" --out .pluginsdk/claude-project.plan.json
@@ -59,7 +59,7 @@ npx pluginsdk apply .pluginsdk/claude-project.plan.json
 
 Claude enables the plugin through the selected project's `.claude/settings.json`. It stores marketplace metadata in its shared home, so another project may list this installation as disabled.
 
-Project scope supports skills, supporting files and remote HTTP MCP declarations on the [listed versions](compatibility.md). Bundled stdio, hooks and agents also work in Claude Code 2.1.304 projects on Linux and Windows, and Codex 0.163.0 projects on Linux and Windows, using the same built packages.
+Project scope supports skills, assets, remote and bundled MCP, hooks and agents in both clients. It uses the same built packages as user scope. See [Supported clients](compatibility.md) for runtime requirements.
 
 A conflicting agent name or an edited installed package blocks replacement and removal. Resolve the conflicting name or restore the reviewed contents, then create a fresh plan.
 

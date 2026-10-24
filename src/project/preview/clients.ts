@@ -3,7 +3,7 @@ import { ChildProcess, ChildProcessSpawner } from "effect/process"
 import { homedir } from "node:os"
 import { join } from "node:path"
 import type { PackageClient } from "../../../contracts/Clients.ts"
-import { RuntimePlatform, RuntimeVersion, type NativeProfile } from "../../../contracts/Compatibility.ts"
+import { RuntimePlatform, type NativeProfile } from "../../../contracts/Compatibility.ts"
 import { Directory } from "../../../contracts/Plugin.ts"
 import { ProjectError, type LocalClient } from "../../../contracts/Project.ts"
 import type { Format } from "../../../contracts/Compiler.ts"
@@ -59,7 +59,7 @@ export const inspectClient = Effect.fn("Project.inspectPreviewClient")(function*
   const version = yield* clientVersion(client)
   if (version === null) return { client, profile: null }
   const profile = yield* Match.value(selectNativeProfile({
-    query: { host: client, platform: RuntimePlatform.make(process.platform), version: RuntimeVersion.make(version), scope: "user", format },
+    query: { host: client, platform: RuntimePlatform.make(process.platform), scope: "user", format, requirements: [] },
     profiles: nativeProfiles
   })).pipe(Match.discriminatorsExhaustive("type")({
     selected: ({ profile }) => Effect.succeed(profile),

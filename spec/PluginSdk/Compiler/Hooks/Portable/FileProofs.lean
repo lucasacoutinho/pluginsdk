@@ -1,5 +1,5 @@
 import PluginSdk.Compiler.Hooks.Portable.Facts
-import PluginSdk.Compiler.Hooks.Proofs
+import PluginSdk.Compiler.Hooks.Enumeration
 
 namespace PluginSdk.Compiler.Hooks.Portable.Proofs
 
@@ -19,7 +19,7 @@ theorem PH3_files_exact : PH3_files_exact model := by
   by_cases empty : input.hooks = []
   · simp [files, empty]
   · simp only [files, empty, ↓reduceIte, List.length_cons, paired_length, entries,
-      Hooks.Proofs.indexedHooks_length]
+      Hooks.indexedHooks_length]
     omega
 
 private def entryPaths (entry : Hooks.IndexedHook) : List String :=
@@ -79,7 +79,7 @@ private theorem files_paths_distinct (input : Input) :
     · intro path member
       obtain ⟨entry, _, within⟩ := List.mem_flatMap.mp member
       exact runtime_separate entry path within
-    · exact paired_paths_distinct (entries input) (Hooks.Proofs.indexedHooks_ordinal_pairwise input)
+    · exact paired_paths_distinct (entries input) (Hooks.indexedHooks_ordinal_pairwise input)
 
 private theorem files_no_dollar (input : Input) (file : FilePlan) (member : file ∈ files input) :
     '$' ∉ file.path.value.toList := by

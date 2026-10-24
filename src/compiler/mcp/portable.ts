@@ -4,7 +4,6 @@ import { PackagePath } from "../../../contracts/Plugin.ts"
 import type { FilePlan, Input, Issue, Result } from "../../../contracts/PortableMcp.ts"
 import { compareUtf8 } from "../../internal/paths.ts"
 import { remoteServer } from "../package/model.ts"
-import { hostFor } from "./model.ts"
 import { compilePortableLauncher, runtimePath } from "../process/portable.ts"
 
 type Document = NonNullable<Extract<Result, { type: "rendered" }>["document"]>
@@ -17,14 +16,14 @@ function nativeServer(format: Input["format"], native: Native): Document {
     ...(native.cwd === null ? {} : { cwd: native.cwd })
   }
   return Match.value(format).pipe(
-    Match.when("codex_plugin_v1", () => common),
-    Match.whenOr("agent_plugins_v1", "claude_code_v1", () => ({ type: "stdio", ...common })),
+    Match.when("codex", () => common),
+    Match.when("claude_code", () => ({ type: "stdio", ...common })),
     Match.exhaustive
   )
 }
 
 export function renderPortableMcp(input: Input): Result {
-  const host = hostFor(input.format)
+  const host = input.format
   const servers: Array<readonly [string, Document]> = Object.entries(input.remote).map(
     ([name, source]) => [name, remoteServer(input.format, source)]
   )
@@ -52,10 +51,5 @@ export function renderPortableMcp(input: Input): Result {
   const [head, ...tail] = issues
   if (head !== undefined) return { type: "rejected", issues: [head, ...tail] }
   const content: Document = { mcpServers: Object.fromEntries(servers) }
-  const document = Match.value(input.format).pipe(
-    Match.when("agent_plugins_v1", (): Document => ({ ...content, $schema: "https://agent-plugins.org/schemas/1.0.0/mcp.schema.json" })),
-    Match.whenOr("claude_code_v1", "codex_plugin_v1", () => content),
-    Match.exhaustive
-  )
-  return { type: "rendered", document: servers.length === 0 ? null : document, files }
+  return { type: "rendered", document: servers.length === 0 ? null : content, files }
 }

@@ -7,7 +7,6 @@ import PluginSdk.Compiler.Process.Wire
 import PluginSdk.Compiler.Process.LauncherWire
 import PluginSdk.Compiler.Process.Portable.Wire
 import PluginSdk.Compiler.Process.Portable.Runtime.Wire
-import PluginSdk.Compiler.BuildFormat.Wire
 import PluginSdk.Compiler.Mcp.Wire
 import PluginSdk.Compiler.Mcp.Portable.Wire
 import PluginSdk.Compiler.Hooks.Wire
@@ -59,13 +58,10 @@ private def evaluate (request : Lean.Json) : Except String Lean.Json := do
   | "render_launcher" => PluginSdk.Compiler.Process.Launcher.Wire.evaluate request
   | "compile_portable_launcher" => PluginSdk.Compiler.Process.Portable.Wire.evaluate request
   | "read_process_capture" | "execute_process" => PluginSdk.Compiler.Process.Portable.Runtime.Wire.evaluate request
-  | "select_build_format" => PluginSdk.Compiler.BuildFormat.Wire.evaluate request
   | "client_package_host" | "normalize_build_clients" =>
     PluginSdk.Compatibility.ClientPackages.Wire.evaluate request
   | "preview_route" | "preview_apply" | "preview_finish" => PluginSdk.Project.Preview.Wire.evaluate request
-  | "render_mcp" => PluginSdk.Compiler.Mcp.Wire.evaluate request
   | "render_portable_mcp" => PluginSdk.Compiler.Mcp.Portable.Wire.evaluate request
-  | "render_hooks" => PluginSdk.Compiler.Hooks.Wire.evaluate request
   | "bind_hook" => PluginSdk.Compiler.Hooks.Binding.Wire.evaluate request
   | "render_portable_hooks" => PluginSdk.Compiler.Hooks.Portable.Wire.evaluate request
   | "render_portable_features" => PluginSdk.Compiler.Portable.Wire.evaluate request

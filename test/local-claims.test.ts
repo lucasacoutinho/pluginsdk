@@ -210,7 +210,7 @@ const expectUnavailable = async (effect: Effect.Effect<unknown, StateUnavailable
 
 it("returns null for absent and stale-root namespaces without creating storage", async () => {
   await withWorkspace(async (workspace) => {
-    const bundle = await buildBundle("codex_plugin_portable_v1", "0.1.0")
+    const bundle = await buildBundle("codex", "0.1.0")
     const target = targetFor(join(workspace, "home"), bundle.plugin)
 
     await expect(Effect.runPromise(readLocalApproval(target, rootOne))).resolves.toBeNull()
@@ -221,7 +221,7 @@ it("returns null for absent and stale-root namespaces without creating storage",
 
 it("retains the real bundle plan and exact descriptors, and identical replay preserves the claim file", async () => {
   await withWorkspace(async (workspace) => {
-    const bundle = await buildBundle("codex_plugin_portable_v1", "0.1.0")
+    const bundle = await buildBundle("codex", "0.1.0")
     const tree = treeFixtureFromBundle(bundle, rootOne, codexDirectories)
     const target = targetFor(join(workspace, "home"), bundle.plugin)
     const plan = makePlan(target, bundle)
@@ -249,8 +249,8 @@ it("retains the real bundle plan and exact descriptors, and identical replay pre
 
 it("refuses partial and foreign trees before creating storage or retaining a plan", async () => {
   await withWorkspace(async (workspace) => {
-    const bundle = await buildBundle("codex_plugin_portable_v1", "0.1.0")
-    const nextBundle = await buildBundle("codex_plugin_portable_v1", "0.1.1")
+    const bundle = await buildBundle("codex", "0.1.0")
+    const nextBundle = await buildBundle("codex", "0.1.1")
     const target = targetFor(join(workspace, "home"), bundle.plugin)
     const plan = makePlan(target, bundle)
     const completeTree = treeFixtureFromBundle(bundle, rootOne, codexDirectories)
@@ -279,9 +279,9 @@ it("refuses partial and foreign trees before creating storage or retaining a pla
   })
 })
 
-it("refuses a removal plan and an unqualified package format without writes", async () => {
+it("refuses a removal plan and a package for a different client without writes", async () => {
   await withWorkspace(async (workspace) => {
-    const bundle = await buildBundle("codex_plugin_portable_v1", "0.1.0")
+    const bundle = await buildBundle("codex", "0.1.0")
     const tree = treeFixtureFromBundle(bundle, rootOne, codexDirectories)
     const target = targetFor(join(workspace, "removal-home"), bundle.plugin)
     const prior = makePlan(target, bundle)
@@ -289,7 +289,7 @@ it("refuses a removal plan and an unqualified package format without writes", as
     await expectUnavailable(retainLocalApproval(removal, tree))
     expect(await pathExists(targetPaths(target).store)).toBe(false)
 
-    const claudeBundle = await buildBundle("claude_code_portable_v1", "0.1.0")
+    const claudeBundle = await buildBundle("claude_code", "0.1.0")
     const claudeTree = treeFixtureFromBundle(claudeBundle, rootTwo, claudeDirectories)
     const unqualifiedPlan = makePlan(target, claudeBundle)
     await expectUnavailable(retainLocalApproval(unqualifiedPlan, claudeTree))
@@ -301,8 +301,8 @@ it("refuses a removal plan and an unqualified package format without writes", as
 
 it("refuses a different plan for an already claimed physical root without rewriting or retaining it", async () => {
   await withWorkspace(async (workspace) => {
-    const firstBundle = await buildBundle("codex_plugin_portable_v1", "0.1.0")
-    const nextBundle = await buildBundle("codex_plugin_portable_v1", "0.1.1")
+    const firstBundle = await buildBundle("codex", "0.1.0")
+    const nextBundle = await buildBundle("codex", "0.1.1")
     const target = targetFor(join(workspace, "home"), firstBundle.plugin)
     const firstTree = treeFixtureFromBundle(firstBundle, rootOne, codexDirectories)
     const nextTree = treeFixtureFromBundle(nextBundle, rootOne, codexDirectories)
@@ -321,8 +321,8 @@ it("refuses a different plan for an already claimed physical root without rewrit
 
 it("refuses malformed claims and missing, corrupt, or mismatched retained plans", async () => {
   await withWorkspace(async (workspace) => {
-    const bundle = await buildBundle("codex_plugin_portable_v1", "0.1.0")
-    const nextBundle = await buildBundle("codex_plugin_portable_v1", "0.1.1")
+    const bundle = await buildBundle("codex", "0.1.0")
+    const nextBundle = await buildBundle("codex", "0.1.1")
     const cases = [
       "malformed-record",
       "missing-plan",
@@ -372,7 +372,7 @@ it("refuses malformed claims and missing, corrupt, or mismatched retained plans"
 
 it("refuses present claims with the wrong owner, captured root, or current target", async () => {
   await withWorkspace(async (workspace) => {
-    const bundle = await buildBundle("codex_plugin_portable_v1", "0.1.0")
+    const bundle = await buildBundle("codex", "0.1.0")
     const tree = treeFixtureFromBundle(bundle, rootOne, codexDirectories)
     const home = join(workspace, "home")
     const target = targetFor(home, bundle.plugin)

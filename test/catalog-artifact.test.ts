@@ -34,7 +34,7 @@ import { CompilerLive } from "../src/compiler/index.ts"
 import { bundleDigest } from "../src/internal/identity.ts"
 import { ReleaseCatalogLive } from "../src/catalog/index.ts"
 
-const formats: ReadonlyArray<Format> = ["claude_code_v4", "codex_plugin_v1"]
+const formats: ReadonlyArray<Format> = ["claude_code", "codex"]
 const compilerLayer = Layer.provideMerge(CompilerLive, NodeServices.layer)
 const maxArtifactBytes = 64 * 1024 * 1024
 
@@ -338,7 +338,7 @@ it("rejects correctly pinned malformed, noncanonical and package-inconsistent ar
     const [archiveHead, ...archiveTail] = fixture.bundles
     if (archiveHead === undefined) throw new Error("Compiler fixture has no bundles")
     const encodedArchive = Schema.encodeSync(PackageArchive)({ schema: 1, bundles: [archiveHead, ...archiveTail] })
-    const encodedBundle = Schema.encodeSync(PackageArchive)({ schema: 1, bundles: [bundleAt(fixture.bundles, "claude_code_v4")] })
+    const encodedBundle = Schema.encodeSync(PackageArchive)({ schema: 1, bundles: [bundleAt(fixture.bundles, "claude_code")] })
     const bundleText = JSON.stringify(encodedBundle.bundles[0])
     if (bundleText === undefined) throw new Error("Compiler bundle did not encode as JSON")
     const duplicateKeys = new TextEncoder().encode(`{"schema":1,"bundles":[${bundleText}],"schema":1}`)
@@ -346,7 +346,7 @@ it("rejects correctly pinned malformed, noncanonical and package-inconsistent ar
     const extraField = jsonBytes({ ...encodedArchive, unexpected: true })
     const emptyArchive = jsonBytes({ schema: 1, bundles: [] })
     const malformedUtf8 = new Uint8Array([0xff, 0xfe, 0xfd])
-    const claude = bundleAt(fixture.bundles, "claude_code_v4")
+    const claude = bundleAt(fixture.bundles, "claude_code")
     const invalidFiles = claude.files.map((file) => file.path === ".claude-plugin/plugin.json"
       ? { ...file, content: new TextEncoder().encode("{}") }
       : file)
@@ -560,10 +560,10 @@ it("snapshots release metadata before the HTTP acquisition starts", async () => 
       expect(paths.get("/source")).toBe(1)
       expect(paths.get("/mutated-target")).toBeUndefined()
       await runCatalog(directory, (catalog) => Effect.gen(function*() {
-        const acquired = yield* catalog.acquire({ key: originalKey, target: { type: "plugin", format: "claude_code_v4" } })
+        const acquired = yield* catalog.acquire({ key: originalKey, target: { type: "plugin", format: "claude_code" } })
         expect(acquired).toEqual({
           type: "plugin", release: expectedRelease,
-          bundle: bundleAt(fixture.bundles, "claude_code_v4")
+          bundle: bundleAt(fixture.bundles, "claude_code")
         })
       }))
     })
@@ -613,10 +613,10 @@ it("releases the stalled HTTP exchange on interruption and keeps local admission
         await socketClosed.promise
         expect(await readFile(join(directory, "catalog.json"))).toEqual(afterLocalAdmission)
         await runCatalog(directory, (catalog) => Effect.gen(function*() {
-          const acquired = yield* catalog.acquire({ key: firstRelease.key, target: { type: "plugin", format: "claude_code_v4" } })
+          const acquired = yield* catalog.acquire({ key: firstRelease.key, target: { type: "plugin", format: "claude_code" } })
           expect(acquired).toEqual({
             type: "plugin", release: firstRelease,
-            bundle: bundleAt(fixture.bundles, "claude_code_v4")
+            bundle: bundleAt(fixture.bundles, "claude_code")
           })
         }))
       } finally {

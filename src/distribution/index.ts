@@ -1,5 +1,5 @@
 import { resolve } from "node:path"
-import { Effect, Layer, Match, Schema } from "effect"
+import { Effect, Layer, Match, Schema, Struct } from "effect"
 import { Release, type PluginRelease } from "../../contracts/Catalog.ts"
 import {
   Distribution, DistributionInputRejected, DistributionRejected, DistributionUnavailable, ExecutionRecord, ReadyPlan, Step,
@@ -23,7 +23,7 @@ type Evaluation = typeof Evaluation.Type
 const sameRelease = Schema.toEquivalence(Release)
 const samePlan = Schema.toEquivalence(ReadyPlan)
 const sameProgress = Schema.toEquivalence(ProgressRecord)
-const sameTarget = Schema.toEquivalence(Target)
+const sameTarget = Schema.toEquivalence(Schema.Struct(Struct.omit(Target.fields, ["version"])))
 const sameSnapshot = Schema.toEquivalence(Snapshot)
 type AttemptOutcome = Exclude<Outcome, { readonly type: "pending" }>
 

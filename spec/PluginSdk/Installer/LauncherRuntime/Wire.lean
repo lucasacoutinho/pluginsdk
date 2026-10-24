@@ -16,9 +16,6 @@ private def readNatural (json : Json) : Except String Nat := do
 private def readKind (json : Json) : Except String Kind := do
   match ← (← json.getObjVal? "type").getStr? with
   | "absent" => checkFields json ["type"]; return .absent
-  | "posix" =>
-    checkFields json ["type", "cwdRoot"]
-    return .posix (← (← json.getObjVal? "cwdRoot").getBool?)
   | "portable" => checkFields json ["type"]; return .portable
   | value => throw s!"unknown launcher kind: {value}"
 
@@ -26,7 +23,6 @@ private def writeCheck : Check → Json
   | .node => .str "node"
   | .shell => .str "shell"
   | .env => .str "env"
-  | .pwd => .str "pwd"
 
 private def requirements (input : Json) : Except String Json := do
   checkFields input ["platform", "kind"]

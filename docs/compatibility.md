@@ -1,40 +1,35 @@
 # Supported clients and platforms
 
-All installation profiles require Node 24+ and an exact supported client version. Bundled stdio MCP and command hooks require Node 24.18+ on the client's `PATH`. Claude Code and Codex packages are separate outputs from the same plugin definition.
+PluginSDK builds one Claude Code package and one Codex package from the same definition. Cursor uses the Claude-compatible package. Installation checks the client's native contract, platform, scope and the features the package needs. Client version strings are recorded for diagnostics; they are not an allowlist.
 
-| Platform | Client | Version | User installation | Project installation |
-| --- | --- | --- | --- | --- |
-| Linux | Claude Code | 2.1.303 | Skills, supporting files, remote HTTP MCP | Skills, supporting files, remote HTTP MCP |
-| Linux | Claude Code | 2.1.304 | Skills, supporting files, remote HTTP MCP, bundled stdio MCP, hooks, agents | Skills, supporting files, remote HTTP MCP, bundled stdio MCP, hooks, agents |
-| Linux | Codex CLI | 0.162.1 | Skills, supporting files, remote HTTP MCP | Unavailable |
-| Linux | Codex CLI | 0.163.0 | Skills, supporting files, remote HTTP MCP, bundled stdio MCP, hooks, agents | Skills, supporting files, remote HTTP MCP, bundled stdio MCP, hooks, agents |
-| Windows x64 | Claude Code | 2.1.304 | Skills, supporting files, remote HTTP MCP, bundled stdio MCP, hooks, agents | Skills, supporting files, remote HTTP MCP, bundled stdio MCP, hooks, agents |
-| Windows x64 | Codex CLI | 0.163.0 | Skills, supporting files, remote HTTP MCP, bundled stdio MCP, hooks, agents | Skills, supporting files, remote HTTP MCP, bundled stdio MCP, hooks, agents |
+Run the CLI with Node 24+. Bundled stdio servers and command hooks also need Node 24.18+ on the client's `PATH`.
 
-On Windows, preview for your user with `pluginsdk preview --target claude_code` or `pluginsdk preview --target codex`. Both clients support the reviewed [project installation workflow](usage.md#install-for-a-project).
+| Platform | Client | User installation | Project installation |
+| --- | --- | --- | --- |
+| Linux | Claude Code | Skills, assets, remote and bundled MCP, hooks, agents | Same features |
+| Linux | Codex CLI | Skills, assets, remote and bundled MCP, hooks, agents | Same features |
+| Windows x64 | Claude Code | Skills, assets, remote and bundled MCP, hooks, agents | Same features |
+| Windows x64 | Codex CLI | Skills, assets, remote and bundled MCP, hooks, agents | Same features |
+| Windows x64 | Cursor IDE | Skills, assets, remote and bundled MCP | Unavailable |
 
-Maintainers can review the [user feature qualification](internals/portable-feature-defaults-acceptance.md), [Claude Linux project qualification](internals/portable-project-stdio-linux-acceptance.md), [Claude Windows project qualification](internals/portable-project-claude-windows-acceptance.md), [Codex Linux project qualification](internals/codex-project-portable-linux-admission.md), and [Codex Windows project qualification](internals/codex-project-portable-windows-admission.md).
+Preview in available local clients with `pluginsdk preview`. Use `--target claude_code`, `--target codex` or `--target cursor` to select one client. See [Publishing](publishing.md#preview-locally) for Cursor's shared-source behavior and [Manage installations](usage.md#install-for-a-project) for project scope.
 
-macOS installation is unavailable. ChatGPT, Cursor, Grok Bot and Meta Muse do not have installation adapters. Claude Desktop and Claude web are different products from Claude Code and are not covered by its support.
+macOS installation is unavailable. ChatGPT, Grok Bot and Meta Muse have no installation adapters. Claude Desktop and Claude web are separate products from Claude Code and are not covered by its adapter.
 
 ## Feature limits
 
-Remote HTTP MCP declarations support literal URLs and headers across both clients. Environment-backed headers are available for Claude-only builds. A build for both clients rejects declarations that one cannot preserve. Authentication and backend RBAC remain the responsibility of your services.
+Remote HTTP MCP declarations support literal URLs and headers across both package clients. Environment-backed headers are available for Claude-only builds. A build for both clients rejects declarations that one cannot preserve. Your services authenticate users and enforce backend tool permissions.
 
-Codex project installations require a trusted project with plugins enabled. An existing effective configuration for the same plugin ID blocks installation. Resolve that installation before creating a project plan. See [Project installation](usage.md#install-for-a-project).
+Codex project installations require a trusted project with plugins enabled. An existing effective configuration for the same plugin ID blocks installation. Resolve that installation before creating a project plan.
 
-`build` packages bundled stdio MCP, hooks and agents for both clients from one definition. These packages support the newer Linux and Windows user profiles above, Claude Code 2.1.304 projects on Linux and Windows, and Codex 0.163.0 projects on Linux and Windows. Stdio servers and hook commands on Linux require `/bin/sh`, GNU `/usr/bin/env` 9.4 and Node with `process.execve`. On Windows, each packaged command's working directory must fit within 258 UTF-16 units. PluginSDK checks that limit before retaining an installation plan; use a shorter client configuration directory if it refuses the destination.
+On Linux, bundled stdio servers and hooks require `/bin/sh`, Node with `process.execve`, and `/usr/bin/env` supporting `-u` and `-S` environment expansion. PluginSDK probes these operations. On Windows, each packaged command's working directory must fit within 258 UTF-16 units. Use a shorter client configuration directory if planning refuses that path.
 
-Linux Claude Code supports server startup and direct-process shutdown. It can leave persistent descendants running after their parent exits. Do not rely on it to stop those descendants.
+Linux Claude Code can leave persistent descendants running after their parent exits. Account for those processes when writing your server's shutdown behavior.
 
-Hooks support synchronous `SessionStart` and `UserPromptSubmit` commands. New or changed Codex hook definitions require native approval in Codex. Review hook code when updating a plugin.
-
-Agents support a shared prompt, description, optional per-client models and shell-tool policy. Other agent controls and hook events are not available.
+Hooks support synchronous `SessionStart` and `UserPromptSubmit` commands. New or changed Codex hooks require native approval. Agents support a shared prompt, description, optional per-client models and shell-tool policy. Other agent controls and hook events are unavailable. Cursor rejects packages requiring hooks or agents.
 
 ## Client upgrades
 
-After changing client version, create a fresh installation plan. A previously reviewed plan is tied to its client version and is rejected after that version changes.
+A client version change alone does not invalidate an installation review or remove PluginSDK's ownership of a package. Changes to the physical destination, adapter contract, installed contents or reviewed configuration still require a fresh review. Native commands and responses must continue to satisfy the adapter's contract.
 
-An installation can remain owned across the supported versions when its package features are supported by both. An unknown client version blocks installation until it is qualified.
-
-Maintainers can find the native evidence and exact format revisions in the [compatibility record](internals/compatibility-design.md).
+Maintainers keep exact tested binary versions and hashes in the [native evidence records](internals/README.md). The [current launch plan](internals/launch-plan.md) distinguishes existing evidence from qualification still in progress.

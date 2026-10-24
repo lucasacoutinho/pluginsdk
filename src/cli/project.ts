@@ -2,13 +2,12 @@ import { Console, Effect, FileSystem, Match, Option, Schema } from "effect"
 import type { NonEmptyReadonlyArray } from "effect/Array"
 import { Argument, Command, Flag } from "effect/cli"
 import { dirname, join, resolve } from "node:path"
-import { Bundle, Compiler, Format } from "../../contracts/Compiler.ts"
+import { Bundle } from "../../contracts/Compiler.ts"
 import { Directory } from "../../contracts/Plugin.ts"
 import { LocalPreviewStatus, PreviewResult, ProjectError, type LocalClient, type PreviewClient } from "../../contracts/Project.ts"
 import { LocalClient as ManagedClient, PackageClient } from "../../contracts/Clients.ts"
 import { canonicalJson } from "../internal/json.ts"
-import { nativeLocations } from "../compiler/package/native.ts"
-import { compileProject, pluginDefinition, readBuild, readDefinition, writeBuild } from "../project/build.ts"
+import { compileProject, readBuild, readDefinition, writeBuild } from "../project/build.ts"
 import { publishGit } from "../project/git.ts"
 import { capturedPublication, preparePublication } from "../project/marketplace.ts"
 import { previewProject } from "../project/preview/index.ts"
@@ -44,33 +43,24 @@ const previewLine = (result: PreviewClient): string => Match.value(result).pipe(
 export const buildCommand = Command.make("build", {
   definition: definitionArgument(),
   root: Flag.String("root").pipe(Flag.optional, Flag.withDescription("Source directory; defaults to the definition's directory")),
-  format: Flag.Literals("format", Format.literals).pipe(Flag.optional, Flag.withDescription("Emit one explicit native format instead of a captured release")),
   target: targetFlag("Select one client package; defaults to Claude Code and Codex"),
-  out: Flag.String("out").pipe(Flag.optional, Flag.withDescription("Build directory, or bundle file with --format; defaults to .pluginsdk/build")),
+  out: Flag.String("out").pipe(Flag.optional, Flag.withDescription("Build directory; defaults to .pluginsdk/build")),
   json: jsonFlag()
 }, Effect.fn("pluginsdk.cli.build")(function*(input) {
-  if (Option.isSome(input.format) && Option.isSome(input.target)) return yield* new CliFailure({ message: "Choose --target or --format" })
   const definition = yield* readDefinition(input.definition).pipe(Effect.mapError(toCliFailure))
   const root = yield* sourceRoot(Option.getOrElse(input.root, () => dirname(resolve(input.definition))))
   const output = Option.getOrElse(input.out, () => join(".pluginsdk", "build"))
-  const bundles = yield* Option.match(input.format, {
-    onSome: (format) => Compiler.use((compiler) => compiler.build({ root, plugin: pluginDefinition(definition), format })).pipe(
-      Effect.map((bundle): NonEmptyReadonlyArray<Bundle> => [bundle])
-    ),
-    onNone: () => compileProject(definition, root, selectedClients(input.target, PackageClient.literals))
-  }).pipe(Effect.mapError(toCliFailure))
+  const bundles = yield* compileProject(definition, root, selectedClients(input.target, PackageClient.literals)).pipe(Effect.mapError(toCliFailure))
   const fs = yield* FileSystem.FileSystem
   const files = bundles.map((bundle) => ({
     bundle,
-    path: Option.isSome(input.format)
-      ? Option.getOrElse(input.out, () => join(output, `${bundle.format}.bundle.json`))
-      : join(output, `${nativeLocations(bundle.format).host}.bundle.json`)
+    path: join(output, `${bundle.format}.bundle.json`)
   }))
   for (const { bundle, path } of files) {
     yield* fs.makeDirectory(dirname(path), { recursive: true }).pipe(Effect.mapError(() => new CliFailure({ message: `Cannot create output directory for ${path}` })))
     yield* writeJson(path, encodedBundle(bundle)).pipe(Effect.mapError(toCliFailure))
   }
-  if (Option.isNone(input.format)) yield* writeBuild(output, definition, bundles).pipe(Effect.mapError(toCliFailure))
+  yield* writeBuild(output, definition, bundles).pipe(Effect.mapError(toCliFailure))
   for (const { bundle, path } of files) yield* Console.log(input.json ? canonicalJson(encodedBundle(bundle)) : [
     `Built ${bundle.plugin} (${bundle.format})`, `bundle digest: ${bundle.digest}`, `files: ${bundle.files.length}`, `output: ${path}`
   ].join("\n"))

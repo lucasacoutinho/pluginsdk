@@ -33,10 +33,10 @@ type TestIntent = Extract<PlanRequestType["intent"], { readonly type: "absent" |
 type TestPlanRequest = Omit<PlanRequestType, "intent"> & { readonly intent: TestIntent }
 
 const bundle: Bundle = (() => {
-  const body = Schema.decodeSync(BundleBody)({
+  const body = Schema.decodeSync(BundleBody, { onExcessProperty: "error" })({
     schema: 1,
     plugin: "preview-boundary",
-    format: "claude_code_v4",
+    format: "claude_code",
     files: [{ path: "skills/overview/SKILL.md", content: "IyBQcmV2aWV3IGZpeHR1cmUK", executable: false }]
   })
   return { ...body, digest: bundleDigest(body) }

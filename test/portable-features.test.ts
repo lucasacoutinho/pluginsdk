@@ -3,11 +3,13 @@ import { readFileSync } from "node:fs"
 import { fileURLToPath } from "node:url"
 import { expect, it } from "@effect/vitest"
 import { Schema } from "effect"
+import { Format } from "../contracts/Compiler.ts"
 import * as PortableFeatures from "../contracts/PortableFeatures.ts"
 import { ProcessPlan } from "../contracts/Process.ts"
 import { parseJson } from "../src/internal/json.ts"
 
-const oracle = fileURLToPath(new URL("../spec/.lake/build/bin/oracle", import.meta.url))
+const oracle = process.env["PLUGINSDK_ORACLE"] ??
+  fileURLToPath(new URL("../spec/.lake/build/bin/oracle", import.meta.url))
 const Vector = Schema.Struct({
   name: Schema.NonEmptyString,
   properties: Schema.Array(Schema.NonEmptyString),
@@ -15,9 +17,7 @@ const Vector = Schema.Struct({
   expected: PortableFeatures.OracleResponse
 })
 const equivalent = Schema.toEquivalence(PortableFeatures.OracleResponse)
-const formats: ReadonlyArray<PortableFeatures.Input["mcp"]["format"]> = [
-  "claude_code_v1", "codex_plugin_v1", "agent_plugins_v1"
-]
+const formats: ReadonlyArray<PortableFeatures.Input["mcp"]["format"]> = Format.literals
 
 function decode<S extends Schema.ConstraintDecoder<unknown>>(schema: S, input: unknown): S["Type"] {
   return Schema.decodeUnknownSync(schema, { onExcessProperty: "error" })(input)
@@ -75,8 +75,8 @@ const hooks: ReadonlyArray<ReadonlyArray<readonly [string, unknown]>> = [
   [["z", { ...hook, plan: collision }], ["app", { ...hook, plan: captured }], ["ok", hook]]
 ]
 
-it("preserves twenty-seven frozen complete-component expectations", () => {
-  expect(vectors).toHaveLength(27)
+it("preserves frozen complete-component expectations for both formats", () => {
+  expect(new Set(vectors.map(({ request }) => request.input.mcp.format))).toEqual(new Set(formats))
   const responses = compare(vectors.map(({ request }) => request))
   for (const [index, vector] of vectors.entries()) {
     const response = responses[index]
@@ -93,7 +93,7 @@ it("conforms for empty, remote, local, captured, colliding and mixed hook inputs
       hooks: Object.fromEntries(hookEntries)
     })))
   ))
-  expect(requests).toHaveLength(120)
+  expect(new Set(requests.map(({ input }) => input.mcp.format))).toEqual(new Set(formats))
   compare(requests)
 })
 
@@ -110,7 +110,7 @@ it("preserves composition across MCP, header and hook enumeration changes", () =
       hooks: Object.fromEntries(reverse ? [...hookEntries].reverse() : hookEntries)
     })
   })))
-  expect(requests).toHaveLength(12)
+  expect(new Set(requests.map(({ input }) => input.mcp.format))).toEqual(new Set(formats))
   const responses = compare(requests)
   for (let index = 0; index < responses.length; index += 2) {
     const original = responses[index]
@@ -121,7 +121,7 @@ it("preserves composition across MCP, header and hook enumeration changes", () =
 })
 
 it("rejects malformed frames, nested schemas and contradictory host input in both decoders", () => {
-  const frame = request({ mcp: { format: "codex_plugin_v1", remote: {}, local: { app: literal } }, hooks: { app: hook } })
+  const frame = request({ mcp: { format: "codex", remote: {}, local: { app: literal } }, hooks: { app: hook } })
   const input = frame.input
   const malformed: ReadonlyArray<unknown> = [
     ...[0, 2, "1", true, null].map((schema) => ({ ...frame, schema })),

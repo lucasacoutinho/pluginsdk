@@ -70,14 +70,14 @@ import { DistributionLive } from "../src/distribution/index.ts"
 import { StoredDistribution, type StoredDistribution as StoredDistributionType, type StoredJob } from "../src/distribution/storage.ts"
 
 const compilerLayer = Layer.provideMerge(CompilerLive, NodeServices.layer)
-const formats: ReadonlyArray<PackageFormat> = ["claude_code_v4", "claude_code_v3", "codex_plugin_v1"]
+const formats: ReadonlyArray<PackageFormat> = ["claude_code", "codex"]
 
 type Fixture = {
   readonly root: string
   readonly catalogDirectory: string
   readonly bundles: ReadonlyArray<Bundle>
   readonly mainRelease: PluginReleaseType
-  readonly ambiguousRelease: PluginReleaseType
+  readonly claudeOnlyRelease: PluginReleaseType
   readonly codexOnlyRelease: PluginReleaseType
   readonly mcpRelease: McpReleaseType
 }
@@ -164,11 +164,11 @@ const makeFixture = async (): Promise<Fixture> => {
       return built
     }).pipe(Effect.provide(compilerLayer)))
 
-    const mainBundles = bundlesFor(bundles, ["claude_code_v4", "codex_plugin_v1"])
-    const ambiguousBundles = bundlesFor(bundles, ["claude_code_v3", "claude_code_v4", "codex_plugin_v1"])
-    const codexBundles = bundlesFor(bundles, ["codex_plugin_v1"])
+    const mainBundles = bundlesFor(bundles, ["claude_code", "codex"])
+    const claudeBundles = bundlesFor(bundles, ["claude_code"])
+    const codexBundles = bundlesFor(bundles, ["codex"])
     const mainRelease = makePluginRelease(makeKey("distribution", "release-main"), mainBundles)
-    const ambiguousRelease = makePluginRelease(makeKey("distribution", "release-ambiguous"), ambiguousBundles)
+    const claudeOnlyRelease = makePluginRelease(makeKey("distribution", "release-claude-only"), claudeBundles)
     const codexOnlyRelease = makePluginRelease(makeKey("distribution", "release-codex-only"), codexBundles)
     const contract = Schema.decodeSync(McpContract)({
       schema: 1,
@@ -195,12 +195,12 @@ const makeFixture = async (): Promise<Fixture> => {
       const catalog = yield* ReleaseCatalog
       yield* catalog.initialize
       expect(yield* catalog.admit({ type: "plugin", release: mainRelease, bundles: mainBundles })).toEqual({ type: "admitted" })
-      expect(yield* catalog.admit({ type: "plugin", release: ambiguousRelease, bundles: ambiguousBundles })).toEqual({ type: "admitted" })
+      expect(yield* catalog.admit({ type: "plugin", release: claudeOnlyRelease, bundles: claudeBundles })).toEqual({ type: "admitted" })
       expect(yield* catalog.admit({ type: "plugin", release: codexOnlyRelease, bundles: codexBundles })).toEqual({ type: "admitted" })
       expect(yield* catalog.admit({ type: "mcp", release: mcpRelease, contract: captured.contract })).toEqual({ type: "admitted" })
     }).pipe(Effect.provide(catalogLayer(catalogDirectory))))
 
-    return { root, catalogDirectory, bundles, mainRelease, ambiguousRelease, codexOnlyRelease, mcpRelease }
+    return { root, catalogDirectory, bundles, mainRelease, claudeOnlyRelease, codexOnlyRelease, mcpRelease }
   } catch (cause) {
     await rm(root, { recursive: true, force: true })
     throw cause
@@ -421,7 +421,7 @@ const outcomeLabel = (outcome: DistributionOutcome): string => Match.value(outco
 
 it("plans both local hosts from retained compiler packages and snapshots caller data", async () => {
   const fixture = currentFixture()
-  const sourceClaude = bundleAt(fixture.bundles, "claude_code_v4")
+  const sourceClaude = bundleAt(fixture.bundles, "claude_code")
   const expectedClaude = structuredClone(sourceClaude)
   const sourceFile = sourceClaude.files.find((file) => file.path === "skills/overview/SKILL.md")
   if (sourceFile === undefined) throw new Error("Compiler package is missing the fixture skill")
@@ -439,7 +439,7 @@ it("plans both local hosts from retained compiler packages and snapshots caller 
     planning = await runRuntime(makeInstaller(), (distribution, catalog) => Effect.gen(function*() {
       const acquired = yield* catalog.acquire({
         key: fixture.mainRelease.key,
-        target: { type: "plugin", format: "claude_code_v4" }
+        target: { type: "plugin", format: "claude_code" }
       })
       expect(acquired).toEqual({
         type: "plugin",
@@ -455,7 +455,7 @@ it("plans both local hosts from retained compiler packages and snapshots caller 
   const plan = expectReady(planning)
   expect(plan.release).toEqual(fixture.mainRelease)
   expect(plan.steps.map((step) => step.target)).toEqual(["alpha-codex", "β-claude"])
-  expect(bundleFromApplyStep(stepAt(plan, "alpha-codex"))).toEqual(bundleAt(fixture.bundles, "codex_plugin_v1"))
+  expect(bundleFromApplyStep(stepAt(plan, "alpha-codex"))).toEqual(bundleAt(fixture.bundles, "codex"))
   expect(bundleFromApplyStep(stepAt(plan, "β-claude"))).toEqual(expectedClaude)
   expect(bundleFromApplyStep(stepAt(plan, "β-claude")).files[0].content).not.toBe(sourceClaude.files[0].content)
 
@@ -548,7 +548,7 @@ it("retains a private multi-step snapshot across shared-buffer mutation and retu
   expect(finalJob.record).toEqual(results.retainedRecord)
 })
 
-it("blocks whole plans for incompatible packages, collisions, and unqualified targets", async () => {
+it("blocks whole plans when a current client package is unavailable, and for collisions or unqualified targets", async () => {
   const fixture = currentFixture()
   const missing = await runRuntime(makeInstaller(), (distribution) => distribution.plan(requestFor(
     fixture.codexOnlyRelease,
@@ -562,16 +562,16 @@ it("blocks whole plans for incompatible packages, collisions, and unqualified ta
     { type: "blocked", target: "missing-claude", reason: "package_unavailable" }
   ])
 
-  const ambiguous = await runRuntime(makeInstaller(), (distribution) => distribution.plan(requestFor(
-    fixture.ambiguousRelease,
+  const missingCodex = await runRuntime(makeInstaller(), (distribution) => distribution.plan(requestFor(
+    fixture.claudeOnlyRelease,
     "present",
     [
-      localTarget(fixture.root, "ambiguous-claude", "claude_code", "ambiguous-claude"),
-      localTarget(fixture.root, "available-codex", "codex", "available-codex")
+      localTarget(fixture.root, "available-claude", "claude_code", "available-claude"),
+      localTarget(fixture.root, "missing-codex", "codex", "missing-codex")
     ]
   )))
-  expect(expectBlocked(ambiguous)).toEqual([
-    { type: "blocked", target: "ambiguous-claude", reason: "package_ambiguous" }
+  expect(expectBlocked(missingCodex)).toEqual([
+    { type: "blocked", target: "missing-codex", reason: "package_unavailable" }
   ])
 
   const mismatchedRelease = Schema.decodeSync(PluginRelease)({
@@ -662,7 +662,7 @@ it("forwards Cursor package selection to Installer before reporting host unavail
       home: Directory.make(join(fixture.root, "home-cursor"))
     }
   })
-  const expectedClaude = bundleAt(fixture.bundles, "claude_code_v4")
+  const expectedClaude = bundleAt(fixture.bundles, "claude_code")
   let planCalls = 0
   let capturedRequest: InstallationPlanRequest | undefined
   const installer = makeInstaller({
@@ -829,6 +829,43 @@ const expectReceiptsBound = (
     }))
   }
 }
+
+it("keeps an unchanged installation review valid after the observed client version changes", async () => {
+  const fixture = currentFixture()
+  let planningCalls = 0
+  let applyCalls = 0
+  const installer = makeInstaller({
+    plan: (request) => {
+      planningCalls += 1
+      const native = nativePlanFor(request, InstallationKey.make(`${request.destination.host}:${request.destination.home}`))
+      const bundle = Match.value(request.intent).pipe(Match.discriminatorsExhaustive("type")({
+        present: ({ bundle }) => bundle,
+        absent: () => { throw new Error("Version observation fixture requires a present package") },
+        repair: () => { throw new Error("Version observation fixture cannot repair") }
+      }))
+      return Effect.succeed({
+        type: "unchanged",
+        target: { ...native.target, version: planningCalls === 1 ? "1.0.0" : "99.0.0" },
+        state: ownedSnapshot(bundle, "f")
+      } satisfies InstallationPlanning)
+    },
+    apply: (plan) => {
+      applyCalls += 1
+      return Effect.succeed(completedApply(plan))
+    }
+  })
+  const result = await runRuntime(installer, (distribution) => Effect.gen(function*() {
+    const plan = expectReady(yield* distribution.plan(requestFor(fixture.mainRelease, "present", [
+      localTarget(fixture.root, "version-observation", "codex", "version-observation")
+    ])))
+    expect(stepAt(plan, "version-observation").operation.type).toBe("verify")
+    return yield* distribution.apply(plan, Directory.make(join(fixture.root, "version-observation-state")))
+  }))
+  expect(result.type).toBe("complete")
+  expect(result.record.entries.map(({ outcome }) => outcomeLabel(outcome))).toEqual(["unchanged"])
+  expect(planningCalls).toBe(2)
+  expect(applyCalls).toBe(0)
+})
 
 it("rejects unchanged-basis drift and applies native removal", async () => {
   const fixture = currentFixture()

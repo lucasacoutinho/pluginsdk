@@ -37,14 +37,15 @@ The plugin drafts release notes from the repository's Git history. You maintain 
 
 Follow [Get started](docs/getting-started.md) to use it in both clients and update the shared template.
 
-On Windows x64 with Node 24+, use Claude Code 2.1.304 or Codex CLI 0.163.0. Preview from the plugin directory:
+On Windows x64, preview in Claude Code, Codex or Cursor from the plugin directory:
 
 ```sh
 npx pluginsdk preview --target claude_code
 npx pluginsdk preview --target codex
+npx pluginsdk preview --target cursor
 ```
 
-Windows supports skills, supporting files, remote HTTP MCP connections and bundled stdio MCP servers. Bundled servers require Node 24.18+ and user scope. `build` selects their portable packages automatically. See [Supported clients](docs/compatibility.md) for feature limits.
+Claude Code and Codex support user and project installations, including bundled MCP, hooks and agents. Cursor supports user installations of skills, assets and MCP connections. Bundled commands require Node 24.18+. See [Supported clients](docs/compatibility.md) for feature limits.
 
 ## Connect your internal applications
 
@@ -80,9 +81,9 @@ The example also includes a Git `publish` destination. Replace its repository UR
 - [Publish a plugin](docs/publishing.md): configure the destination and release both packages.
 - [Install, update and remove](docs/usage.md): manage client installations.
 - [Manage plugins for a team](docs/teams.md): maintain integrations across applications.
-- [Supported clients](docs/compatibility.md): versions, platforms and feature limits.
+- [Supported clients](docs/compatibility.md): platforms, scopes and feature limits.
 - [Examples](examples/README.md): runnable release notes and an internal operations plugin.
 
-PluginSDK is a private MIT-licensed alpha. These commands work from this checkout or an environment where the CLI is installed. Public npm distribution remains deferred. Installation support covers the [listed client versions and platforms](docs/compatibility.md). ChatGPT, Cursor, Grok Bot and Muse adapters are not available.
+PluginSDK is a private MIT-licensed alpha. These commands work from this checkout or an environment where the CLI is installed. Public npm distribution remains deferred. Installation support follows the [documented client contracts and platforms](docs/compatibility.md). ChatGPT, Grok Bot and Muse adapters are not available.
 
 Contributors can find architecture, Effect conventions, Lean specifications and validation records in [docs/internals](docs/internals/README.md).

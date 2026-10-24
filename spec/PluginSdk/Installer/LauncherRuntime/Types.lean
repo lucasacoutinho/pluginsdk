@@ -1,11 +1,11 @@
 namespace PluginSdk.Installer.LauncherRuntime
 
 inductive Kind where
-  | absent | posix (cwdRoot : Bool) | portable
+  | absent | portable
   deriving DecidableEq, Repr
 
 inductive Check where
-  | node | shell | env | pwd
+  | node | shell | env
   deriving DecidableEq, Repr
 
 structure Input where

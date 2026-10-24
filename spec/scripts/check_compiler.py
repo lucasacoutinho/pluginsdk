@@ -12,7 +12,7 @@ VECTORS = SPEC / "vectors/compiler.ndjson"
 
 def request():
     return {"schema": 1, "type": "render", "input": {
-        "format": "agent_plugins_v1",
+        "format": "codex",
         "metadata": {"id": "team-kit", "version": "0.1.0", "description": "Shared tools"},
         "skills": [], "mcp": {},
     }}
@@ -65,7 +65,7 @@ def check_enumerations():
     randomizer = random.Random(20261020)
     groups = []
     captured = {"digest": "1" * 64, "executable": False}
-    for format in ["agent_plugins_v1", "claude_code_v1"]:
+    for format in ["codex", "claude_code"]:
         for rejected in [False, True]:
             base = request()
             base["input"]["format"] = format

@@ -32,7 +32,8 @@ type BundleDigest = Compiler.BundleDigest
 type Fingerprint = Installer.Fingerprint
 type RenderFormat = CompilerModel.RenderInput["format"]
 
-const oraclePath = fileURLToPath(new URL("../spec/.lake/build/bin/oracle", import.meta.url))
+const oraclePath = process.env["PLUGINSDK_ORACLE"] ??
+  fileURLToPath(new URL("../spec/.lake/build/bin/oracle", import.meta.url))
 
 function decodeStrict<S extends Schema.ConstraintDecoder<unknown>>(schema: S, input: unknown): S["Type"] {
   return Schema.decodeUnknownSync(schema, { onExcessProperty: "error" })(input)
@@ -666,7 +667,7 @@ function makeRenderRequest(format: RenderFormat, pattern: number, assetOrder: Re
 
 function generatedRendererCases(): ReadonlyArray<{ readonly group: string; readonly request: RenderRequest }> {
   const cases: Array<{ readonly group: string; readonly request: RenderRequest }> = []
-  const formats: ReadonlyArray<RenderFormat> = ["agent_plugins_v1", "claude_code_v1"]
+  const formats: ReadonlyArray<RenderFormat> = Compiler.Format.literals
   for (const format of formats) {
     for (const pattern of [0, 1, 2, 3, 4]) {
       const group = `${format}/pattern-${pattern}`
@@ -738,7 +739,7 @@ it("matches lifecycle examples and committed vectors with the Lean oracle", () =
 
 it("matches renderer examples and committed vectors with the Lean oracle", () => {
   const cases = loadRenderCases()
-  expect(cases.length).toBe(35)
+  expect(new Set(cases.map(({ request }) => request.input.format))).toEqual(new Set(Compiler.Format.literals))
   compareRenderCases(cases)
 })
 
@@ -762,7 +763,7 @@ it("matches deterministic generated lifecycle traces with the Lean oracle", () =
 
 it("matches renderer permutations, path and header collisions, and UTF-8 ordering", () => {
   const cases = generatedRendererCases()
-  expect(cases.length).toBe(1920)
+  expect(new Set(cases.map(({ request }) => request.input.format))).toEqual(new Set(Compiler.Format.literals))
   const responses = compareRenderCases(cases.map((current) => ({
     name: current.group,
     request: current.request,

@@ -7,9 +7,8 @@ open PluginSdk.Compiler
 open PluginSdk.Compiler.Process
 
 def hostFor : Format → Host
-  | .agentPluginsV1 => .codex
-  | .claudeCodeV1 => .claudeCode
-  | .codexPluginV1 => .codex
+  | .claudeCode => .claudeCode
+  | .codex => .codex
 
 def canonicalLocals (servers : List (String × Plan)) : List (String × Plan) :=
   ordered (fun server => [server.1]) servers

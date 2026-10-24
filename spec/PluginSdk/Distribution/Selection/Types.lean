@@ -17,20 +17,10 @@ structure Interface where
   select : Input → Result
 
 def CompatiblePackage : PluginSdk.Compatibility.ClientPackages.PackageClient → Catalog.PackageFormat → Bool
-  | .claudeCode, .claudeCodeV1 | .claudeCode, .claudeCodeV2
-  | .claudeCode, .claudeCodeV3 | .claudeCode, .claudeCodeV4
-  | .claudeCode, .claudeCodeV5 | .claudeCode, .claudeCodePortableV1
-  | .claudeCode, .claudeCodePortableV2 => true
-  | .codex, .agentPluginsV1 | .codex, .agentPluginsV2
-  | .codex, .agentPluginsV3 | .codex, .codexPluginV1 | .codex, .codexPluginV2
-  | .codex, .codexPluginPortableV1 | .codex, .codexPluginPortableV2 => true
-  | .claudeCode, .agentPluginsV1 | .claudeCode, .agentPluginsV2
-  | .claudeCode, .agentPluginsV3 | .claudeCode, .codexPluginV1
-  | .claudeCode, .codexPluginV2 | .claudeCode, .codexPluginPortableV1
-  | .claudeCode, .codexPluginPortableV2 => false
-  | .codex, .claudeCodeV1 | .codex, .claudeCodeV2
-  | .codex, .claudeCodeV3 | .codex, .claudeCodeV4 | .codex, .claudeCodeV5
-  | .codex, .claudeCodePortableV1 | .codex, .claudeCodePortableV2 => false
+  | .claudeCode, .claudeCode => true
+  | .claudeCode, .codex => false
+  | .codex, .claudeCode => false
+  | .codex, .codex => true
 
 def Compatible (host : LocalHost) (format : Catalog.PackageFormat) : Bool :=
   (PluginSdk.Compatibility.ClientPackages.FitsClient host .claudeCode && CompatiblePackage .claudeCode format) ||
