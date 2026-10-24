@@ -18,7 +18,7 @@ Each behavior change follows property, checked Lean construction, oracle, pure T
 
 ## Evidence and landing
 
-The existing [pilot](../pilot.md) and [alpha acceptance](../acceptance.md) retain the remote baseline's evidence. Later compiler, installer, Cursor and Windows component records remain in the development checkout until their owning changes land. A component result establishes its own checkpoint; changed packages, compatibility policies and callers need their required new evidence.
+The existing [pilot](pilot.md) and [alpha acceptance](acceptance.md) retain the remote baseline's evidence. Later compiler, installer, Cursor and Windows component records remain in the development checkout until their owning changes land. A component result establishes its own checkpoint; changed packages, compatibility policies and callers need their required new evidence.
 
 Commits, pushes and PR merges are authorized. Keep the active implementation checkout intact and use isolated integration branches. Review each actual diff, record its checks and limitations, and verify the accepted head before merging. Planning documents do not qualify unmerged implementation.
 
