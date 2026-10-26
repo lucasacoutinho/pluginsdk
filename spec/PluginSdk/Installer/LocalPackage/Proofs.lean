@@ -160,7 +160,8 @@ theorem LP10_canonical_full_and_partial_trees : LP10_canonical_full_and_partial_
       exact absent (present retained member)
     simp [model, classify, canonical, sameRoot, notUnusable, consistent, notPresent]
 
-private theorem nonempty_of_permutation {left right : List α} (permutation : left.Perm right) :
+private theorem nonempty_of_permutation {α : Type} {left right : List α}
+    (permutation : left.Perm right) :
     left ≠ [] ↔ right ≠ [] := by
   constructor
   · intro leftNonempty rightEmpty
