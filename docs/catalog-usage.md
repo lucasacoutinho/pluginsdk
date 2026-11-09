@@ -2,14 +2,14 @@
 
 Retain the exact Claude Code and Codex packages under one release ID. Use the catalog when a plugin team approves a version before distributing it.
 
-This guide uses the [platform tools example](https://github.com/lucasacoutinho/pluginsdk-examples/tree/main/platform-tools). Run the commands from the root of a [pluginsdk-examples](https://github.com/lucasacoutinho/pluginsdk-examples) checkout after `npm ci`. Its MCP addresses are placeholders for your existing services. Building and retaining its packages does not contact those services.
+This guide uses the [platform tools example](https://github.com/lucasacoutinho/pluginsdk-examples/tree/platform-tools). Run the commands from a checkout of that branch after `npm ci`. Its MCP addresses are placeholders for your existing services. Building and retaining its packages does not contact those services.
 
 ## Package a release
 
 Build both packages and prepare a release directory:
 
 ```sh
-npx pluginsdk build platform-tools/definition.json \
+npx pluginsdk build definition.json \
 	--out .pluginsdk/platform-tools/build
 mkdir -p .pluginsdk/releases
 ```

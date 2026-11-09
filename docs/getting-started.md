@@ -4,13 +4,12 @@ Build a plugin that drafts release notes from Git history, then preview the same
 
 ## Prepare the CLI
 
-Use Node 24+ on Linux and a [supported Claude Code or Codex installation](compatibility.md). Clone the [examples repository](https://github.com/lucasacoutinho/pluginsdk-examples):
+Use Node 24+ on Linux and a [supported Claude Code or Codex installation](compatibility.md). Clone the release notes example from the [examples repository](https://github.com/lucasacoutinho/pluginsdk-examples):
 
 ```sh
-git clone git@github.com:lucasacoutinho/pluginsdk-examples.git
-cd pluginsdk-examples
-npm ci
+git clone --branch release-notes git@github.com:lucasacoutinho/pluginsdk-examples.git release-notes
 cd release-notes
+npm ci
 ```
 
 The CLI is a private alpha. `npm ci` installs and builds it from the PluginSDK Git repository, so you need read access to that repository. Public npm distribution remains deferred.
@@ -32,7 +31,7 @@ Open a fresh Claude Code or Codex session in a Git repository. Ask:
 
 If you have several release notes plugins installed, include the development plugin name printed by `preview`.
 
-The [skill](https://github.com/lucasacoutinho/pluginsdk-examples/blob/main/release-notes/skills/release-notes/SKILL.md) checks the actual repository history and uses the packaged [template](https://github.com/lucasacoutinho/pluginsdk-examples/blob/main/release-notes/skills/release-notes/references/template.md). Both clients receive the same files.
+The [skill](https://github.com/lucasacoutinho/pluginsdk-examples/blob/release-notes/skills/release-notes/SKILL.md) checks the actual repository history and uses the packaged [template](https://github.com/lucasacoutinho/pluginsdk-examples/blob/release-notes/skills/release-notes/references/template.md). Both clients receive the same files.
 
 ## Change the output once
 

@@ -16,18 +16,17 @@ A platform team can maintain one plugin for its service catalog and deployment t
 
 ## Try it
 
-Clone the [examples repository](https://github.com/lucasacoutinho/pluginsdk-examples), with Node 24+ on Linux:
+Clone the release notes example from the [examples repository](https://github.com/lucasacoutinho/pluginsdk-examples), with Node 24+ on Linux:
 
 ```sh
-git clone git@github.com:lucasacoutinho/pluginsdk-examples.git
-cd pluginsdk-examples
-npm ci
+git clone --branch release-notes git@github.com:lucasacoutinho/pluginsdk-examples.git release-notes
 cd release-notes
+npm ci
 npx pluginsdk build
 npx pluginsdk preview
 ```
 
-`npm ci` installs and builds PluginSDK from this repository. The commands build and preview the [release notes plugin](https://github.com/lucasacoutinho/pluginsdk-examples/tree/main/release-notes) in both supported clients. The captured production packages are:
+`npm ci` installs and builds PluginSDK from this repository. The commands build and preview the [release notes plugin](https://github.com/lucasacoutinho/pluginsdk-examples/tree/release-notes) in both supported clients. The captured production packages are:
 
 ```text
 .pluginsdk/build/claude_code.bundle.json
@@ -50,7 +49,7 @@ Claude Code and Codex support user and project installations, including bundled 
 
 ## Connect your internal applications
 
-The [platform tools example](https://github.com/lucasacoutinho/pluginsdk-examples/tree/main/platform-tools) connects two existing MCP services and adds shared workflows:
+The [platform tools example](https://github.com/lucasacoutinho/pluginsdk-examples/tree/platform-tools) connects two existing MCP services and adds shared workflows:
 
 ```json
 {
@@ -65,10 +64,12 @@ The [platform tools example](https://github.com/lucasacoutinho/pluginsdk-example
 }
 ```
 
-Replace the URLs with your organization's endpoints. In the example directory, build both client packages:
+Clone the example, replace the URLs in its `definition.json` with your organization's endpoints, then build both client packages:
 
 ```sh
+git clone --branch platform-tools git@github.com:lucasacoutinho/pluginsdk-examples.git platform-tools
 cd platform-tools
+npm ci
 npx pluginsdk build
 npx pluginsdk preview
 ```
